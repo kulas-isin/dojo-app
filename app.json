@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "PawDojo",
+    "slug": "pawdojo",
+    "version": "0.1.0",
+    "scheme": "pawdojo",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1430"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "PawDojo 需要你的位置來顯示附近的寵物道館。",
+        "NSCameraUsageDescription": "PawDojo 需要相機來拍攝你家寵物的挑戰影片。",
+        "NSPhotoLibraryUsageDescription": "PawDojo 需要相簿權限來上傳你家寵物的照片或影片。"
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PawDojo 需要你的位置來顯示附近的寵物道館。"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PawDojo 需要相簿權限來上傳你家寵物的照片或影片。",
+          "cameraPermission": "PawDojo 需要相機來拍攝你家寵物的挑戰影片。"
+        }
+      ]
+    ]
+  }
+}
