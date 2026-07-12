@@ -53,6 +53,16 @@
   .ring{position:absolute;width:60px;height:60px;border-radius:50%;border:4px solid var(--butter);opacity:0;pointer-events:none;z-index:12}
   .ring.go{animation:ring .55s}
   @keyframes ring{0%{opacity:.85;transform:scale(.3)}100%{opacity:0;transform:scale(2)}}
+  .particle.leaf{border-radius:2px 6px 2px 6px}
+  .particle.rock{border-radius:3px}
+  .bolt{position:absolute;width:3px;background:linear-gradient(#fff,#F2C230);transform-origin:top center;z-index:15;opacity:0;box-shadow:0 0 6px #F2C230}
+  .bolt.go{animation:bolt .3s}
+  @keyframes bolt{0%,100%{opacity:0}20%,60%{opacity:1}}
+  .arena.jitter{animation:jitter .3s}
+  @keyframes jitter{10%{transform:translate(-2px,1px)}30%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}70%{transform:translate(2px,-1px)}}
+  .typebar{display:flex;gap:6px;flex-wrap:wrap;padding:6px 16px 2px}
+  .tb{border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;cursor:pointer;font-family:var(--sans);color:var(--ink)}
+  .tb.on{color:#fff}
   .dmg{position:absolute;font-weight:900;font-size:26px;color:var(--coral);text-shadow:0 2px 0 #fff;pointer-events:none;animation:floatUp .85s cubic-bezier(.2,.9,.3,1) forwards}
   .dmg.super{font-size:36px;color:#E8805C}
   .dmg.weak{font-size:20px;color:#8a8375}
@@ -106,6 +116,7 @@
 
 <div class="wrap">
   <div class="topbar">⚔️ 大安森林公園道館 · 對戰</div>
+  <div class="typebar" id="typebar"><span style="align-self:center;font-size:11px;color:var(--dim);font-weight:800">麻糬的個性：</span></div>
   <div class="arena" id="arena">
     <div class="flash" id="flash"></div>
     <div class="eff" id="eff"></div>
@@ -124,7 +135,7 @@
     <div class="side mine">
       <div class="avatar idle" id="myAv"><svg style="--fur:#E8945C;--fur2:#F6C89E"><use href="#cat"/></svg></div>
       <div class="hpbox">
-        <div class="hprow1"><span class="nm">麻糬 <span class="chip" style="background:#C0872E">⚡過動</span></span><span class="lv">Lv.5</span></div>
+        <div class="hprow1"><span class="nm">麻糬 <span class="chip" id="myChip" style="background:#C0872E">⚡過動</span></span><span class="lv">Lv.5</span></div>
         <div class="track"><div class="fill" id="myHp"></div></div>
         <div class="hpnum" id="myHpNum"></div>
       </div>
@@ -153,13 +164,41 @@
   var BEATS = { proud:'derp', derp:'hyper', hyper:'clingy', clingy:'sturdy', sturdy:'proud' };
   function mult(atkT, defT){ if(BEATS[atkT]===defT) return 1.5; if(BEATS[defT]===atkT) return .75; return 1; }
 
+  var TYPES = {
+    proud:  {label:'傲嬌', emoji:'🔥', color:'#E8805C', p:'#F0642F', fx:'fire',  sig:'傲嬌爆擊'},
+    derp:   {label:'天然呆', emoji:'🌿', color:'#5E9B7E', p:'#5E9B7E', fx:'leaf',  sig:'呆萌一擊'},
+    hyper:  {label:'過動', emoji:'⚡', color:'#C0872E', p:'#F2C230', fx:'bolt',  sig:'過動連踢'},
+    clingy: {label:'黏人精', emoji:'💧', color:'#3F8E8A', p:'#49A9C7', fx:'water', sig:'撒嬌纏繞'},
+    sturdy: {label:'憨厚', emoji:'🪨', color:'#8A6A3A', p:'#9A7B4A', fx:'rock',  sig:'憨厚重壓'},
+  };
+  var myType = 'hyper';
+
+  // 招式：寵物行為 × 元素/個性（惡趣味）
+  var MOVES = {
+    proud:  [{n:'不理你尾巴甩',p:45,acc:1},{n:'傲嬌正義拳',p:70,acc:.95},{n:'爆氣兔子蹬',p:95,acc:.72}],
+    derp:   [{n:'放空盯空氣',p:45,acc:1},{n:'呆萌翻肚肚',p:70,acc:.95},{n:'亂入螃蟹步',p:95,acc:.72}],
+    hyper:  [{n:'半夜暴衝',p:45,acc:1},{n:'風火輪衝刺',p:70,acc:.95},{n:'電流連環蹬',p:95,acc:.72}],
+    clingy: [{n:'淚眼汪汪',p:45,acc:1},{n:'撒嬌踏踏',p:70,acc:.95},{n:'纏人水牢',p:95,acc:.72}],
+    sturdy: [{n:'憨憨坐好',p:45,acc:1},{n:'拆家重擊',p:70,acc:.95},{n:'泰山壓頂',p:95,acc:.72}],
+  };
   function F(o){ o.hp=o.maxHp; return o; }
   var me, foe, busy=false;
+  function movesOf(t){ return MOVES[t].map(function(m){return {n:m.n,p:m.p,acc:m.acc}}); }
   function seed(){
-    me = F({ name:'麻糬', type:'hyper', lv:5, maxHp:96, atk:78, def:60, spd:92,
-      moves:[{n:'撲擊',p:45,acc:1},{n:'過動連踢',p:70,acc:.95},{n:'全力一擊',p:95,acc:.72}] });
-    foe = F({ name:'阿福', type:'clingy', lv:5, maxHp:120, atk:64, def:78, spd:48,
-      moves:[{n:'撲擊',p:45,acc:1},{n:'撒嬌纏繞',p:70,acc:.95},{n:'全力一擊',p:95,acc:.72}] });
+    me = F({ name:'麻糬', type:myType, lv:5, maxHp:96, atk:78, def:60, spd:92, moves:movesOf(myType) });
+    foe = F({ name:'阿福', type:'clingy', lv:5, maxHp:120, atk:64, def:78, spd:48, moves:movesOf('clingy') });
+    var c=TYPES[myType];
+    $('myChip').style.background=c.color; $('myChip').textContent=c.emoji+c.label;
+  }
+  function renderTypebar(){
+    var bar=$('typebar');
+    Object.keys(TYPES).forEach(function(k){
+      var t=TYPES[k]; var b=document.createElement('button'); b.className='tb'+(k===myType?' on':'');
+      if(k===myType) b.style.background=t.color;
+      b.textContent=t.emoji+t.label;
+      b.onclick=function(){ if(busy) return; myType=k; window.reset(); renderTypebar(); };
+      bar.appendChild(b);
+    });
   }
 
   var $=function(id){return document.getElementById(id)};
@@ -180,34 +219,66 @@
     var av=$(side==='me'?'myAv':'enemyAv'); var r=av.getBoundingClientRect(); var a=$('arena').getBoundingClientRect();
     return { x:r.left-a.left+r.width/2, y:r.top-a.top+r.height/2 };
   }
-  function spawnParticles(side, color, n){
+  function particles(side, opt){
     if(RM) return;
-    var c=avCenter(side);
+    var c=avCenter(side), n=opt.n||8;
     for(var k=0;k<n;k++){
-      var p=document.createElement('div'); p.className='particle'; p.style.background=color;
+      var p=document.createElement('div'); p.className='particle'+(opt.shape?(' '+opt.shape):'');
+      p.style.background=opt.color; if(opt.size){p.style.width=p.style.height=opt.size+'px';}
       p.style.left=(c.x-4)+'px'; p.style.top=(c.y-4)+'px'; $('arena').appendChild(p);
       (function(el){
         requestAnimationFrame(function(){
-          var ang=Math.random()*6.28, d=26+Math.random()*34;
-          el.style.transform='translate('+Math.cos(ang)*d+'px,'+Math.sin(ang)*d+'px) scale('+(0.4+Math.random()*0.6)+')';
+          var ang, d=24+Math.random()*38;
+          if(opt.rise) ang = -Math.PI/2 + (Math.random()-0.5)*1.4;       // 往上（火/餘燼）
+          else if(opt.fall) ang = Math.PI/2 + (Math.random()-0.5)*1.6;    // 往下（碎石）
+          else ang = Math.random()*6.28;                                   // 四散
+          var rot = opt.spin? ' rotate('+(Math.random()*360)+'deg)':'';
+          el.style.transform='translate('+Math.cos(ang)*d+'px,'+Math.sin(ang)*d+'px) scale('+(0.4+Math.random()*0.7)+')'+rot;
           el.style.opacity='0';
         });
         setTimeout(function(){el.remove()},520);
       })(p);
     }
   }
-  function ring(side){
+  function ring(side, color){
     if(RM) return;
     var c=avCenter(side); var r=document.createElement('div'); r.className='ring';
+    if(color) r.style.borderColor=color;
     r.style.left=(c.x-30)+'px'; r.style.top=(c.y-30)+'px'; $('arena').appendChild(r);
     void r.offsetWidth; r.classList.add('go'); setTimeout(function(){r.remove()},560);
   }
+  function bolts(side){
+    if(RM) return;
+    var c=avCenter(side), a=$('arena').getBoundingClientRect();
+    for(var i=0;i<3;i++){
+      var b=document.createElement('div'); b.className='bolt';
+      var h=c.y+ (Math.random()*20); b.style.height=h+'px'; b.style.top='0px';
+      b.style.left=(c.x-20+i*18+Math.random()*6)+'px';
+      b.style.transform='rotate('+((Math.random()-0.5)*24)+'deg)';
+      $('arena').appendChild(b); void b.offsetWidth; b.classList.add('go');
+      setTimeout(function(el){return function(){el.remove()}}(b),320);
+    }
+  }
   function flash(){ if(RM) return; var f=$('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+  function jitter(){ if(RM) return; var a=$('arena'); a.classList.add('jitter'); setTimeout(function(){a.classList.remove('jitter')},300); }
+  function shake(){ if(RM) return; var a=$('arena'); a.classList.add('shake'); setTimeout(function(){a.classList.remove('shake')},320); }
+
+  // 依屬性播放不同招式特效
+  function typeFx(type, side, big){
+    var t=TYPES[type], col=t.p, n=big?16:10;
+    if(t.fx==='fire'){ particles(side,{color:col,n:n,rise:true,size:10}); ring(side,'#F0642F'); flash(); }
+    else if(t.fx==='leaf'){ particles(side,{color:col,n:n,shape:'leaf',spin:true,size:11}); ring(side,'#7FB88F'); }
+    else if(t.fx==='bolt'){ bolts(side); particles(side,{color:col,n:n,size:7}); flash(); jitter(); }
+    else if(t.fx==='water'){ ring(side,'#49A9C7'); setTimeout(function(){ring(side,'#8FD0E6')},110); particles(side,{color:col,n:n,size:9}); }
+    else if(t.fx==='rock'){ particles(side,{color:col,n:n,fall:true,shape:'rock',size:12}); shake(); ring(side,'#9A7B4A'); }
+    else { particles(side,{color:col,n:n}); }
+    if(big && t.fx!=='rock' && t.fx!=='bolt') shake();
+  }
   function renderMoves(){
     var el=$('moves'); el.innerHTML='';
     me.moves.forEach(function(m,i){
       var b=document.createElement('button'); b.className='move'; b.disabled=busy;
-      b.innerHTML='<div class="mn">⚡ '+m.n+'</div><div class="mm">威力 '+m.p+' · 命中 '+Math.round(m.acc*100)+'%</div>';
+      b.innerHTML='<div class="mn">'+TYPES[me.type].emoji+' '+m.n+'</div><div class="mm">威力 '+m.p+' · 命中 '+Math.round(m.acc*100)+'%</div>';
       b.onclick=function(){ if(!busy) playerTurn(i); };
       el.appendChild(b);
     });
@@ -238,13 +309,12 @@
     var dmg = Math.max(1, Math.floor(base*m*(0.85+Math.random()*0.15)));
     var eff = m>1?'super':m<1?'weak':'normal';
     defender.hp -= dmg;
-    // 命中特效
+    // 命中特效（依攻擊方屬性）
     var dav = $(defKey==='me'?'myAv':'enemyAv');
     dav.classList.add('hit');
-    spawnParticles(defKey, m>1?'#E8805C':'#E7B24C', m>1?12:7);
+    typeFx(attacker.type, defKey, move.p>=90);
     floatDmg(defKey, dmg, eff);
-    if(m>1){ flash(); ring(defKey); showEff('效果絕佳！','#E8805C');
-      if(!RM){ $('arena').classList.add('shake'); setTimeout(function(){$('arena').classList.remove('shake')},320);} }
+    if(m>1){ showEff('效果絕佳！', TYPES[attacker.type].color); }
     else if(m<1){ showEff('效果不佳…','#6E6558'); }
     await wait(90); // 命中頓格，增加重量感
     paint();
@@ -287,6 +357,6 @@
   window.reset=function(){ $('overlay').classList.remove('show');
     ['myAv','enemyAv'].forEach(function(id){ $(id).classList.remove('faint'); $(id).classList.add('idle'); });
     seed(); paint(); busy=false; renderMoves(); log('要出哪一招？'); };
-  seed(); paint(); renderMoves();
+  seed(); paint(); renderMoves(); renderTypebar();
 })();
 </script>
