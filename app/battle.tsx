@@ -44,7 +44,7 @@ export default function BattleScreen() {
   const pets = useStore((s) => s.pets);
   const gyms = useStore((s) => s.gyms);
   const entries = useStore((s) => s.entries);
-  const bumpLevel = useStore((s) => s.bumpPetLevelLocal);
+  const winGymBattle = useStore((s) => s.winGymBattle);
 
   const gym = gyms.find((g) => g.id === gymId);
   const myPet = pets.find((p) => p.id === myPetId);
@@ -321,12 +321,17 @@ export default function BattleScreen() {
 
   async function endBattle(kind: 'win' | 'lose') {
     await wait(300);
-    if (kind === 'win') { sfx.winJingle(); if (myPet) bumpLevel(myPet.id); }
+    if (kind === 'win') sfx.winJingle();
     else sfx.loseJingle();
     // 倒下
     const dAnim = kind === 'win' ? foeA : myA;
     Animated.timing(dAnim.ty, { toValue: 30, duration: 500, useNativeDriver: true }).start();
     await wait(600);
+    // 勝利 → 寫回雲端（登頂 + 升級）
+    if (kind === 'win' && gymId && myPetId) {
+      setLogText('結算中…登頂並升級');
+      try { await winGymBattle(String(gymId), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
+    }
     setResult(kind);
   }
 
@@ -438,7 +443,7 @@ export default function BattleScreen() {
             <Text style={styles.ovTitle}>{result === 'win' ? '你贏了！👑' : '落敗…'}</Text>
             <Text style={styles.ovSub}>
               {result === 'win'
-                ? `${mine.name} 打敗了道館主，升到 Lv.${(myPet?.level ?? 1)}！（練習賽）`
+                ? `${mine.name} 成為新道館主，升到 Lv.${myPet?.level ?? 1}！`
                 : '再訓練一下，下次再來挑戰！'}
             </Text>
             <Button label="返回道館" onPress={() => router.back()} style={{ marginTop: spacing.md }} />

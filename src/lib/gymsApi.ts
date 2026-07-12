@@ -1,4 +1,4 @@
-import type { Battle, Coordinate, Entry, Gym, MediaType, PetType } from '../types';
+import type { Battle, Coordinate, Entry, Gym, MediaType, Pet, PetType } from '../types';
 import { supabase } from './supabase';
 
 const DAY = 1000 * 60 * 60 * 24;
@@ -169,6 +169,36 @@ export async function submitChallengeRemote(
     ends_at: new Date(Date.now() + DAY).toISOString(),
   });
   if (e2) throw e2;
+}
+
+/** PvE 對戰勝利：用我的寵物建立參賽 entry、設為衛冕者、寵物升一級 */
+export async function winGymBattleRemote(
+  gymId: string,
+  pet: Pet,
+  userId: string,
+  ownerName: string,
+): Promise<number> {
+  const { data: entry, error } = await supabase
+    .from('entries')
+    .insert({
+      gym_id: gymId,
+      pet_id: pet.id,
+      owner_id: userId,
+      owner_name: ownerName,
+      pet_name: pet.name,
+      pet_type: pet.petType,
+      media_url: pet.avatarUri,
+      thumb_url: pet.thumbUri ?? pet.avatarUri,
+      media_type: 'photo',
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+
+  await supabase.from('gyms').update({ champion_entry_id: entry.id }).eq('id', gymId);
+  const newLevel = (pet.level ?? 1) + 1;
+  await supabase.from('pets').update({ level: newLevel }).eq('id', pet.id);
+  return newLevel;
 }
 
 export async function voteBattleRemote(

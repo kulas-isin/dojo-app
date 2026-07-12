@@ -19,6 +19,7 @@ import {
   resolveBattleRemote,
   submitChallengeRemote,
   voteBattleRemote,
+  winGymBattleRemote,
 } from '../lib/gymsApi';
 import { seedUser } from '../data/seed';
 import type {
@@ -111,6 +112,8 @@ interface StoreState {
   submitChallenge: (input: NewEntryInput) => Promise<void>;
   voteBattle: (battleId: string, side: 'challenger' | 'defender') => Promise<void>;
   resolveBattle: (battleId: string) => Promise<void>;
+  /** PvE 對戰勝利：登頂 + 升級寫回雲端，並頒發本地頭銜 */
+  winGymBattle: (gymId: string, petId: string) => Promise<void>;
   /** 本地 demo：對戰勝利後暫時把寵物升一級（不寫雲端） */
   bumpPetLevelLocal: (petId: string) => void;
   syncSocial: () => Promise<void>;
@@ -224,6 +227,27 @@ export const useStore = create<StoreState>()(
             return { user: { ...s.user, wins: s.user.wins + 1, titles: [title, ...s.user.titles] } };
           });
         }
+      },
+
+      winGymBattle: async (gymId, petId) => {
+        const u = authUser();
+        if (!u) return;
+        const pet = get().pets.find((p) => p.id === petId);
+        if (!pet) return;
+        const gym = get().gyms.find((g) => g.id === gymId);
+        await winGymBattleRemote(gymId, pet, u.id, u.name);
+        await get().syncGyms();
+        await get().syncSocial();
+        set((s) => {
+          const title: Title = {
+            id: uid('title'),
+            label: `${gym?.name ?? '道館'} 衛冕者`,
+            emoji: '👑',
+            gymName: gym?.name ?? '道館',
+            earnedAt: Date.now(),
+          };
+          return { user: { ...s.user, wins: s.user.wins + 1, titles: [title, ...s.user.titles] } };
+        });
       },
 
       bumpPetLevelLocal: (petId) => {
