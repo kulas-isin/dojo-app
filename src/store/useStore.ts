@@ -61,6 +61,7 @@ export interface NewPetInput {
   name: string;
   petType: PetType;
   avatarUri: string;
+  thumbUri?: string;
   bio: string;
   // owned
   visibility?: Visibility;
@@ -72,6 +73,7 @@ export interface NewPetInput {
 export interface NewPostInput {
   petId: string;
   mediaUri: string;
+  thumbUri?: string;
   mediaType: MediaType;
   caption: string;
 }
@@ -305,10 +307,7 @@ export const useStore = create<StoreState>()(
       createPet: async (input) => {
         const u = authUser();
         if (!u) return null;
-        const id = await createPetRemote(
-          { ...input, petType: input.petType },
-          u.id,
-        );
+        const id = await createPetRemote(input, u.id);
         await get().syncSocial();
         return id;
       },
@@ -321,6 +320,7 @@ export const useStore = create<StoreState>()(
           u.id,
           u.name,
           input.mediaUri,
+          input.thumbUri ?? input.mediaUri,
           input.mediaType,
           input.caption,
         );

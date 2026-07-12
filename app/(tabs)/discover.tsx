@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge } from '@/components/Badge';
 import { Heart, MessageCircle, PetIcon, Plus } from '@/components/icons';
@@ -128,7 +129,13 @@ function PostCard({
   return (
     <View style={styles.card}>
       <Pressable style={styles.cardHead} onPress={() => router.push(`/pet/${pet.id}`)}>
-        <Image source={{ uri: pet.avatarUri }} style={styles.cardAvatar} />
+        <Image
+          source={pet.thumbUri ?? pet.avatarUri}
+          style={styles.cardAvatar}
+          contentFit="cover"
+          transition={150}
+          cachePolicy="memory-disk"
+        />
         <View style={{ flex: 1 }}>
           <View style={styles.cardNameRow}>
             <PetIcon type={pet.petType} size={15} color={colors.textDim} />
@@ -146,7 +153,13 @@ function PostCard({
       </Pressable>
 
       <Pressable onPress={() => router.push({ pathname: '/pet/post', params: { petId: pet.id, index: '0' } })}>
-        <Image source={{ uri: post.mediaUri }} style={styles.cardMedia} />
+        <Image
+          source={post.thumbUri ?? post.mediaUri}
+          style={styles.cardMedia}
+          contentFit="cover"
+          transition={150}
+          cachePolicy="memory-disk"
+        />
       </Pressable>
 
       <View style={styles.cardBody}>

@@ -1,7 +1,7 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,7 +62,13 @@ export default function PetProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Image source={{ uri: pet.avatarUri }} style={styles.avatar} />
+        <Image
+          source={pet.thumbUri ?? pet.avatarUri}
+          style={styles.avatar}
+          contentFit="cover"
+          transition={150}
+          cachePolicy="memory-disk"
+        />
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <PetIcon type={pet.petType} size={18} color={colors.textDim} />
@@ -140,8 +146,11 @@ export default function PetProfileScreen() {
               }
             >
               <Image
-                source={{ uri: p.mediaUri }}
+                source={p.thumbUri ?? p.mediaUri}
                 style={{ width: cellSize, height: cellSize, borderRadius: 6, backgroundColor: colors.cardAlt }}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="memory-disk"
               />
             </Pressable>
           ))}

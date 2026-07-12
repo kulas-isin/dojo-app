@@ -9,6 +9,7 @@ function mapPet(r: any): Pet {
     name: r.name,
     petType: r.pet_type,
     avatarUri: r.avatar_url,
+    thumbUri: r.thumb_url ?? r.avatar_url,
     bio: r.bio ?? '',
     visibility: r.visibility,
     followers: r.followers ?? 0,
@@ -29,6 +30,7 @@ function mapPost(r: any): Post {
     authorId: r.author_id ?? '',
     authorName: r.author_name ?? '訓練家',
     mediaUri: r.media_url,
+    thumbUri: r.thumb_url ?? r.media_url,
     mediaType: (r.media_type ?? 'photo') as MediaType,
     caption: r.caption ?? '',
     createdAt: Date.parse(r.created_at),
@@ -97,6 +99,7 @@ export interface CreatePetRemote {
   name: string;
   petType: string;
   avatarUri: string;
+  thumbUri?: string;
   bio: string;
   visibility?: Visibility;
   area?: string;
@@ -110,6 +113,7 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
     name: input.name.trim() || (isStray ? '無名浪浪' : '無名寵物'),
     pet_type: input.petType,
     avatar_url: input.avatarUri,
+    thumb_url: input.thumbUri ?? input.avatarUri,
     bio: input.bio.trim(),
     visibility: input.visibility ?? 'public',
     owner_id: isStray ? null : userId,
@@ -128,6 +132,7 @@ export async function addPostRemote(
   userId: string,
   authorName: string,
   mediaUri: string,
+  thumbUri: string,
   mediaType: MediaType,
   caption: string,
 ): Promise<void> {
@@ -136,6 +141,7 @@ export async function addPostRemote(
     author_id: userId,
     author_name: authorName,
     media_url: mediaUri,
+    thumb_url: thumbUri,
     media_type: mediaType,
     caption: caption.trim(),
   });

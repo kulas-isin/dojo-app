@@ -55,10 +55,11 @@ export default function AddPostScreen() {
     }
     setBusy(true);
     try {
-      const url = await uploadMedia(media.uri, session.user.id);
+      const uploaded = await uploadMedia(media.uri, session.user.id, media.type);
       await addPost({
         petId: String(petId),
-        mediaUri: url,
+        mediaUri: uploaded.url,
+        thumbUri: uploaded.thumbUrl,
         mediaType: media.type,
         caption,
       });

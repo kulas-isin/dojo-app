@@ -65,12 +65,13 @@ export default function CreatePetScreen() {
     }
     setBusy(true);
     try {
-      const avatarUrl = await uploadMedia(avatar, session.user.id);
+      const uploaded = await uploadMedia(avatar, session.user.id, 'photo');
       const id = await createPet({
         kind,
         name,
         petType,
-        avatarUri: avatarUrl,
+        avatarUri: uploaded.url,
+        thumbUri: uploaded.thumbUrl,
         bio,
         ...(isStray ? { area, status } : { visibility }),
       });

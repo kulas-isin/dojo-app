@@ -52,6 +52,8 @@ export interface Pet {
   name: string;
   petType: PetType;
   avatarUri: string;
+  /** 縮圖網址（列表用）；無則 fallback 到 avatarUri */
+  thumbUri?: string;
   bio: string;
   visibility: Visibility;
   followers: number;
@@ -87,6 +89,8 @@ export interface Post {
   authorId: string;
   authorName: string;
   mediaUri: string;
+  /** 縮圖網址（列表用）；無則 fallback 到 mediaUri */
+  thumbUri?: string;
   mediaType: MediaType;
   caption: string;
   createdAt: number;

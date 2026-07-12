@@ -1,5 +1,6 @@
 import { ResizeMode, Video } from 'expo-av';
-import { DimensionValue, Image, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { DimensionValue, StyleSheet, View } from 'react-native';
 import type { MediaType } from '../types';
 import { colors } from '../theme';
 
@@ -36,7 +37,13 @@ export function PetMedia({
   }
   return (
     <View style={[styles.media, { width, height, borderRadius: rounded, overflow: 'hidden' }]}>
-      <Image source={{ uri }} style={styles.image} resizeMode="cover" />
+      <Image
+        source={uri}
+        style={styles.image}
+        contentFit="cover"
+        transition={150}
+        cachePolicy="memory-disk"
+      />
     </View>
   );
 }

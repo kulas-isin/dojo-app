@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AccountCard } from '@/auth/AccountCard';
 import { displayName, useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
@@ -79,7 +80,13 @@ export default function ProfileScreen() {
       <View style={styles.pets}>
         {myPets.map((p) => (
           <Pressable key={p.id} style={styles.petRow} onPress={() => router.push(`/pet/${p.id}`)}>
-            <Image source={{ uri: p.avatarUri }} style={styles.petAvatar} />
+            <Image
+              source={p.thumbUri ?? p.avatarUri}
+              style={styles.petAvatar}
+              contentFit="cover"
+              transition={150}
+              cachePolicy="memory-disk"
+            />
             <Text style={styles.petName}>{p.name}</Text>
             {p.visibility === 'private' ? <Text style={styles.petTag}>私人</Text> : null}
           </Pressable>

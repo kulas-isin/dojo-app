@@ -1,9 +1,9 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import {
   Alert,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -69,9 +69,12 @@ export default function PostViewer() {
         renderItem={({ item }) => (
           <View style={[styles.page, { width }]}>
             <Image
-              source={{ uri: item.mediaUri }}
+              source={item.mediaUri}
+              placeholder={item.thumbUri}
               style={{ width: imgSize, height: imgSize, backgroundColor: colors.cardAlt }}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={150}
+              cachePolicy="memory-disk"
             />
             <View style={styles.caption}>
               <View style={styles.nameRow}>
