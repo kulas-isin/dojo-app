@@ -52,8 +52,11 @@ export default function MapScreen() {
         onPickLocation={handlePickLocation}
       />
 
-      {/* 頂部標題 */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      {/* 頂部標題（box-none：只有文字浮在地圖上，點擊仍會傳到地圖） */}
+      <View
+        pointerEvents="box-none"
+        style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
+      >
         <View style={styles.titleRow}>
           <PawPrint size={26} color={colors.primary} strokeWidth={2.4} />
           <Text style={styles.title}>PawDojo</Text>
@@ -85,6 +88,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
+    zIndex: 1000, // 蓋過 Leaflet 圖層，讓標題浮在地圖上
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   title: { color: colors.text, fontSize: font.size.display, fontWeight: font.weight.heavy },
@@ -97,6 +101,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     alignSelf: 'center',
+    zIndex: 1000, // 蓋過 Leaflet 圖層
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,

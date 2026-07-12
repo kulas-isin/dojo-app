@@ -64,7 +64,7 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
   return (
     <div className={s.warm ? 'pawmap map-warm' : 'pawmap'} style={{ height: '100%', width: '100%', position: 'relative' }}>
       <style>{`.map-warm .leaflet-tile-pane{filter:sepia(.35) saturate(1.5) hue-rotate(-8deg) brightness(1.03)}`}</style>
-      <MapContainer ref={mapRef} center={[c.latitude, c.longitude]} zoom={16} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+      <MapContainer ref={mapRef} center={[c.latitude, c.longitude]} zoom={16} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false}>
         <TileLayer
           key={style}
           url={s.url}
@@ -85,21 +85,23 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
         ))}
       </MapContainer>
 
-      {/* 回到我的定位 */}
-      <button
-        onClick={recenter}
-        title="回到我的定位"
+      {/* 右下控制列：回到定位 + 樣式切換（單一直欄，避免重疊） */}
+      <div
         style={{
-          position: 'absolute', right: 10, bottom: 158, zIndex: 500, width: 44, height: 44,
-          borderRadius: 22, border: 'none', cursor: 'pointer', fontSize: 20,
-          background: 'rgba(255,255,255,0.97)', boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+          position: 'absolute', right: 10, bottom: 118, zIndex: 500,
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8,
         }}
       >
-        📍
-      </button>
-
-      {/* 樣式切換器 */}
-      <div style={{ position: 'absolute', right: 10, bottom: 96, zIndex: 500, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <button
+          onClick={recenter}
+          title="回到我的定位"
+          style={{
+            width: 44, height: 44, borderRadius: 22, border: 'none', cursor: 'pointer', fontSize: 20,
+            background: 'rgba(255,255,255,0.97)', boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+          }}
+        >
+          📍
+        </button>
         {Object.keys(STYLES).map((k) => (
           <button
             key={k}
