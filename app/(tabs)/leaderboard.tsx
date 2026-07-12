@@ -36,7 +36,13 @@ export default function LeaderboardScreen() {
           onPress={() => router.push(`/gym/${item.gymId}`)}
         >
           <Text style={styles.rank}>{medal[index] ?? `#${index + 1}`}</Text>
-          <PetMedia uri={item.mediaUri} type={item.mediaType} height={56} rounded={radius.sm} />
+          <PetMedia
+            uri={item.mediaUri}
+            type={item.mediaType}
+            height={56}
+            width={56}
+            rounded={radius.sm}
+          />
           <View style={styles.info}>
             <Text style={styles.petName} numberOfLines={1}>
               {petEmoji[item.petType]} {item.petName}

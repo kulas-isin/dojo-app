@@ -149,7 +149,13 @@ export default function GymScreen() {
         {entries.map((e, i) => (
           <View key={e.id} style={styles.entryRow}>
             <Text style={styles.entryRank}>#{i + 1}</Text>
-            <PetMedia uri={e.mediaUri} type={e.mediaType} height={44} rounded={radius.sm} />
+            <PetMedia
+              uri={e.mediaUri}
+              type={e.mediaType}
+              height={44}
+              width={44}
+              rounded={radius.sm}
+            />
             <View style={{ flex: 1 }}>
               <Text style={styles.entryName}>
                 {petEmoji[e.petType]} {e.petName}
