@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { Button } from '@/components/Button';
 import { PetMedia } from '@/components/PetMedia';
+import { Camera, GymIcon, PetIcon, Swords } from '@/components/icons';
 import { useStore } from '@/store/useStore';
-import { colors, radius, spacing } from '@/theme';
+import { colors, font, radius, spacing } from '@/theme';
 import type { MediaType, PetType } from '@/types';
 
 // 給沒有相簿/在 Web 上測試的人用的範例素材
@@ -23,9 +24,9 @@ const SAMPLES: { uri: string; type: MediaType }[] = [
 ];
 
 const PET_TYPES: { value: PetType; label: string }[] = [
-  { value: 'cat', label: '🐱 貓咪' },
-  { value: 'dog', label: '🐶 狗狗' },
-  { value: 'other', label: '🐾 其他' },
+  { value: 'cat', label: '貓咪' },
+  { value: 'dog', label: '狗狗' },
+  { value: 'other', label: '其他' },
 ];
 
 export default function ChallengeScreen() {
@@ -54,7 +55,7 @@ export default function ChallengeScreen() {
 
   const handleSubmit = () => {
     if (!media || !gymId) return;
-    const { battleId } = submitChallenge({
+    submitChallenge({
       gymId: String(gymId),
       petName,
       petType,
@@ -63,16 +64,14 @@ export default function ChallengeScreen() {
     });
     // 回到道館頁；若產生對戰會直接看到投票區
     router.replace(`/gym/${gymId}`);
-    if (battleId) {
-      // 已對上衛冕者，對戰開始
-    }
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.gymHint}>
-        {gym ? `${gym.emoji} ${gym.name}` : '道館'}
-      </Text>
+      <View style={styles.gymHint}>
+        {gym ? <GymIcon name={gym.icon} size={18} color={colors.primary} strokeWidth={2.4} /> : null}
+        <Text style={styles.gymHintText}>{gym ? gym.name : '道館'}</Text>
+      </View>
 
       <Text style={styles.label}>毛孩的照片 / 影片</Text>
       {media ? (
@@ -81,13 +80,14 @@ export default function ChallengeScreen() {
           <Button
             label="重新選擇"
             variant="ghost"
+            icon={Camera}
             onPress={pickMedia}
             style={{ marginTop: spacing.sm }}
           />
         </View>
       ) : (
         <Pressable style={styles.uploadBox} onPress={pickMedia}>
-          <Text style={styles.uploadEmoji}>📸</Text>
+          <Camera size={40} color={colors.primary} strokeWidth={2} />
           <Text style={styles.uploadText}>從相簿選擇照片或影片</Text>
         </Pressable>
       )}
@@ -105,7 +105,7 @@ export default function ChallengeScreen() {
       <TextInput
         style={styles.input}
         placeholder="例如：麻糬"
-        placeholderTextColor={colors.textDim}
+        placeholderTextColor={colors.textMuted}
         value={petName}
         onChangeText={setPetName}
         maxLength={16}
@@ -113,23 +113,30 @@ export default function ChallengeScreen() {
 
       <Text style={styles.label}>種類</Text>
       <View style={styles.typeRow}>
-        {PET_TYPES.map((t) => (
-          <Pressable
-            key={t.value}
-            onPress={() => setPetType(t.value)}
-            style={[styles.typeBtn, petType === t.value && styles.typeBtnActive]}
-          >
-            <Text
-              style={[styles.typeText, petType === t.value && { color: colors.bg }]}
+        {PET_TYPES.map((t) => {
+          const active = petType === t.value;
+          return (
+            <Pressable
+              key={t.value}
+              onPress={() => setPetType(t.value)}
+              style={[styles.typeBtn, active && styles.typeBtnActive]}
             >
-              {t.label}
-            </Text>
-          </Pressable>
-        ))}
+              <PetIcon
+                type={t.value}
+                size={18}
+                color={active ? colors.onColor : colors.textDim}
+              />
+              <Text style={[styles.typeText, active && { color: colors.onColor }]}>
+                {t.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <Button
-        label="送出挑戰 ⚔️"
+        label="送出挑戰"
+        icon={Swords}
         onPress={handleSubmit}
         disabled={!media || !petName.trim()}
         style={{ marginTop: spacing.xl }}
@@ -141,11 +148,12 @@ export default function ChallengeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  gymHint: { color: colors.accent, fontSize: 15, fontWeight: '800' },
+  gymHint: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  gymHintText: { color: colors.primary, fontSize: font.size.md, fontWeight: font.weight.bold },
   label: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: font.size.md,
+    fontWeight: font.weight.bold,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
@@ -160,9 +168,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     gap: spacing.sm,
   },
-  uploadEmoji: { fontSize: 40 },
-  uploadText: { color: colors.textDim, fontSize: 14 },
-  sampleHint: { color: colors.textDim, fontSize: 12, marginTop: spacing.md },
+  uploadText: { color: colors.textDim, fontSize: font.size.md },
+  sampleHint: { color: colors.textDim, fontSize: font.size.xs, marginTop: spacing.md },
   sampleRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   sample: { flex: 1, borderRadius: radius.sm, overflow: 'hidden' },
   input: {
@@ -170,20 +177,23 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     color: colors.text,
-    fontSize: 16,
+    fontSize: font.size.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   typeRow: { flexDirection: 'row', gap: spacing.sm },
   typeBtn: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.card,
-    alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.border,
   },
   typeBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  typeText: { color: colors.text, fontWeight: '800', fontSize: 14 },
+  typeText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.md },
 });

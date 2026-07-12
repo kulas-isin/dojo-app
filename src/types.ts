@@ -39,7 +39,8 @@ export interface Gym {
   id: string;
   name: string;
   description: string;
-  emoji: string;
+  /** 圖示 key，對應 src/components/icons.tsx 的 GYM_ICON_KEYS */
+  icon: string;
   coordinate: Coordinate;
   championEntryId: string | null;
   createdBy: string;

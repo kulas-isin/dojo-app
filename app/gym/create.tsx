@@ -9,10 +9,10 @@ import {
   View,
 } from 'react-native';
 import { Button } from '@/components/Button';
+import { Castle, GymIcon, MapPin } from '@/components/icons';
+import { GYM_ICON_KEYS } from '@/components/icons';
 import { useStore } from '@/store/useStore';
-import { colors, radius, spacing } from '@/theme';
-
-const EMOJIS = ['🏯', '🌳', '🏙️', '🚲', '⛲', '🏖️', '🏔️', '🎡', '🐾', '🦴'];
+import { colors, font, radius, spacing } from '@/theme';
 
 export default function CreateGymScreen() {
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
@@ -20,7 +20,7 @@ export default function CreateGymScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [emoji, setEmoji] = useState('🏯');
+  const [icon, setIcon] = useState<string>('castle');
 
   const latitude = Number(params.latitude ?? 25.0303);
   const longitude = Number(params.longitude ?? 121.5354);
@@ -29,7 +29,7 @@ export default function CreateGymScreen() {
     const gymId = createGym({
       name,
       description,
-      emoji,
+      icon,
       coordinate: { latitude, longitude },
     });
     router.replace(`/gym/${gymId}`);
@@ -41,7 +41,7 @@ export default function CreateGymScreen() {
       <TextInput
         style={styles.input}
         placeholder="例如：大安森林公園道館"
-        placeholderTextColor={colors.textDim}
+        placeholderTextColor={colors.textMuted}
         value={name}
         onChangeText={setName}
         maxLength={20}
@@ -51,7 +51,7 @@ export default function CreateGymScreen() {
       <TextInput
         style={[styles.input, styles.multiline]}
         placeholder="這座道館有什麼特色？"
-        placeholderTextColor={colors.textDim}
+        placeholderTextColor={colors.textMuted}
         value={description}
         onChangeText={setDescription}
         multiline
@@ -59,27 +59,39 @@ export default function CreateGymScreen() {
       />
 
       <Text style={styles.label}>選一個圖示</Text>
-      <View style={styles.emojiGrid}>
-        {EMOJIS.map((e) => (
-          <Pressable
-            key={e}
-            onPress={() => setEmoji(e)}
-            style={[styles.emojiBtn, emoji === e && styles.emojiBtnActive]}
-          >
-            <Text style={styles.emoji}>{e}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.iconGrid}>
+        {GYM_ICON_KEYS.map((key) => {
+          const active = icon === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setIcon(key)}
+              style={[styles.iconBtn, active && styles.iconBtnActive]}
+            >
+              <GymIcon
+                name={key}
+                size={24}
+                color={active ? colors.primary : colors.textDim}
+                strokeWidth={2.2}
+              />
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.locationBox}>
-        <Text style={styles.dim}>📍 道館位置</Text>
+        <View style={styles.locationRow}>
+          <MapPin size={16} color={colors.textDim} strokeWidth={2.2} />
+          <Text style={styles.dim}>道館位置</Text>
+        </View>
         <Text style={styles.coord}>
           {latitude.toFixed(5)}, {longitude.toFixed(5)}
         </Text>
       </View>
 
       <Button
-        label="建立道館 🏯"
+        label="建立道館"
+        icon={Castle}
         onPress={handleCreate}
         disabled={!name.trim()}
         style={{ marginTop: spacing.xl }}
@@ -93,8 +105,8 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   label: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: font.size.md,
+    fontWeight: font.weight.bold,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
@@ -103,13 +115,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     color: colors.text,
-    fontSize: 16,
+    fontSize: font.size.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   multiline: { height: 88, textAlignVertical: 'top' },
-  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  emojiBtn: {
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  iconBtn: {
     width: 52,
     height: 52,
     borderRadius: radius.md,
@@ -117,16 +129,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.border,
   },
-  emojiBtnActive: { borderColor: colors.accent, backgroundColor: colors.cardAlt },
-  emoji: { fontSize: 26 },
+  iconBtnActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   locationBox: {
     marginTop: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  dim: { color: colors.textDim, fontSize: 13 },
-  coord: { color: colors.accent, fontSize: 15, fontWeight: '700', marginTop: 4 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dim: { color: colors.textDim, fontSize: font.size.sm },
+  coord: { color: colors.accent, fontSize: font.size.md, fontWeight: font.weight.semibold, marginTop: 4 },
 });

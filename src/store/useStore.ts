@@ -25,7 +25,7 @@ const uid = (prefix: string) =>
 export interface NewGymInput {
   name: string;
   description: string;
-  emoji: string;
+  icon: string;
   coordinate: Coordinate;
 }
 
@@ -79,7 +79,7 @@ export const useStore = create<StoreState>()(
           id: uid('gym'),
           name: input.name.trim() || '無名道館',
           description: input.description.trim(),
-          emoji: input.emoji || '🏯',
+          icon: input.icon || 'castle',
           coordinate: input.coordinate,
           championEntryId: null,
           createdBy: get().user.id,

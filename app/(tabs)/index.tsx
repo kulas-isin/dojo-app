@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GymMap } from '@/components/GymMap';
+import { PawPrint, Plus } from '@/components/icons';
 import { SEED_CENTER } from '@/data/seed';
 import { useStore } from '@/store/useStore';
-import { colors, radius, spacing } from '@/theme';
+import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { Coordinate } from '@/types';
 
 export default function MapScreen() {
@@ -52,7 +53,10 @@ export default function MapScreen() {
 
       {/* 頂部標題 */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Text style={styles.title}>🐾 PawDojo</Text>
+        <View style={styles.titleRow}>
+          <PawPrint size={26} color={colors.primary} strokeWidth={2.4} />
+          <Text style={styles.title}>PawDojo</Text>
+        </View>
         <Text style={styles.subtitle}>
           {gyms.length} 座道館等你挑戰 · 邊遛狗邊玩
         </Text>
@@ -61,11 +65,10 @@ export default function MapScreen() {
       {/* 建立道館 FAB */}
       <Pressable
         style={[styles.fab, { bottom: insets.bottom + spacing.lg }]}
-        onPress={() =>
-          handlePickLocation(userLocation ?? SEED_CENTER)
-        }
+        onPress={() => handlePickLocation(userLocation ?? SEED_CENTER)}
       >
-        <Text style={styles.fabText}>＋ 建立道館</Text>
+        <Plus size={20} color={colors.onColor} strokeWidth={2.6} />
+        <Text style={styles.fabText}>建立道館</Text>
       </Pressable>
     </View>
   );
@@ -81,20 +84,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.accent, fontSize: 13, fontWeight: '600', marginTop: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  title: { color: colors.text, fontSize: font.size.display, fontWeight: font.weight.heavy },
+  subtitle: {
+    color: colors.textDim,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.semibold,
+    marginTop: 2,
+  },
   fab: {
     position: 'absolute',
     alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.pill,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    ...shadow.card,
   },
-  fabText: { color: '#0E1430', fontWeight: '900', fontSize: 16 },
+  fabText: { color: colors.onColor, fontWeight: font.weight.heavy, fontSize: font.size.md },
 });

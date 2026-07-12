@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
+import { Crown, PawPrint, RotateCcw } from '@/components/icons';
 import { useStore } from '@/store/useStore';
-import { colors, radius, spacing } from '@/theme';
+import { colors, font, radius, shadow, spacing } from '@/theme';
 import { timeAgo } from '@/utils/time';
 
 export default function ProfileScreen() {
@@ -23,7 +25,9 @@ export default function ProfileScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 頭像卡 */}
       <View style={styles.hero}>
-        <Text style={styles.avatar}>{user.avatar}</Text>
+        <View style={styles.avatar}>
+          <PawPrint size={40} color={colors.primary} strokeWidth={2.2} />
+        </View>
         <Text style={styles.name}>{user.name}</Text>
         <View style={styles.statsRow}>
           <Stat label="勝場" value={user.wins} color={colors.accent} />
@@ -33,24 +37,25 @@ export default function ProfileScreen() {
       </View>
 
       {/* 頭銜 */}
-      <Text style={styles.sectionTitle}>👑 我的頭銜</Text>
+      <SectionTitle icon={<Crown size={20} color={colors.gold} strokeWidth={2.4} />} text="我的頭銜" />
       {user.titles.length === 0 ? (
         <Text style={styles.empty}>還沒有頭銜，去道館贏一場對戰吧！</Text>
       ) : (
         <View style={styles.titles}>
           {user.titles.map((t) => (
             <View key={t.id} style={styles.titleChip}>
-              <Text style={styles.titleText}>
-                {t.emoji} {t.label}
-              </Text>
-              <Text style={styles.titleMeta}>{timeAgo(t.earnedAt)}</Text>
+              <Crown size={18} color={colors.gold} strokeWidth={2.4} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.titleText}>{t.label}</Text>
+                <Text style={styles.titleMeta}>{timeAgo(t.earnedAt)}</Text>
+              </View>
             </View>
           ))}
         </View>
       )}
 
       {/* 我的參賽作品 */}
-      <Text style={styles.sectionTitle}>🐾 我的參賽毛孩</Text>
+      <SectionTitle icon={<PawPrint size={20} color={colors.primary} strokeWidth={2.4} />} text="我的參賽毛孩" />
       {myEntries.length === 0 ? (
         <Text style={styles.empty}>還沒上傳過，去挑戰一座道館吧！</Text>
       ) : (
@@ -67,10 +72,20 @@ export default function ProfileScreen() {
       <Button
         label="重置示範資料"
         variant="ghost"
+        icon={RotateCcw}
         onPress={confirmReset}
         style={{ marginTop: spacing.xl }}
       />
     </ScrollView>
+  );
+}
+
+function SectionTitle({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      {icon}
+      <Text style={styles.sectionTitle}>{text}</Text>
+    </View>
   );
 }
 
@@ -91,31 +106,47 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
-  avatar: { fontSize: 56 },
-  name: { color: colors.text, fontSize: 22, fontWeight: '900', marginTop: spacing.sm },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  name: { color: colors.text, fontSize: font.size.xl, fontWeight: font.weight.heavy, marginTop: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.lg },
   stat: { alignItems: 'center' },
-  statValue: { fontSize: 24, fontWeight: '900' },
-  statLabel: { color: colors.textDim, fontSize: 12, marginTop: 2 },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
+  statValue: { fontSize: font.size.xxl, fontWeight: font.weight.heavy },
+  statLabel: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2 },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
-  empty: { color: colors.textDim, fontSize: 14 },
+  sectionTitle: { color: colors.text, fontSize: font.size.lg, fontWeight: font.weight.bold },
+  empty: { color: colors.textDim, fontSize: font.size.md },
   titles: { gap: spacing.sm },
   titleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderLeftWidth: 3,
     borderLeftColor: colors.gold,
   },
-  titleText: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  titleMeta: { color: colors.textDim, fontSize: 11, marginTop: 2 },
+  titleText: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.semibold },
+  titleMeta: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2 },
   entries: { gap: spacing.sm },
   entryRow: {
     flexDirection: 'row',
@@ -123,7 +154,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  entryName: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  entryVotes: { color: colors.accent, fontSize: 15, fontWeight: '800' },
+  entryName: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.semibold },
+  entryVotes: { color: colors.primary, fontSize: font.size.md, fontWeight: font.weight.bold },
 });

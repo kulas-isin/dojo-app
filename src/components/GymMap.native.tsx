@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { colors } from '../theme';
+import { GymIcon } from './icons';
 import type { GymMapProps } from './GymMap.types';
 
 export function GymMap({
@@ -31,7 +32,7 @@ export function GymMap({
           tracksViewChanges={false}
         >
           <View style={styles.pin}>
-            <Text style={styles.pinEmoji}>{gym.emoji}</Text>
+            <GymIcon name={gym.icon} size={22} color={colors.primary} strokeWidth={2.4} />
           </View>
         </Marker>
       ))}
@@ -44,11 +45,10 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.card,
     borderWidth: 2,
-    borderColor: colors.accent,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pinEmoji: { fontSize: 22 },
 });

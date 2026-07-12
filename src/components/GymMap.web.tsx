@@ -7,7 +7,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, shadow, spacing } from '../theme';
+import { GymIcon } from './icons';
 import type { GymMapProps } from './GymMap.types';
 
 // Web 沒有原生地圖，這裡用一個可互動的「示意地圖」板面：
@@ -79,7 +80,7 @@ export function GymMap({
                 onPress={() => onSelectGym(gym.id)}
                 style={[styles.pin, { left: x - 23, top: y - 23 }]}
               >
-                <Text style={styles.pinEmoji}>{gym.emoji}</Text>
+                <GymIcon name={gym.icon} size={22} color={colors.primary} strokeWidth={2.4} />
               </Pressable>
             );
           })}
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   wrap: { flex: 1 },
   board: {
     flex: 1,
-    backgroundColor: '#10183A',
+    backgroundColor: colors.bgElevated,
     overflow: 'hidden',
   },
   gridH: {
@@ -106,14 +107,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(67,224,201,0.08)',
+    backgroundColor: 'rgba(47,111,91,0.08)',
   },
   gridV: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 1,
-    backgroundColor: 'rgba(67,224,201,0.08)',
+    backgroundColor: 'rgba(47,111,91,0.08)',
   },
   me: {
     position: 'absolute',
@@ -129,19 +130,19 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.card,
     borderWidth: 2,
-    borderColor: colors.accent,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadow.card,
   },
-  pinEmoji: { fontSize: 22 },
   hint: {
     position: 'absolute',
     bottom: spacing.lg,
     left: spacing.lg,
     right: spacing.lg,
-    backgroundColor: 'rgba(14,20,48,0.9)',
+    backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
     borderWidth: 1,
