@@ -1,7 +1,8 @@
+import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
-import { Crown, PawPrint, RotateCcw } from '@/components/icons';
+import { Crown, PawPrint, Plus, RotateCcw } from '@/components/icons';
 import { Doodle } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -10,9 +11,11 @@ import { timeAgo } from '@/utils/time';
 export default function ProfileScreen() {
   const user = useStore((s) => s.user);
   const entries = useStore((s) => s.entries);
+  const pets = useStore((s) => s.pets);
   const resetAll = useStore((s) => s.resetAll);
 
   const myEntries = entries.filter((e) => e.ownerId === user.id);
+  const myPets = pets.filter((p) => p.ownerId === user.id);
   const totalVotes = myEntries.reduce((sum, e) => sum + e.votes, 0);
 
   const confirmReset = () => {
@@ -61,8 +64,26 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* 我的寵物 */}
+      <SectionTitle icon={<PawPrint size={20} color={colors.primary} strokeWidth={2.4} />} text="我的寵物" />
+      <View style={styles.pets}>
+        {myPets.map((p) => (
+          <Pressable key={p.id} style={styles.petRow} onPress={() => router.push(`/pet/${p.id}`)}>
+            <Image source={{ uri: p.avatarUri }} style={styles.petAvatar} />
+            <Text style={styles.petName}>{p.name}</Text>
+            {p.visibility === 'private' ? <Text style={styles.petTag}>私人</Text> : null}
+          </Pressable>
+        ))}
+        <Button
+          label="新增寵物檔案"
+          icon={Plus}
+          variant="ghost"
+          onPress={() => router.push({ pathname: '/pet/create', params: { kind: 'owned' } })}
+        />
+      </View>
+
       {/* 我的參賽作品 */}
-      <SectionTitle icon={<PawPrint size={20} color={colors.primary} strokeWidth={2.4} />} text="我的參賽毛孩" />
+      <SectionTitle icon={<Crown size={20} color={colors.gold} strokeWidth={2.4} />} text="我的參賽毛孩" />
       {myEntries.length === 0 ? (
         <Text style={styles.empty}>還沒上傳過，去挑戰一座道館吧！</Text>
       ) : (
@@ -142,6 +163,20 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: colors.text, fontSize: font.size.lg, fontWeight: font.weight.bold },
   empty: { color: colors.textDim, fontSize: font.size.md },
+  pets: { gap: spacing.sm },
+  petRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  petAvatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.cardAlt },
+  petName: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.bold, flex: 1 },
+  petTag: { color: colors.textMuted, fontSize: font.size.xs, fontWeight: font.weight.semibold },
   titles: { gap: spacing.sm },
   titleChip: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   Image,
@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import { Button } from '@/components/Button';
-import { Camera, HeartHandshake, PetIcon } from '@/components/icons';
+import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
 import { useStore } from '@/store/useStore';
 import { STRAY_STATUS } from '@/strayMeta';
 import { colors, font, radius, spacing } from '@/theme';
-import type { PetType, StrayStatus } from '@/types';
+import type { PetKind, PetType, StrayStatus, Visibility } from '@/types';
 
 const SAMPLE_AVATARS = [
   'https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=600',
@@ -29,14 +29,19 @@ const PET_TYPES: { value: PetType; label: string }[] = [
   { value: 'other', label: '其他' },
 ];
 
-export default function CreateStrayScreen() {
-  const createStray = useStore((s) => s.createStray);
+export default function CreatePetScreen() {
+  const params = useLocalSearchParams<{ kind?: string }>();
+  const kind: PetKind = params.kind === 'owned' ? 'owned' : 'stray';
+  const isStray = kind === 'stray';
+
+  const createPet = useStore((s) => s.createPet);
 
   const [name, setName] = useState('');
-  const [petType, setPetType] = useState<PetType>('cat');
+  const [petType, setPetType] = useState<PetType>(isStray ? 'cat' : 'dog');
   const [area, setArea] = useState('');
   const [bio, setBio] = useState('');
   const [status, setStatus] = useState<StrayStatus>('adoptable');
+  const [visibility, setVisibility] = useState<Visibility>('public');
   const [avatar, setAvatar] = useState<string | null>(null);
 
   const pickAvatar = async () => {
@@ -49,13 +54,20 @@ export default function CreateStrayScreen() {
 
   const handleCreate = () => {
     if (!avatar || !name.trim()) return;
-    const id = createStray({ name, petType, avatarUri: avatar, area, status, bio });
-    router.replace(`/stray/${id}`);
+    const id = createPet({
+      kind,
+      name,
+      petType,
+      avatarUri: avatar,
+      bio,
+      ...(isStray ? { area, status } : { visibility }),
+    });
+    router.replace(`/pet/${id}`);
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>浪浪的照片</Text>
+      <Text style={styles.label}>{isStray ? '浪浪的照片' : '寵物的照片'}</Text>
       {avatar ? (
         <View style={styles.avatarWrap}>
           <Image source={{ uri: avatar }} style={styles.avatar} />
@@ -63,7 +75,7 @@ export default function CreateStrayScreen() {
         </View>
       ) : (
         <Pressable style={styles.uploadBox} onPress={pickAvatar}>
-          <Camera size={36} color={colors.accent} strokeWidth={2} />
+          <Camera size={36} color={colors.primary} strokeWidth={2} />
           <Text style={styles.uploadText}>從相簿選一張照片</Text>
         </Pressable>
       )}
@@ -76,10 +88,10 @@ export default function CreateStrayScreen() {
         ))}
       </View>
 
-      <Text style={styles.label}>暱稱</Text>
+      <Text style={styles.label}>{isStray ? '暱稱' : '寵物名字'}</Text>
       <TextInput
         style={styles.input}
-        placeholder="例如：三花"
+        placeholder={isStray ? '例如：三花' : '例如：可可'}
         placeholderTextColor={colors.textMuted}
         value={name}
         onChangeText={setName}
@@ -103,36 +115,59 @@ export default function CreateStrayScreen() {
         })}
       </View>
 
-      <Text style={styles.label}>出沒地點</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="例如：大安區・巷口便利商店旁"
-        placeholderTextColor={colors.textMuted}
-        value={area}
-        onChangeText={setArea}
-        maxLength={30}
-      />
-
-      <Text style={styles.label}>狀態</Text>
-      <View style={styles.chipRow}>
-        {STRAY_STATUS.map((s) => {
-          const active = status === s.value;
-          return (
-            <Pressable
-              key={s.value}
-              onPress={() => setStatus(s.value)}
-              style={[styles.chip, active && { backgroundColor: s.color, borderColor: s.color }]}
-            >
-              <Text style={[styles.chipText, active && { color: colors.onColor }]}>{s.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {isStray ? (
+        <>
+          <Text style={styles.label}>出沒地點</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="例如：大安區・巷口便利商店旁"
+            placeholderTextColor={colors.textMuted}
+            value={area}
+            onChangeText={setArea}
+            maxLength={30}
+          />
+          <Text style={styles.label}>狀態</Text>
+          <View style={styles.chipRow}>
+            {STRAY_STATUS.map((s) => {
+              const active = status === s.value;
+              return (
+                <Pressable
+                  key={s.value}
+                  onPress={() => setStatus(s.value)}
+                  style={[styles.chip, active && { backgroundColor: s.color, borderColor: s.color }]}
+                >
+                  <Text style={[styles.chipText, active && { color: colors.onColor }]}>{s.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.label}>誰看得到</Text>
+          <View style={styles.chipRow}>
+            {(['public', 'private'] as Visibility[]).map((v) => {
+              const active = visibility === v;
+              return (
+                <Pressable
+                  key={v}
+                  onPress={() => setVisibility(v)}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, active && { color: colors.onColor }]}>
+                    {v === 'public' ? '公開（可被探索）' : '私人（只有我）'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      )}
 
       <Text style={styles.label}>簡介</Text>
       <TextInput
         style={[styles.input, styles.multiline]}
-        placeholder="牠的個性、近況、認養資訊…"
+        placeholder={isStray ? '牠的個性、近況、認養資訊…' : '介紹你家寶貝…'}
         placeholderTextColor={colors.textMuted}
         value={bio}
         onChangeText={setBio}
@@ -141,9 +176,9 @@ export default function CreateStrayScreen() {
       />
 
       <Button
-        label="建立浪浪檔案"
-        icon={HeartHandshake}
-        variant="accent"
+        label={isStray ? '建立浪浪檔案' : '建立寵物檔案'}
+        icon={isStray ? HeartHandshake : PawPrint}
+        variant={isStray ? 'accent' : 'primary'}
         onPress={handleCreate}
         disabled={!avatar || !name.trim()}
         style={{ marginTop: spacing.xl }}
@@ -202,6 +237,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.text, fontWeight: font.weight.semibold, fontSize: font.size.sm },
 });

@@ -5,8 +5,8 @@ import {
   seedBattles,
   seedEntries,
   seedGyms,
-  seedStrayPosts,
-  seedStrays,
+  seedPets,
+  seedPosts,
   seedUser,
 } from '../data/seed';
 import type {
@@ -15,12 +15,14 @@ import type {
   Entry,
   Gym,
   MediaType,
+  Pet,
+  PetKind,
   PetType,
-  StrayPet,
-  StrayPost,
+  Post,
   StrayStatus,
   Title,
   User,
+  Visibility,
 } from '../types';
 
 const HOUR = 1000 * 60 * 60;
@@ -43,17 +45,21 @@ export interface NewEntryInput {
   mediaType: MediaType;
 }
 
-export interface NewStrayInput {
+export interface NewPetInput {
+  kind: PetKind;
   name: string;
   petType: PetType;
   avatarUri: string;
-  area: string;
-  status: StrayStatus;
   bio: string;
+  // owned
+  visibility?: Visibility;
+  // stray
+  area?: string;
+  status?: StrayStatus;
 }
 
-export interface NewStrayPostInput {
-  strayId: string;
+export interface NewPostInput {
+  petId: string;
   mediaUri: string;
   mediaType: MediaType;
   caption: string;
@@ -66,17 +72,19 @@ interface StoreState {
   battles: Battle[];
   /** 紀錄目前使用者在每場對戰投給了哪一邊 */
   votedBattles: Record<string, 'challenger' | 'defender'>;
-  strays: StrayPet[];
-  strayPosts: StrayPost[];
+  pets: Pet[];
+  posts: Post[];
 
   // --- actions ---
   createGym: (input: NewGymInput) => string;
   submitChallenge: (input: NewEntryInput) => { entryId: string; battleId?: string };
   voteBattle: (battleId: string, side: 'challenger' | 'defender') => void;
   resolveBattle: (battleId: string) => void;
-  createStray: (input: NewStrayInput) => string;
-  addStrayPost: (input: NewStrayPostInput) => void;
-  toggleFollowStray: (strayId: string) => void;
+  createPet: (input: NewPetInput) => string;
+  addPost: (input: NewPostInput) => void;
+  toggleFollowPet: (petId: string) => void;
+  likePost: (postId: string) => void;
+  deletePost: (postId: string) => void;
   resetAll: () => void;
 
   // --- selectors ---
@@ -86,8 +94,8 @@ interface StoreState {
   getActiveBattle: (gymId: string) => Battle | undefined;
   getGymEntries: (gymId: string) => Entry[];
   getLeaderboard: () => Entry[];
-  getStray: (strayId: string) => StrayPet | undefined;
-  getStrayPosts: (strayId: string) => StrayPost[];
+  getPet: (petId: string) => Pet | undefined;
+  getPetPosts: (petId: string) => Post[];
 }
 
 const initial = {
@@ -96,8 +104,8 @@ const initial = {
   entries: seedEntries,
   battles: seedBattles,
   votedBattles: {} as Record<string, 'challenger' | 'defender'>,
-  strays: seedStrays,
-  strayPosts: seedStrayPosts,
+  pets: seedPets,
+  posts: seedPosts,
 };
 
 export const useStore = create<StoreState>()(
@@ -241,47 +249,71 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      createStray: (input) => {
-        const stray: StrayPet = {
-          id: uid('stray'),
-          name: input.name.trim() || '無名浪浪',
+      createPet: (input) => {
+        const me = get().user.id;
+        const isStray = input.kind === 'stray';
+        const pet: Pet = {
+          id: uid('pet'),
+          kind: input.kind,
+          name: input.name.trim() || (isStray ? '無名浪浪' : '無名寵物'),
           petType: input.petType,
           avatarUri: input.avatarUri,
-          area: input.area.trim(),
-          status: input.status,
           bio: input.bio.trim(),
+          visibility: input.visibility ?? 'public',
           followers: 0,
           following: false,
           createdAt: Date.now(),
+          ...(isStray
+            ? { reporterId: me, caretakerIds: [me], area: input.area?.trim() ?? '', status: input.status ?? 'adoptable' }
+            : { ownerId: me }),
         };
-        set((s) => ({ strays: [stray, ...s.strays] }));
-        return stray.id;
+        set((s) => ({ pets: [pet, ...s.pets] }));
+        return pet.id;
       },
 
-      addStrayPost: (input) => {
-        const post: StrayPost = {
-          id: uid('sp'),
-          strayId: input.strayId,
+      addPost: (input) => {
+        const { user } = get();
+        const post: Post = {
+          id: uid('post'),
+          petId: input.petId,
+          authorId: user.id,
+          authorName: user.name,
           mediaUri: input.mediaUri,
           mediaType: input.mediaType,
           caption: input.caption.trim(),
           createdAt: Date.now(),
+          likes: 0,
+          liked: false,
         };
-        set((s) => ({ strayPosts: [post, ...s.strayPosts] }));
+        set((s) => ({ posts: [post, ...s.posts] }));
       },
 
-      toggleFollowStray: (strayId) => {
+      toggleFollowPet: (petId) => {
         set((s) => ({
-          strays: s.strays.map((st) =>
-            st.id === strayId
+          pets: s.pets.map((p) =>
+            p.id === petId
               ? {
-                  ...st,
-                  following: !st.following,
-                  followers: st.followers + (st.following ? -1 : 1),
+                  ...p,
+                  following: !p.following,
+                  followers: p.followers + (p.following ? -1 : 1),
                 }
-              : st,
+              : p,
           ),
         }));
+      },
+
+      likePost: (postId) => {
+        set((s) => ({
+          posts: s.posts.map((p) =>
+            p.id === postId
+              ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
+              : p,
+          ),
+        }));
+      },
+
+      deletePost: (postId) => {
+        set((s) => ({ posts: s.posts.filter((p) => p.id !== postId) }));
       },
 
       resetAll: () => set({ ...initial, votedBattles: {} }),
@@ -302,14 +334,14 @@ export const useStore = create<StoreState>()(
           .sort((a, b) => b.votes - a.votes),
       getLeaderboard: () =>
         [...get().entries].sort((a, b) => b.votes - a.votes).slice(0, 50),
-      getStray: (strayId) => get().strays.find((s) => s.id === strayId),
-      getStrayPosts: (strayId) =>
+      getPet: (petId) => get().pets.find((p) => p.id === petId),
+      getPetPosts: (petId) =>
         get()
-          .strayPosts.filter((p) => p.strayId === strayId)
+          .posts.filter((p) => p.petId === petId && !p.hidden)
           .sort((a, b) => b.createdAt - a.createdAt),
     }),
     {
-      name: 'pawdojo-store-v1',
+      name: 'pawdojo-store-v2',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
         user: s.user,
@@ -317,8 +349,8 @@ export const useStore = create<StoreState>()(
         entries: s.entries,
         battles: s.battles,
         votedBattles: s.votedBattles,
-        strays: s.strays,
-        strayPosts: s.strayPosts,
+        pets: s.pets,
+        posts: s.posts,
       }),
     },
   ),

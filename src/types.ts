@@ -34,36 +34,60 @@ export interface Battle {
   endsAt: number;
 }
 
-/** 地圖上的道館 */
 /** 流浪動物狀態 */
 export type StrayStatus = 'intact' | 'neutered' | 'adoptable' | 'adopted';
 
-/** 流浪動物檔案（IG 式） */
-export interface StrayPet {
+/** 檔案類型：個人寵物 / 流浪動物 */
+export type PetKind = 'owned' | 'stray';
+export type Visibility = 'public' | 'private';
+
+/**
+ * 統一寵物檔案（IG 式）。
+ * owned：有 ownerId、可設 public/private。
+ * stray：無單一擁有者，reporterId + caretakerIds 共同照顧，有 status/area。
+ */
+export interface Pet {
   id: string;
+  kind: PetKind;
   name: string;
   petType: PetType;
   avatarUri: string;
-  /** 出沒地點的文字描述 */
-  area: string;
-  status: StrayStatus;
-  /** 簡短介紹 */
   bio: string;
+  visibility: Visibility;
   followers: number;
   /** 目前使用者是否已追蹤 */
   following: boolean;
   createdAt: number;
+
+  // owned 專屬
+  ownerId?: string;
+
+  // stray 專屬
+  reporterId?: string;
+  caretakerIds?: string[];
+  status?: StrayStatus;
+  /** 出沒地點的文字描述 */
+  area?: string;
 }
 
-/** 流浪動物的一則生活紀錄貼文 */
-export interface StrayPost {
+/** 一則生活紀錄貼文 */
+export interface Post {
   id: string;
-  strayId: string;
+  petId: string;
+  authorId: string;
+  authorName: string;
   mediaUri: string;
   mediaType: MediaType;
   caption: string;
   createdAt: number;
+  likes: number;
+  /** 目前使用者是否已按讚 */
+  liked: boolean;
+  hidden?: boolean;
+  reportCount?: number;
 }
+
+/** 地圖上的道館 */
 
 export interface Gym {
   id: string;

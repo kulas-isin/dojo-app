@@ -22,10 +22,10 @@ const SAMPLES: { uri: string; type: MediaType }[] = [
   { uri: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800', type: 'photo' },
 ];
 
-export default function AddStrayPostScreen() {
-  const { strayId } = useLocalSearchParams<{ strayId: string }>();
-  const addStrayPost = useStore((s) => s.addStrayPost);
-  const stray = useStore((s) => s.strays.find((x) => x.id === strayId));
+export default function AddPostScreen() {
+  const { petId } = useLocalSearchParams<{ petId: string }>();
+  const addPost = useStore((s) => s.addPost);
+  const pet = useStore((s) => s.pets.find((x) => x.id === petId));
 
   const [caption, setCaption] = useState('');
   const [media, setMedia] = useState<{ uri: string; type: MediaType } | null>(null);
@@ -43,19 +43,19 @@ export default function AddStrayPostScreen() {
   };
 
   const handleSubmit = () => {
-    if (!media || !strayId) return;
-    addStrayPost({
-      strayId: String(strayId),
+    if (!media || !petId) return;
+    addPost({
+      petId: String(petId),
       mediaUri: media.uri,
       mediaType: media.type,
       caption,
     });
-    router.replace(`/stray/${strayId}`);
+    router.replace(`/pet/${petId}`);
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {stray ? <Text style={styles.hint}>為「{stray.name}」新增一則生活紀錄</Text> : null}
+      {pet ? <Text style={styles.hint}>為「{pet.name}」新增一則生活紀錄</Text> : null}
 
       <Text style={styles.label}>照片 / 影片</Text>
       {media ? (
@@ -65,7 +65,7 @@ export default function AddStrayPostScreen() {
         </View>
       ) : (
         <Pressable style={styles.uploadBox} onPress={pickMedia}>
-          <Camera size={40} color={colors.accent} strokeWidth={2} />
+          <Camera size={40} color={colors.primary} strokeWidth={2} />
           <Text style={styles.uploadText}>從相簿選擇照片或影片</Text>
         </Pressable>
       )}
@@ -92,7 +92,6 @@ export default function AddStrayPostScreen() {
       <Button
         label="發佈紀錄"
         icon={ImagePlus}
-        variant="accent"
         onPress={handleSubmit}
         disabled={!media}
         style={{ marginTop: spacing.xl }}
@@ -104,7 +103,7 @@ export default function AddStrayPostScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  hint: { color: colors.accent, fontSize: font.size.md, fontWeight: font.weight.bold },
+  hint: { color: colors.primary, fontSize: font.size.md, fontWeight: font.weight.bold },
   label: {
     color: colors.text,
     fontSize: font.size.md,
