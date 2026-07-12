@@ -115,7 +115,10 @@
 </svg>
 
 <div class="wrap">
-  <div class="topbar">⚔️ 大安森林公園道館 · 對戰</div>
+  <div class="topbar" style="justify-content:space-between">
+    <span>⚔️ 大安森林公園道館 · 對戰</span>
+    <button id="mute" onclick="toggleMute()" style="border:0;background:transparent;font-size:18px;cursor:pointer">🔊</button>
+  </div>
   <div class="typebar" id="typebar"><span style="align-self:center;font-size:11px;color:var(--dim);font-weight:800">麻糬的個性：</span></div>
   <div class="arena" id="arena">
     <div class="flash" id="flash"></div>
@@ -148,6 +151,14 @@
         <button class="btn" onclick="reset()">再戰一次</button>
       </div>
     </div>
+
+    <div class="overlay show" id="startOv">
+      <div class="result">
+        <h2>準備對戰！</h2>
+        <p>麻糬 挑戰道館主 阿福<br>點擊開始（含音樂與音效 🔊）</p>
+        <button class="btn" onclick="begin()">⚔️ 開始對戰</button>
+      </div>
+    </div>
   </div>
 
   <div class="panel">
@@ -160,6 +171,34 @@
 <script>
 (function(){
   var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ===== 音效 / 背景音樂（Web Audio 合成，零素材） ===== */
+  var A, muted=false, bgmTimer=null, bstep=0, audioReady=false;
+  function AC(){ if(!A){ try{ A=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(A&&A.state==='suspended') A.resume(); return A; }
+  function osc(freq,dur,type,g,sweep){ var a=AC(); if(!a||muted||!freq) return; var o=a.createOscillator(),gn=a.createGain(); o.type=type||'square'; o.frequency.setValueAtTime(freq,a.currentTime); if(sweep) o.frequency.exponentialRampToValueAtTime(sweep,a.currentTime+dur); gn.gain.setValueAtTime(0.0001,a.currentTime); gn.gain.exponentialRampToValueAtTime(g||0.12,a.currentTime+0.012); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); o.connect(gn); gn.connect(a.destination); o.start(); o.stop(a.currentTime+dur+0.03); }
+  function noise(dur,g,lp){ var a=AC(); if(!a||muted) return; var s=a.createBufferSource(),b=a.createBuffer(1,Math.max(1,a.sampleRate*dur),a.sampleRate),d=b.getChannelData(0); for(var i=0;i<d.length;i++) d[i]=Math.random()*2-1; s.buffer=b; var f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=lp||2000; var gn=a.createGain(); gn.gain.setValueAtTime(g||0.2,a.currentTime); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); s.connect(f); f.connect(gn); gn.connect(a.destination); s.start(); s.stop(a.currentTime+dur+0.03); }
+
+  function sfx(fx,tier){
+    if(fx==='fire'){ noise(0.34,0.2,1200); osc(300,0.28,'sawtooth',0.07,120); }
+    else if(fx==='leaf'){ osc(880,0.16,'triangle',0.1,1200); osc(1320,0.14,'sine',0.05); }
+    else if(fx==='bolt'){ osc(1650,0.07,'square',0.12,400); noise(0.12,0.13,4200); }
+    else if(fx==='water'){ osc(760,0.15,'sine',0.12,1500); }
+    else if(fx==='rock'){ noise(0.28,0.26,500); osc(85,0.3,'sine',0.18,50); }
+    if(tier===3){ setTimeout(function(){sfx(fx,1)},150); setTimeout(function(){sfx(fx,1)},310); }
+  }
+  function sHit(){ noise(0.09,0.16,1600); }
+  function sSuper(){ osc(700,0.1,'square',0.09); setTimeout(function(){osc(1050,0.14,'square',0.09)},80); }
+
+  // 背景音樂：戰鬥迴圈（lead + bass）
+  var LEAD=[440,0,523,0,587,523,440,0, 392,0,440,523,494,0,392,0];
+  var BASS=[110,0,110,0, 98,0,98,0, 87,0,87,0, 98,0,110,0];
+  function bgmStep(){ if(muted){bstep++;return;} osc(LEAD[bstep%16],0.15,'square',0.04); if(bstep%2===0) osc(BASS[bstep%16],0.2,'triangle',0.06); bstep++; }
+  function startBGM(){ stopBGM(); bstep=0; bgmTimer=setInterval(bgmStep,175); }
+  function stopBGM(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
+  function playStart(){ audioReady=true; var a=AC(); if(!a)return; [392,523,659,784].forEach(function(f,i){ setTimeout(function(){osc(f,0.14,'square',0.1)},i*90); }); setTimeout(startBGM,470); }
+  function playWin(){ stopBGM(); [523,659,784,1046,1319].forEach(function(f,i){ setTimeout(function(){osc(f,0.22,'triangle',0.13)},i*130); }); }
+  function playLose(){ stopBGM(); [440,392,330,262].forEach(function(f,i){ setTimeout(function(){osc(f,0.32,'sawtooth',0.1,f*0.9)},i*185); }); }
+
   // 屬性克制：key beats val
   var BEATS = { proud:'derp', derp:'hyper', hyper:'clingy', clingy:'sturdy', sturdy:'proud' };
   function mult(atkT, defT){ if(BEATS[atkT]===defT) return 1.5; if(BEATS[defT]===atkT) return .75; return 1; }
@@ -221,14 +260,14 @@
   }
   function particles(side, opt){
     if(RM) return;
-    var c=avCenter(side), n=opt.n||8;
+    var c=avCenter(side), n=opt.n||8, ox=opt.ox||0, oy=opt.oy||0, dist=opt.dist||1;
     for(var k=0;k<n;k++){
       var p=document.createElement('div'); p.className='particle'+(opt.shape?(' '+opt.shape):'');
       p.style.background=opt.color; if(opt.size){p.style.width=p.style.height=opt.size+'px';}
-      p.style.left=(c.x-4)+'px'; p.style.top=(c.y-4)+'px'; $('arena').appendChild(p);
+      p.style.left=(c.x+ox-4)+'px'; p.style.top=(c.y+oy-4)+'px'; $('arena').appendChild(p);
       (function(el){
         requestAnimationFrame(function(){
-          var ang, d=24+Math.random()*38;
+          var ang, d=(24+Math.random()*38)*dist;
           if(opt.rise) ang = -Math.PI/2 + (Math.random()-0.5)*1.4;       // 往上（火/餘燼）
           else if(opt.fall) ang = Math.PI/2 + (Math.random()-0.5)*1.6;    // 往下（碎石）
           else ang = Math.random()*6.28;                                   // 四散
@@ -240,20 +279,20 @@
       })(p);
     }
   }
-  function ring(side, color){
-    if(RM) return;
-    var c=avCenter(side); var r=document.createElement('div'); r.className='ring';
-    if(color) r.style.borderColor=color;
-    r.style.left=(c.x-30)+'px'; r.style.top=(c.y-30)+'px'; $('arena').appendChild(r);
+  function ring(side, color, opt){
+    if(RM) return; opt=opt||{};
+    var c=avCenter(side), sz=opt.size||60; var r=document.createElement('div'); r.className='ring';
+    if(color) r.style.borderColor=color; r.style.width=r.style.height=sz+'px';
+    r.style.left=(c.x+(opt.ox||0)-sz/2)+'px'; r.style.top=(c.y+(opt.oy||0)-sz/2)+'px'; $('arena').appendChild(r);
     void r.offsetWidth; r.classList.add('go'); setTimeout(function(){r.remove()},560);
   }
-  function bolts(side){
-    if(RM) return;
-    var c=avCenter(side), a=$('arena').getBoundingClientRect();
+  function bolts(side, off){
+    if(RM) return; off=off||{x:0,y:0};
+    var c=avCenter(side);
     for(var i=0;i<3;i++){
       var b=document.createElement('div'); b.className='bolt';
-      var h=c.y+ (Math.random()*20); b.style.height=h+'px'; b.style.top='0px';
-      b.style.left=(c.x-20+i*18+Math.random()*6)+'px';
+      var h=c.y+off.y+ (Math.random()*20); b.style.height=h+'px'; b.style.top='0px';
+      b.style.left=(c.x+off.x-20+i*18+Math.random()*6)+'px';
       b.style.transform='rotate('+((Math.random()-0.5)*24)+'deg)';
       $('arena').appendChild(b); void b.offsetWidth; b.classList.add('go');
       setTimeout(function(el){return function(){el.remove()}}(b),320);
@@ -263,16 +302,33 @@
   function jitter(){ if(RM) return; var a=$('arena'); a.classList.add('jitter'); setTimeout(function(){a.classList.remove('jitter')},300); }
   function shake(){ if(RM) return; var a=$('arena'); a.classList.add('shake'); setTimeout(function(){a.classList.remove('shake')},320); }
 
-  // 依屬性播放不同招式特效
-  function typeFx(type, side, big){
-    var t=TYPES[type], col=t.p, n=big?16:10;
-    if(t.fx==='fire'){ particles(side,{color:col,n:n,rise:true,size:10}); ring(side,'#F0642F'); flash(); }
-    else if(t.fx==='leaf'){ particles(side,{color:col,n:n,shape:'leaf',spin:true,size:11}); ring(side,'#7FB88F'); }
-    else if(t.fx==='bolt'){ bolts(side); particles(side,{color:col,n:n,size:7}); flash(); jitter(); }
-    else if(t.fx==='water'){ ring(side,'#49A9C7'); setTimeout(function(){ring(side,'#8FD0E6')},110); particles(side,{color:col,n:n,size:9}); }
-    else if(t.fx==='rock'){ particles(side,{color:col,n:n,fall:true,shape:'rock',size:12}); shake(); ring(side,'#9A7B4A'); }
-    else { particles(side,{color:col,n:n}); }
-    if(big && t.fx!=='rock' && t.fx!=='bolt') shake();
+  // 單段元素爆發（tier 影響粒子量/範圍/光圈大小）
+  function burst(type, side, tier, off){
+    var t=TYPES[type], col=t.p, n=5+tier*4, dist=1+(tier-1)*0.45, sz=48+tier*22;
+    var base={color:col,n:n,dist:dist,ox:off.x,oy:off.y};
+    if(t.fx==='fire'){ particles(side,merge(base,{rise:true,size:10})); ring(side,'#F0642F',{ox:off.x,oy:off.y,size:sz}); flash(); }
+    else if(t.fx==='leaf'){ particles(side,merge(base,{shape:'leaf',spin:true,size:11})); ring(side,'#7FB88F',{ox:off.x,oy:off.y,size:sz}); }
+    else if(t.fx==='bolt'){ bolts(side,off); particles(side,merge(base,{size:7})); flash(); jitter(); }
+    else if(t.fx==='water'){ ring(side,'#49A9C7',{ox:off.x,oy:off.y,size:sz}); setTimeout(function(){ring(side,'#8FD0E6',{ox:off.x,oy:off.y,size:sz+16})},110); particles(side,merge(base,{size:9})); }
+    else if(t.fx==='rock'){ particles(side,merge(base,{fall:true,shape:'rock',size:12})); ring(side,'#9A7B4A',{ox:off.x,oy:off.y,size:sz}); shake(); }
+    else { particles(side,base); }
+  }
+  function merge(a,b){ var o={}; for(var k in a)o[k]=a[k]; for(var k2 in b)o[k2]=b[k2]; return o; }
+
+  // 依威力分級：小招 1 段、中招 2 段、大招 3 段連爆 + 大範圍 + 強震
+  function typeFx(type, side, power){
+    var tier = power>=90 ? 3 : power>=65 ? 2 : 1;
+    for(var w=0; w<tier; w++){
+      (function(wi){
+        setTimeout(function(){
+          var spread = tier===3?70:34;
+          var off = wi===0 ? {x:0,y:0} : { x:(Math.random()-0.5)*spread, y:(Math.random()-0.5)*spread*0.7 };
+          burst(type, side, tier, off);
+          if(tier===3 && wi>0) flash();
+        }, wi*150);
+      })(w);
+    }
+    if(tier>=2) setTimeout(shake, (tier-1)*150);
   }
   function renderMoves(){
     var el=$('moves'); el.innerHTML='';
@@ -308,13 +364,15 @@
     var base = ((2*attacker.lv)/5+2)*(move.p*attacker.atk)/Math.max(1,defender.def)/50+2;
     var dmg = Math.max(1, Math.floor(base*m*(0.85+Math.random()*0.15)));
     var eff = m>1?'super':m<1?'weak':'normal';
+    var tier = move.p>=90?3:move.p>=65?2:1;
     defender.hp -= dmg;
-    // 命中特效（依攻擊方屬性）
+    // 命中特效 + 音效（依攻擊方屬性）
     var dav = $(defKey==='me'?'myAv':'enemyAv');
     dav.classList.add('hit');
-    typeFx(attacker.type, defKey, move.p>=90);
+    typeFx(attacker.type, defKey, move.p);
+    sfx(TYPES[attacker.type].fx, tier); sHit();
     floatDmg(defKey, dmg, eff);
-    if(m>1){ showEff('效果絕佳！', TYPES[attacker.type].color); }
+    if(m>1){ showEff('效果絕佳！', TYPES[attacker.type].color); sSuper(); }
     else if(m<1){ showEff('效果不佳…','#6E6558'); }
     await wait(90); // 命中頓格，增加重量感
     paint();
@@ -330,7 +388,9 @@
     var side=who===me?'my':'enemy'; var el=$(side+'Av'); el.classList.remove('idle'); el.classList.add('faint');
   }
   async function end(win){
-    await wait(400); faint(win?foe:me); await wait(700);
+    await wait(300);
+    if(win) playWin(); else playLose();
+    faint(win?foe:me); await wait(700);
     $('resTitle').textContent = win?'你贏了！👑':'落敗…';
     $('resSub').textContent = win?'麻糬成為新道館主，升到 Lv.6！':'再訓練一下，下次再來挑戰！';
     $('overlay').classList.add('show');
@@ -354,9 +414,12 @@
     busy=false; renderMoves(); log('要出哪一招？');
   }
 
+  window.begin=function(){ $('startOv').classList.remove('show'); playStart(); busy=false; renderMoves(); log('要出哪一招？'); };
+  window.toggleMute=function(){ muted=!muted; $('mute').textContent=muted?'🔇':'🔊'; if(muted) stopBGM(); else if(audioReady && !$('overlay').classList.contains('show')) startBGM(); };
   window.reset=function(){ $('overlay').classList.remove('show');
     ['myAv','enemyAv'].forEach(function(id){ $(id).classList.remove('faint'); $(id).classList.add('idle'); });
-    seed(); paint(); busy=false; renderMoves(); log('要出哪一招？'); };
-  seed(); paint(); renderMoves(); renderTypebar();
+    seed(); paint(); busy=false; renderMoves(); log('要出哪一招？');
+    if(audioReady) startBGM(); };
+  busy=true; seed(); paint(); renderMoves(); renderTypebar();
 })();
 </script>
