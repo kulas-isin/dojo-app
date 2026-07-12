@@ -81,7 +81,9 @@ create table if not exists post_reports (
 );
 
 -- 計數觸發器：讚
-create or replace function sync_post_likes() returns trigger language plpgsql as $$
+-- security definer：以擁有者身分執行，繞過 RLS 才能更新別人貼文的計數。
+create or replace function sync_post_likes() returns trigger
+language plpgsql security definer set search_path = public as $$
 begin
   update posts set likes = (select count(*) from post_likes where post_id = coalesce(new.post_id, old.post_id))
   where id = coalesce(new.post_id, old.post_id);
@@ -92,7 +94,8 @@ create trigger trg_post_likes after insert or delete on post_likes
   for each row execute function sync_post_likes();
 
 -- 計數觸發器：追蹤
-create or replace function sync_pet_follows() returns trigger language plpgsql as $$
+create or replace function sync_pet_follows() returns trigger
+language plpgsql security definer set search_path = public as $$
 begin
   update pets set followers = (select count(*) from pet_follows where pet_id = coalesce(new.pet_id, old.pet_id))
   where id = coalesce(new.pet_id, old.pet_id);
@@ -103,7 +106,8 @@ create trigger trg_pet_follows after insert or delete on pet_follows
   for each row execute function sync_pet_follows();
 
 -- 計數觸發器：檢舉（達 3 次自動隱藏待審）
-create or replace function sync_post_reports() returns trigger language plpgsql as $$
+create or replace function sync_post_reports() returns trigger
+language plpgsql security definer set search_path = public as $$
 declare c int;
 begin
   select count(*) into c from post_reports where post_id = new.post_id;
