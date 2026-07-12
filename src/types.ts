@@ -73,6 +73,14 @@ export interface Pet {
   status?: StrayStatus;
   /** 出沒地點的文字描述 */
   area?: string;
+
+  // 對戰數值（主人設定）
+  battleType?: string;
+  ptsHp?: number;
+  ptsAtk?: number;
+  ptsDef?: number;
+  ptsSpd?: number;
+  level?: number;
 }
 
 /** 貼文留言 */

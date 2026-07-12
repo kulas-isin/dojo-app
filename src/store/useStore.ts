@@ -72,6 +72,12 @@ export interface NewPetInput {
   // stray
   area?: string;
   status?: StrayStatus;
+  // 對戰數值
+  battleType?: string;
+  ptsHp?: number;
+  ptsAtk?: number;
+  ptsDef?: number;
+  ptsSpd?: number;
 }
 
 export interface NewPostInput {

@@ -20,6 +20,12 @@ function mapPet(r: any): Pet {
     caretakerIds: r.caretaker_ids ?? [],
     status: r.status ?? undefined,
     area: r.area ?? undefined,
+    battleType: r.battle_type ?? undefined,
+    ptsHp: r.pts_hp ?? 0,
+    ptsAtk: r.pts_atk ?? 0,
+    ptsDef: r.pts_def ?? 0,
+    ptsSpd: r.pts_spd ?? 0,
+    level: r.level ?? 1,
   };
 }
 
@@ -104,6 +110,12 @@ export interface CreatePetRemote {
   visibility?: Visibility;
   area?: string;
   status?: StrayStatus;
+  // 對戰數值
+  battleType?: string;
+  ptsHp?: number;
+  ptsAtk?: number;
+  ptsDef?: number;
+  ptsSpd?: number;
 }
 
 export async function createPetRemote(input: CreatePetRemote, userId: string): Promise<string> {
@@ -114,6 +126,11 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
     pet_type: input.petType,
     avatar_url: input.avatarUri,
     thumb_url: input.thumbUri ?? input.avatarUri,
+    battle_type: input.battleType ?? 'derp',
+    pts_hp: input.ptsHp ?? 0,
+    pts_atk: input.ptsAtk ?? 0,
+    pts_def: input.ptsDef ?? 0,
+    pts_spd: input.ptsSpd ?? 0,
     bio: input.bio.trim(),
     visibility: input.visibility ?? 'public',
     owner_id: isStray ? null : userId,

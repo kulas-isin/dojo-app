@@ -31,8 +31,14 @@ export function canViewProfile(userId: string, pet: Pet): boolean {
   return pet.ownerId === userId;
 }
 
-/** 能否刪除留言：留言作者本人，或該寵物的 owner/caretaker */
-export function canDeleteComment(userId: string, pet: Pet, comment: Comment): boolean {
+/** 能否刪除留言：留言作者本人、該寵物的 owner/caretaker，或管理員 */
+export function canDeleteComment(
+  userId: string,
+  pet: Pet,
+  comment: Comment,
+  isAdmin = false,
+): boolean {
+  if (isAdmin) return true;
   if (comment.authorId === userId) return true;
   return pet.kind === 'owned' ? pet.ownerId === userId : isCaretaker(userId, pet);
 }

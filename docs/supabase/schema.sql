@@ -335,3 +335,21 @@ insert into gyms (id, name, description, icon, is_stray, lat, lng) values
 ('a2222222-2222-2222-2222-222222222222','信義商圈道館','都會時尚毛孩聚集地。','city',false,25.0360,121.5645),
 ('a3333333-3333-3333-3333-333333333333','河濱公園道館','奔跑吧毛孩！','bike',false,25.0478,121.5318)
 on conflict (id) do nothing;
+
+-- ========== 對戰數值 + 留言管理員刪除 ==========
+alter table pets add column if not exists battle_type text default 'derp';
+alter table pets add column if not exists pts_hp  int not null default 0;
+alter table pets add column if not exists pts_atk int not null default 0;
+alter table pets add column if not exists pts_def int not null default 0;
+alter table pets add column if not exists pts_spd int not null default 0;
+alter table pets add column if not exists level   int not null default 1;
+
+drop policy if exists "comments delete" on comments;
+create policy "comments delete" on comments for delete using (
+  author_id = auth.uid()
+  or exists (select 1 from profiles pr where pr.id = auth.uid() and pr.is_admin)
+  or exists (
+    select 1 from posts po join pets p on p.id = po.pet_id
+    where po.id = comments.post_id and (p.owner_id = auth.uid() or auth.uid() = any(p.caretaker_ids))
+  )
+);

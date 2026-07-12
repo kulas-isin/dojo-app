@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '@/auth/authStore';
+import { BATTLE_TYPES, SPECIES_BASE, STAT_BUDGET } from '@/battle/stats';
 import { Button } from '@/components/Button';
 import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
 import { uploadMedia } from '@/lib/storage';
@@ -18,6 +19,14 @@ import { useStore } from '@/store/useStore';
 import { STRAY_STATUS } from '@/strayMeta';
 import { colors, font, radius, spacing } from '@/theme';
 import type { PetKind, PetType, StrayStatus, Visibility } from '@/types';
+
+const STAT_LABEL: Record<'hp' | 'atk' | 'def' | 'spd', string> = {
+  hp: 'HP',
+  atk: '攻擊',
+  def: '防禦',
+  spd: '速度',
+};
+type StatKey = 'hp' | 'atk' | 'def' | 'spd';
 
 const SAMPLE_AVATARS = [
   'https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=600',
@@ -48,6 +57,18 @@ export default function CreatePetScreen() {
   const [status, setStatus] = useState<StrayStatus>('adoptable');
   const [visibility, setVisibility] = useState<Visibility>('public');
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [battleType, setBattleType] = useState<string | null>(null);
+  const [pts, setPts] = useState<Record<StatKey, number>>({ hp: 0, atk: 0, def: 0, spd: 0 });
+
+  const base = SPECIES_BASE[petType];
+  const remaining = STAT_BUDGET - (pts.hp + pts.atk + pts.def + pts.spd);
+  const adjust = (k: StatKey, d: number) => {
+    setPts((p) => {
+      const next = p[k] + d;
+      if (next < 0 || (d > 0 && remaining <= 0)) return p;
+      return { ...p, [k]: next };
+    });
+  };
 
   const pickAvatar = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,6 +84,14 @@ export default function CreatePetScreen() {
       setErr('請先到「我的」分頁登入後再建立檔案。');
       return;
     }
+    if (!isStray && !battleType) {
+      setErr('請先選一個對戰個性。');
+      return;
+    }
+    if (!isStray && remaining !== 0) {
+      setErr(`還有 ${remaining} 點沒分配完，全部用掉才能出戰喔。`);
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -74,7 +103,16 @@ export default function CreatePetScreen() {
         avatarUri: uploaded.url,
         thumbUri: uploaded.thumbUrl,
         bio,
-        ...(isStray ? { area, status } : { visibility }),
+        ...(isStray
+          ? { area, status }
+          : {
+              visibility,
+              battleType: battleType ?? 'derp',
+              ptsHp: pts.hp,
+              ptsAtk: pts.atk,
+              ptsDef: pts.def,
+              ptsSpd: pts.spd,
+            }),
       });
       if (id) router.replace(`/pet/${id}`);
     } catch (e: any) {
@@ -180,6 +218,55 @@ export default function CreatePetScreen() {
               );
             })}
           </View>
+
+          <Text style={styles.label}>對戰個性</Text>
+          <Text style={styles.hint}>你最懂牠！選一個個性，決定屬性與克制。</Text>
+          <View style={styles.chipRow}>
+            {BATTLE_TYPES.map((t) => {
+              const active = battleType === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  onPress={() => setBattleType(t.key)}
+                  style={[styles.chip, active && { backgroundColor: t.color, borderColor: t.color }]}
+                >
+                  <Text style={[styles.chipText, active && { color: colors.onColor }]}>
+                    {t.emoji} {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.allocHead}>
+            <Text style={styles.label}>分配能力點數</Text>
+            <Text style={[styles.remaining, remaining === 0 && { color: colors.accent }]}>
+              剩 {remaining} / {STAT_BUDGET}
+            </Text>
+          </View>
+          <Text style={styles.hint}>
+            種族基底：HP {base.hp} · 攻 {base.atk} · 防 {base.def} · 速 {base.spd}
+          </Text>
+          {(['hp', 'atk', 'def', 'spd'] as const).map((k) => (
+            <View key={k} style={styles.allocRow}>
+              <Text style={styles.allocLabel}>{STAT_LABEL[k]}</Text>
+              <Text style={styles.allocBase}>{base[k]}</Text>
+              <Pressable
+                style={[styles.stepBtn, pts[k] <= 0 && styles.stepDisabled]}
+                onPress={() => adjust(k, -1)}
+              >
+                <Text style={styles.stepText}>−</Text>
+              </Pressable>
+              <Text style={styles.allocVal}>+{pts[k]}</Text>
+              <Pressable
+                style={[styles.stepBtn, remaining <= 0 && styles.stepDisabled]}
+                onPress={() => adjust(k, 1)}
+              >
+                <Text style={styles.stepText}>＋</Text>
+              </Pressable>
+              <Text style={styles.allocTotal}>= {base[k] + pts[k]}</Text>
+            </View>
+          ))}
         </>
       )}
 
@@ -262,4 +349,27 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.text, fontWeight: font.weight.semibold, fontSize: font.size.sm },
   err: { color: colors.danger, fontSize: font.size.sm, marginTop: spacing.md },
+  hint: { color: colors.textDim, fontSize: font.size.xs, marginBottom: spacing.sm },
+  allocHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  remaining: { color: colors.textDim, fontSize: font.size.sm, fontWeight: font.weight.bold },
+  allocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  allocLabel: { width: 40, color: colors.text, fontWeight: font.weight.semibold, fontSize: font.size.sm },
+  allocBase: { width: 28, textAlign: 'right', color: colors.textMuted, fontSize: font.size.sm },
+  stepBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    backgroundColor: colors.cardAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDisabled: { opacity: 0.35 },
+  stepText: { color: colors.text, fontSize: 20, fontWeight: font.weight.heavy },
+  allocVal: { width: 34, textAlign: 'center', color: colors.primary, fontWeight: font.weight.bold, fontSize: font.size.sm },
+  allocTotal: { flex: 1, textAlign: 'right', color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.sm },
 });

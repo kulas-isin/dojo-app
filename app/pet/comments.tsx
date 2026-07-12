@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useAuthStore } from '@/auth/authStore';
 import { EmptyState } from '@/illustrations';
 import { canDeleteComment } from '@/permissions';
 import { useStore } from '@/store/useStore';
@@ -24,6 +25,7 @@ export default function CommentsScreen() {
   const posts = useStore((s) => s.posts);
   const pets = useStore((s) => s.pets);
   const me = useStore((s) => s.currentUserId);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
   const addComment = useStore((s) => s.addComment);
   const deleteComment = useStore((s) => s.deleteComment);
 
@@ -69,7 +71,7 @@ export default function CommentsScreen() {
               </View>
               <Text style={styles.text}>{item.text}</Text>
             </View>
-            {pet && canDeleteComment(me, pet, item) ? (
+            {pet && canDeleteComment(me, pet, item, isAdmin) ? (
               <Pressable onPress={() => deleteComment(item.id)} hitSlop={8}>
                 <Text style={styles.del}>刪除</Text>
               </Pressable>

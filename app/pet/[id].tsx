@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '@/auth/authStore';
+import { StatCard } from '@/battle/StatCard';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Heart, ImagePlus, MapPin, PawPrint, PetIcon, Shield } from '@/components/icons';
@@ -95,6 +96,12 @@ export default function PetProfileScreen() {
       </View>
 
       {pet.bio ? <Text style={styles.bio}>{pet.bio}</Text> : null}
+
+      {!isStray ? (
+        <View style={{ marginTop: spacing.lg }}>
+          <StatCard pet={pet} />
+        </View>
+      ) : null}
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
