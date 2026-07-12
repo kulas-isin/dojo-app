@@ -1,13 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { displayName, useAuthStore } from '../auth/authStore';
+import {
+  addCommentRemote,
+  addPostRemote,
+  createPetRemote,
+  deleteCommentRemote,
+  deletePostRemote,
+  fetchSocial,
+  reportPostRemote,
+  setFollowRemote,
+  setLikeRemote,
+} from '../lib/petsApi';
 import {
   seedBattles,
-  seedComments,
   seedEntries,
   seedGyms,
-  seedPets,
-  seedPosts,
   seedUser,
 } from '../data/seed';
 import type {
@@ -26,8 +35,6 @@ import type {
   User,
   Visibility,
 } from '../types';
-
-const REPORT_HIDE_THRESHOLD = 3;
 
 const HOUR = 1000 * 60 * 60;
 const uid = (prefix: string) =>
@@ -76,25 +83,30 @@ interface StoreState {
   battles: Battle[];
   /** 紀錄目前使用者在每場對戰投給了哪一邊 */
   votedBattles: Record<string, 'challenger' | 'defender'>;
+  // --- 社群（雲端 Supabase）---
   pets: Pet[];
   posts: Post[];
   comments: Comment[];
-  /** 目前使用者已檢舉過的貼文，避免重複計數 */
+  /** 目前使用者已檢舉過的貼文 */
   reportedPosts: Record<string, true>;
+  /** 目前登入者 id（未登入為 'me' 本機身分，僅供本機遊戲用） */
+  currentUserId: string;
+  socialLoading: boolean;
 
   // --- actions ---
   createGym: (input: NewGymInput) => string;
   submitChallenge: (input: NewEntryInput) => { entryId: string; battleId?: string };
   voteBattle: (battleId: string, side: 'challenger' | 'defender') => void;
   resolveBattle: (battleId: string) => void;
-  createPet: (input: NewPetInput) => string;
-  addPost: (input: NewPostInput) => void;
-  toggleFollowPet: (petId: string) => void;
-  likePost: (postId: string) => void;
-  deletePost: (postId: string) => void;
-  addComment: (postId: string, text: string) => void;
-  deleteComment: (commentId: string) => void;
-  reportPost: (postId: string) => void;
+  syncSocial: () => Promise<void>;
+  createPet: (input: NewPetInput) => Promise<string | null>;
+  addPost: (input: NewPostInput) => Promise<void>;
+  toggleFollowPet: (petId: string) => Promise<void>;
+  likePost: (postId: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
+  addComment: (postId: string, text: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
+  reportPost: (postId: string) => Promise<void>;
   resetAll: () => void;
 
   // --- selectors ---
@@ -115,11 +127,20 @@ const initial = {
   entries: seedEntries,
   battles: seedBattles,
   votedBattles: {} as Record<string, 'challenger' | 'defender'>,
-  pets: seedPets,
-  posts: seedPosts,
-  comments: seedComments,
+  pets: [] as Pet[],
+  posts: [] as Post[],
+  comments: [] as Comment[],
   reportedPosts: {} as Record<string, true>,
+  currentUserId: 'me',
+  socialLoading: false,
 };
+
+function authUser() {
+  const session = useAuthStore.getState().session;
+  return session
+    ? { id: session.user.id, name: displayName(session) }
+    : null;
+}
 
 export const useStore = create<StoreState>()(
   persist(
@@ -262,109 +283,101 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      createPet: (input) => {
-        const me = get().user.id;
-        const isStray = input.kind === 'stray';
-        const pet: Pet = {
-          id: uid('pet'),
-          kind: input.kind,
-          name: input.name.trim() || (isStray ? '無名浪浪' : '無名寵物'),
-          petType: input.petType,
-          avatarUri: input.avatarUri,
-          bio: input.bio.trim(),
-          visibility: input.visibility ?? 'public',
-          followers: 0,
-          following: false,
-          createdAt: Date.now(),
-          ...(isStray
-            ? { reporterId: me, caretakerIds: [me], area: input.area?.trim() ?? '', status: input.status ?? 'adoptable' }
-            : { ownerId: me }),
-        };
-        set((s) => ({ pets: [pet, ...s.pets] }));
-        return pet.id;
+      syncSocial: async () => {
+        const u = authUser();
+        set({ socialLoading: true });
+        try {
+          const data = await fetchSocial(u?.id ?? null);
+          set({
+            pets: data.pets,
+            posts: data.posts,
+            comments: data.comments,
+            reportedPosts: data.reportedPosts,
+            currentUserId: u?.id ?? 'me',
+            socialLoading: false,
+          });
+        } catch (e) {
+          console.warn('[syncSocial] 失敗', e);
+          set({ socialLoading: false, currentUserId: u?.id ?? 'me' });
+        }
       },
 
-      addPost: (input) => {
-        const { user } = get();
-        const post: Post = {
-          id: uid('post'),
-          petId: input.petId,
-          authorId: user.id,
-          authorName: user.name,
-          mediaUri: input.mediaUri,
-          mediaType: input.mediaType,
-          caption: input.caption.trim(),
-          createdAt: Date.now(),
-          likes: 0,
-          liked: false,
-        };
-        set((s) => ({ posts: [post, ...s.posts] }));
+      createPet: async (input) => {
+        const u = authUser();
+        if (!u) return null;
+        const id = await createPetRemote(
+          { ...input, petType: input.petType },
+          u.id,
+        );
+        await get().syncSocial();
+        return id;
       },
 
-      toggleFollowPet: (petId) => {
-        set((s) => ({
-          pets: s.pets.map((p) =>
-            p.id === petId
-              ? {
-                  ...p,
-                  following: !p.following,
-                  followers: p.followers + (p.following ? -1 : 1),
-                }
-              : p,
-          ),
-        }));
+      addPost: async (input) => {
+        const u = authUser();
+        if (!u) return;
+        await addPostRemote(
+          input.petId,
+          u.id,
+          u.name,
+          input.mediaUri,
+          input.mediaType,
+          input.caption,
+        );
+        await get().syncSocial();
       },
 
-      likePost: (postId) => {
-        set((s) => ({
-          posts: s.posts.map((p) =>
-            p.id === postId
-              ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
-              : p,
-          ),
-        }));
+      toggleFollowPet: async (petId) => {
+        const u = authUser();
+        if (!u) return;
+        const pet = get().pets.find((p) => p.id === petId);
+        await setFollowRemote(petId, u.id, !pet?.following);
+        await get().syncSocial();
       },
 
-      deletePost: (postId) => {
-        set((s) => ({
-          posts: s.posts.filter((p) => p.id !== postId),
-          comments: s.comments.filter((c) => c.postId !== postId),
-        }));
+      likePost: async (postId) => {
+        const u = authUser();
+        if (!u) return;
+        const post = get().posts.find((p) => p.id === postId);
+        await setLikeRemote(postId, u.id, !post?.liked);
+        await get().syncSocial();
       },
 
-      addComment: (postId, text) => {
-        const trimmed = text.trim();
-        if (!trimmed) return;
-        const { user } = get();
-        const comment: Comment = {
-          id: uid('c'),
-          postId,
-          authorId: user.id,
-          authorName: user.name,
-          text: trimmed,
-          createdAt: Date.now(),
-        };
-        set((s) => ({ comments: [...s.comments, comment] }));
+      deletePost: async (postId) => {
+        const u = authUser();
+        if (!u) return;
+        await deletePostRemote(postId);
+        await get().syncSocial();
       },
 
-      deleteComment: (commentId) => {
-        set((s) => ({ comments: s.comments.filter((c) => c.id !== commentId) }));
+      addComment: async (postId, text) => {
+        const u = authUser();
+        if (!u || !text.trim()) return;
+        await addCommentRemote(postId, u.id, u.name, text);
+        await get().syncSocial();
       },
 
-      reportPost: (postId) => {
-        if (get().reportedPosts[postId]) return; // 一人一次
-        set((s) => ({
-          reportedPosts: { ...s.reportedPosts, [postId]: true },
-          posts: s.posts.map((p) => {
-            if (p.id !== postId) return p;
-            const reportCount = (p.reportCount ?? 0) + 1;
-            // 達門檻自動隱藏待審
-            return { ...p, reportCount, hidden: reportCount >= REPORT_HIDE_THRESHOLD };
-          }),
-        }));
+      deleteComment: async (commentId) => {
+        const u = authUser();
+        if (!u) return;
+        await deleteCommentRemote(commentId);
+        await get().syncSocial();
       },
 
-      resetAll: () => set({ ...initial, votedBattles: {}, reportedPosts: {} }),
+      reportPost: async (postId) => {
+        const u = authUser();
+        if (!u || get().reportedPosts[postId]) return;
+        await reportPostRemote(postId, u.id);
+        await get().syncSocial();
+      },
+
+      resetAll: () =>
+        set({
+          ...initial,
+          votedBattles: {},
+          reportedPosts: {},
+          currentUserId: authUser()?.id ?? 'me',
+        }),
 
       // --- selectors ---
       getGym: (gymId) => get().gyms.find((g) => g.id === gymId),
@@ -395,16 +408,13 @@ export const useStore = create<StoreState>()(
     {
       name: 'pawdojo-store-v2',
       storage: createJSONStorage(() => AsyncStorage),
+      // 只保存本機遊戲資料；社群（pets/posts/comments）以雲端為準，不本機持久化
       partialize: (s) => ({
         user: s.user,
         gyms: s.gyms,
         entries: s.entries,
         battles: s.battles,
         votedBattles: s.votedBattles,
-        pets: s.pets,
-        posts: s.posts,
-        comments: s.comments,
-        reportedPosts: s.reportedPosts,
       }),
     },
   ),

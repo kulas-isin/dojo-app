@@ -3,12 +3,20 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/auth/authStore';
+import { useStore } from '@/store/useStore';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
+  const userId = useAuthStore((s) => s.session?.user.id);
+
   useEffect(() => {
     useAuthStore.getState().init();
   }, []);
+
+  // 啟動與登入狀態改變時，從雲端同步社群資料
+  useEffect(() => {
+    useStore.getState().syncSocial();
+  }, [userId]);
 
   return (
     <SafeAreaProvider>

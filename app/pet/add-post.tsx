@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { PetMedia } from '@/components/PetMedia';
 import { Camera, ImagePlus } from '@/components/icons';
@@ -26,8 +28,10 @@ export default function AddPostScreen() {
   const { petId } = useLocalSearchParams<{ petId: string }>();
   const addPost = useStore((s) => s.addPost);
   const pet = useStore((s) => s.pets.find((x) => x.id === petId));
+  const session = useAuthStore((s) => s.session);
 
   const [caption, setCaption] = useState('');
+  const [busy, setBusy] = useState(false);
   const [media, setMedia] = useState<{ uri: string; type: MediaType } | null>(null);
 
   const pickMedia = async () => {
@@ -42,15 +46,26 @@ export default function AddPostScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!media || !petId) return;
-    addPost({
-      petId: String(petId),
-      mediaUri: media.uri,
-      mediaType: media.type,
-      caption,
-    });
-    router.replace(`/pet/${petId}`);
+    if (!session) {
+      Alert.alert('請先登入', '到「我的」分頁登入後就能發佈紀錄。');
+      return;
+    }
+    setBusy(true);
+    try {
+      await addPost({
+        petId: String(petId),
+        mediaUri: media.uri,
+        mediaType: media.type,
+        caption,
+      });
+      router.replace(`/pet/${petId}`);
+    } catch (e: any) {
+      Alert.alert('發佈失敗', e?.message ?? '請稍後再試');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -93,6 +108,7 @@ export default function AddPostScreen() {
         label="發佈紀錄"
         icon={ImagePlus}
         onPress={handleSubmit}
+        loading={busy}
         disabled={!media}
         style={{ marginTop: spacing.xl }}
       />

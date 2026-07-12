@@ -26,7 +26,7 @@ export default function PostViewer() {
   const allPosts = useStore((s) => s.posts);
   const allComments = useStore((s) => s.comments);
   const reportedPosts = useStore((s) => s.reportedPosts);
-  const me = useStore((s) => s.user.id);
+  const me = useStore((s) => s.currentUserId);
   const likePost = useStore((s) => s.likePost);
   const deletePost = useStore((s) => s.deletePost);
   const reportPost = useStore((s) => s.reportPost);

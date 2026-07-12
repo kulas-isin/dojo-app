@@ -25,7 +25,7 @@ export default function PetProfileScreen() {
 
   const pets = useStore((s) => s.pets);
   const allPosts = useStore((s) => s.posts);
-  const me = useStore((s) => s.user.id);
+  const me = useStore((s) => s.currentUserId);
   const toggleFollow = useStore((s) => s.toggleFollowPet);
 
   const pet = useMemo(() => pets.find((p) => p.id === petId), [pets, petId]);

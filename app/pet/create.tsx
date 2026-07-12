@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
 import { useStore } from '@/store/useStore';
@@ -35,7 +37,9 @@ export default function CreatePetScreen() {
   const isStray = kind === 'stray';
 
   const createPet = useStore((s) => s.createPet);
+  const session = useAuthStore((s) => s.session);
 
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [petType, setPetType] = useState<PetType>(isStray ? 'cat' : 'dog');
   const [area, setArea] = useState('');
@@ -52,17 +56,28 @@ export default function CreatePetScreen() {
     if (!result.canceled && result.assets[0]) setAvatar(result.assets[0].uri);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!avatar || !name.trim()) return;
-    const id = createPet({
-      kind,
-      name,
-      petType,
-      avatarUri: avatar,
-      bio,
-      ...(isStray ? { area, status } : { visibility }),
-    });
-    router.replace(`/pet/${id}`);
+    if (!session) {
+      Alert.alert('請先登入', '到「我的」分頁登入後就能建立檔案。');
+      return;
+    }
+    setBusy(true);
+    try {
+      const id = await createPet({
+        kind,
+        name,
+        petType,
+        avatarUri: avatar,
+        bio,
+        ...(isStray ? { area, status } : { visibility }),
+      });
+      if (id) router.replace(`/pet/${id}`);
+    } catch (e: any) {
+      Alert.alert('建立失敗', e?.message ?? '請稍後再試');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -180,6 +195,7 @@ export default function CreatePetScreen() {
         icon={isStray ? HeartHandshake : PawPrint}
         variant={isStray ? 'accent' : 'primary'}
         onPress={handleCreate}
+        loading={busy}
         disabled={!avatar || !name.trim()}
         style={{ marginTop: spacing.xl }}
       />

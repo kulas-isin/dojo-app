@@ -23,7 +23,7 @@ export default function CommentsScreen() {
   const allComments = useStore((s) => s.comments);
   const posts = useStore((s) => s.posts);
   const pets = useStore((s) => s.pets);
-  const me = useStore((s) => s.user.id);
+  const me = useStore((s) => s.currentUserId);
   const addComment = useStore((s) => s.addComment);
   const deleteComment = useStore((s) => s.deleteComment);
 

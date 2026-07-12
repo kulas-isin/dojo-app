@@ -13,10 +13,11 @@ export default function ProfileScreen() {
   const user = useStore((s) => s.user);
   const entries = useStore((s) => s.entries);
   const pets = useStore((s) => s.pets);
+  const currentUserId = useStore((s) => s.currentUserId);
   const resetAll = useStore((s) => s.resetAll);
 
   const myEntries = entries.filter((e) => e.ownerId === user.id);
-  const myPets = pets.filter((p) => p.ownerId === user.id);
+  const myPets = pets.filter((p) => p.ownerId === currentUserId);
   const totalVotes = myEntries.reduce((sum, e) => sum + e.votes, 0);
 
   const confirmReset = () => {
