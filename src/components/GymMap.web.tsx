@@ -9,8 +9,10 @@ import type { GymMapProps } from './GymMap.types';
 // Web 版：真實地圖（GPS 定位）＋ 像素風 sprite（訓練家 / 道館塔 / 浪浪）。
 // 角色＝你的真實位置；漫遊時可拖曳地圖看遠方，📍 回到定位重新跟隨。
 const VOYAGER = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-const STYLES: Record<string, { label: string; url: string; cls?: string }> = {
-  game: { label: '遊戲', url: VOYAGER, cls: 'map-game' },
+// 無街名底圖：像素化後不會被文字糊成雜訊
+const PIXEL_SRC = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png';
+const STYLES: Record<string, { label: string; url?: string; cls?: string; pixel?: boolean }> = {
+  pixel: { label: '像素', pixel: true, cls: 'map-game map-pixel' },
   voyager: { label: '可愛', url: VOYAGER },
   positron: { label: '簡約', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png' },
   warm: { label: '暖色', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', cls: 'map-warm' },
@@ -111,6 +113,50 @@ function FollowController({
   return null;
 }
 
+// 把真實地圖圖磚像素化：每塊縮到 small×small、再用不平滑放大回 256，變成色塊。
+function PixelTiles({ url, small }: { url: string; small: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const Grid = (L.GridLayer as any).extend({
+      createTile(coords: any, done: any) {
+        const size = (this as any).getTileSize();
+        const tile = document.createElement('canvas');
+        tile.width = size.x;
+        tile.height = size.y;
+        const ctx = tile.getContext('2d')!;
+        const img = new Image();
+        img.onload = () => {
+          // 1) 縮小（平滑取樣）到暫存畫布
+          const tmp = document.createElement('canvas');
+          tmp.width = small;
+          tmp.height = small;
+          const tctx = tmp.getContext('2d')!;
+          tctx.imageSmoothingEnabled = true;
+          tctx.drawImage(img, 0, 0, small, small);
+          // 2) 不平滑放大回原尺寸 → 方塊像素
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(tmp, 0, 0, small, small, 0, 0, size.x, size.y);
+          done(undefined, tile);
+        };
+        img.onerror = () => done(undefined, tile);
+        const s = 'abcd'[Math.abs(coords.x + coords.y + coords.z) % 4];
+        img.src = url
+          .replace('{s}', s)
+          .replace('{z}', String(coords.z))
+          .replace('{x}', String(coords.x))
+          .replace('{y}', String(coords.y));
+        return tile;
+      },
+    });
+    const layer = new Grid({ attribution: '&copy; OpenStreetMap &copy; CARTO' });
+    layer.addTo(map);
+    return () => {
+      layer.remove();
+    };
+  }, [map, url, small]);
+  return null;
+}
+
 // 像素 sprite 疊層：依經緯度換算成畫面座標，隨地圖移動/縮放重繪
 function SpriteLayer({
   gyms,
@@ -158,6 +204,8 @@ function SpriteLayer({
         const src = g.isStray ? sprites.stray : sprites.dojo;
         const w = g.isStray ? 46 : 42;
         const h = g.isStray ? 34 : 52;
+        // 近的道館疊在上面（400~470），玩家與控制列仍在其上
+        const z = 400 + Math.min(70, Math.round(700 / (1 + (dist ?? 9999))));
         return (
           <div key={g.id}>
             <img
@@ -171,7 +219,7 @@ function SpriteLayer({
               style={{
                 position: 'absolute', left: p.x, top: p.y,
                 width: w, height: h, transform: 'translate(-50%,-100%)',
-                cursor: 'pointer', zIndex: 400, display: 'block',
+                cursor: 'pointer', zIndex: z, display: 'block',
               }}
             />
             {showLabel.has(g.id) ? (
@@ -196,7 +244,7 @@ function SpriteLayer({
             style={{
               position: 'absolute', left: p.x, top: p.y,
               width: 30, height: 34, transform: 'translate(-50%,-90%)',
-              zIndex: 450, pointerEvents: 'none',
+              zIndex: 475, pointerEvents: 'none',
             }}
           />
         );
@@ -207,7 +255,7 @@ function SpriteLayer({
 
 export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation }: GymMapProps) {
   const c = userLocation ?? center;
-  const [style, setStyle] = useState('game');
+  const [style, setStyle] = useState('pixel');
   const [follow, setFollow] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const sprites = useMemo(buildSprites, []);
@@ -224,6 +272,7 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
       <style>{`
         .map-warm .leaflet-tile-pane{filter:sepia(.35) saturate(1.5) hue-rotate(-8deg) brightness(1.03)}
         .map-game .leaflet-tile-pane{filter:saturate(1.4) contrast(1.1) brightness(1.02)}
+        .map-pixel .leaflet-tile-pane{image-rendering:pixelated}
         .paw-sprite{image-rendering:pixelated}
         .paw-bob{animation:pawbob 1.8s ease-in-out infinite}
         @keyframes pawbob{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 2px))}}
@@ -238,7 +287,11 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
         scrollWheelZoom
         zoomControl={false}
       >
-        <TileLayer key={style} url={s.url} subdomains="abcd" attribution="&copy; OpenStreetMap &copy; CARTO" />
+        {s.pixel ? (
+          <PixelTiles url={PIXEL_SRC} small={60} />
+        ) : (
+          <TileLayer key={style} url={s.url!} subdomains="abcd" attribution="&copy; OpenStreetMap &copy; CARTO" />
+        )}
         <ClickCatcher onPick={onPickLocation} />
         <FollowController userLocation={userLocation} follow={follow} onRoam={() => setFollow(false)} />
         <SpriteLayer gyms={gyms} userLocation={userLocation} onSelectGym={onSelectGym} sprites={sprites} />
