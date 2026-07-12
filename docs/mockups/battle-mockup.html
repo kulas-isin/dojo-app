@@ -173,31 +173,44 @@
   var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ===== 音效 / 背景音樂（Web Audio 合成，零素材） ===== */
-  var A, muted=false, bgmTimer=null, bstep=0, audioReady=false;
-  function AC(){ if(!A){ try{ A=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(A&&A.state==='suspended') A.resume(); return A; }
-  function osc(freq,dur,type,g,sweep){ var a=AC(); if(!a||muted||!freq) return; var o=a.createOscillator(),gn=a.createGain(); o.type=type||'square'; o.frequency.setValueAtTime(freq,a.currentTime); if(sweep) o.frequency.exponentialRampToValueAtTime(sweep,a.currentTime+dur); gn.gain.setValueAtTime(0.0001,a.currentTime); gn.gain.exponentialRampToValueAtTime(g||0.12,a.currentTime+0.012); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); o.connect(gn); gn.connect(a.destination); o.start(); o.stop(a.currentTime+dur+0.03); }
-  function noise(dur,g,lp){ var a=AC(); if(!a||muted) return; var s=a.createBufferSource(),b=a.createBuffer(1,Math.max(1,a.sampleRate*dur),a.sampleRate),d=b.getChannelData(0); for(var i=0;i<d.length;i++) d[i]=Math.random()*2-1; s.buffer=b; var f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=lp||2000; var gn=a.createGain(); gn.gain.setValueAtTime(g||0.2,a.currentTime); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); s.connect(f); f.connect(gn); gn.connect(a.destination); s.start(); s.stop(a.currentTime+dur+0.03); }
+  var A, master, muted=false, bgmTimer=null, bstep=0, audioReady=false;
+  function AC(){ if(!A){ try{ A=new (window.AudioContext||window.webkitAudioContext)(); master=A.createGain(); master.gain.value=0.6; master.connect(A.destination); }catch(e){} } if(A&&A.state==='suspended') A.resume(); return A; }
+  function out(){ var a=AC(); return master||(a&&a.destination); }
+  // 可疊二個微失諧振盪器變厚
+  function osc(freq,dur,type,g,sweep,det){ var a=AC(); if(!a||muted||!freq) return; var gn=a.createGain(); gn.gain.setValueAtTime(0.0001,a.currentTime); gn.gain.exponentialRampToValueAtTime(g||0.12,a.currentTime+0.012); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); gn.connect(out());
+    var dets = det? [-det,det] : [0];
+    dets.forEach(function(dt){ var o=a.createOscillator(); o.type=type||'square'; o.frequency.setValueAtTime(freq,a.currentTime); if(dt)o.detune.value=dt; if(sweep)o.frequency.exponentialRampToValueAtTime(sweep,a.currentTime+dur); o.connect(gn); o.start(); o.stop(a.currentTime+dur+0.03); }); }
+  function noise(dur,g,freq,ftype){ var a=AC(); if(!a||muted) return; var s=a.createBufferSource(),b=a.createBuffer(1,Math.max(1,a.sampleRate*dur),a.sampleRate),d=b.getChannelData(0); for(var i=0;i<d.length;i++) d[i]=Math.random()*2-1; s.buffer=b; var f=a.createBiquadFilter(); f.type=ftype||'lowpass'; f.frequency.value=freq||2000; var gn=a.createGain(); gn.gain.setValueAtTime(g||0.2,a.currentTime); gn.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur); s.connect(f); f.connect(gn); gn.connect(out()); s.start(); s.stop(a.currentTime+dur+0.03); }
+  function kick(){ osc(150,0.16,'sine',0.5,45); noise(0.05,0.35,220); }
+  function hat(){ noise(0.028,0.1,8000,'highpass'); }
+  function snare(){ noise(0.13,0.28,3200); osc(220,0.08,'triangle',0.1); }
 
+  // 招式音效（多層疊加、更厚更炫）
   function sfx(fx,tier){
-    if(fx==='fire'){ noise(0.34,0.2,1200); osc(300,0.28,'sawtooth',0.07,120); }
-    else if(fx==='leaf'){ osc(880,0.16,'triangle',0.1,1200); osc(1320,0.14,'sine',0.05); }
-    else if(fx==='bolt'){ osc(1650,0.07,'square',0.12,400); noise(0.12,0.13,4200); }
-    else if(fx==='water'){ osc(760,0.15,'sine',0.12,1500); }
-    else if(fx==='rock'){ noise(0.28,0.26,500); osc(85,0.3,'sine',0.18,50); }
+    if(fx==='fire'){ noise(0.42,0.26,1400); osc(280,0.34,'sawtooth',0.1,90,10); osc(90,0.4,'sine',0.2,45); }
+    else if(fx==='leaf'){ [880,1174,1568].forEach(function(f,i){ setTimeout(function(){osc(f,0.14,'triangle',0.09,null,6)},i*45); }); }
+    else if(fx==='bolt'){ osc(1850,0.06,'square',0.14,300); noise(0.16,0.18,5200,'highpass'); setTimeout(function(){osc(1400,0.05,'square',0.1,500)},60); }
+    else if(fx==='water'){ [700,900,600,1050].forEach(function(f,i){ setTimeout(function(){osc(f,0.1,'sine',0.11,f*2)},i*38); }); }
+    else if(fx==='rock'){ osc(70,0.42,'sine',0.3,38); noise(0.36,0.32,650); setTimeout(function(){osc(55,0.3,'sine',0.22,34)},80); }
     if(tier===3){ setTimeout(function(){sfx(fx,1)},150); setTimeout(function(){sfx(fx,1)},310); }
   }
-  function sHit(){ noise(0.09,0.16,1600); }
-  function sSuper(){ osc(700,0.1,'square',0.09); setTimeout(function(){osc(1050,0.14,'square',0.09)},80); }
+  function charge(){ osc(180,0.5,'sawtooth',0.11,820,4); noise(0.5,0.05,3000,'highpass'); }
+  function sHit(){ noise(0.09,0.2,1700); osc(120,0.06,'sine',0.14,60); }
+  function sSuper(){ [660,830,990].forEach(function(f,i){ setTimeout(function(){osc(f,0.18,'square',0.1,null,6)},i*30); }); }
 
-  // 背景音樂：戰鬥迴圈（lead + bass）
-  var LEAD=[440,0,523,0,587,523,440,0, 392,0,440,523,494,0,392,0];
-  var BASS=[110,0,110,0, 98,0,98,0, 87,0,87,0, 98,0,110,0];
-  function bgmStep(){ if(muted){bstep++;return;} osc(LEAD[bstep%16],0.15,'square',0.04); if(bstep%2===0) osc(BASS[bstep%16],0.2,'triangle',0.06); bstep++; }
-  function startBGM(){ stopBGM(); bstep=0; bgmTimer=setInterval(bgmStep,175); }
+  // 背景音樂：lead + bass + 鼓組（更驅動）
+  var LEAD=[440,523,659,523, 587,523,440,392, 349,392,440,523, 659,587,523,0];
+  var BASS=[110,0,110,110, 98,0,98,98, 87,0,87,87, 98,0,110,0];
+  function bgmStep(){ if(!muted){ var s=bstep%16;
+      if(LEAD[s]) osc(LEAD[s],0.14,'square',0.055,null,7);
+      if(BASS[s]) osc(BASS[s],0.17,'triangle',0.08);
+      if(s%4===0) kick(); if(s%2===1) hat(); if(s===4||s===12) snare();
+    } bstep++; }
+  function startBGM(){ stopBGM(); bstep=0; bgmTimer=setInterval(bgmStep,150); }
   function stopBGM(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
-  function playStart(){ audioReady=true; var a=AC(); if(!a)return; [392,523,659,784].forEach(function(f,i){ setTimeout(function(){osc(f,0.14,'square',0.1)},i*90); }); setTimeout(startBGM,470); }
-  function playWin(){ stopBGM(); [523,659,784,1046,1319].forEach(function(f,i){ setTimeout(function(){osc(f,0.22,'triangle',0.13)},i*130); }); }
-  function playLose(){ stopBGM(); [440,392,330,262].forEach(function(f,i){ setTimeout(function(){osc(f,0.32,'sawtooth',0.1,f*0.9)},i*185); }); }
+  function playStart(){ audioReady=true; var a=AC(); if(!a)return; [392,523,659,784,659].forEach(function(f,i){ setTimeout(function(){osc(f,0.15,'square',0.11,null,6); if(i===4)kick()},i*85); }); setTimeout(startBGM,500); }
+  function playWin(){ stopBGM(); var m=[523,659,784,1046,988,1046]; m.forEach(function(f,i){ setTimeout(function(){ osc(f,0.26,'triangle',0.14,null,6); osc(f/2,0.26,'square',0.05); if(i===3){kick();} },i*140); }); }
+  function playLose(){ stopBGM(); [[440,349],[392,330],[294,247]].forEach(function(pr,i){ setTimeout(function(){ osc(pr[0],0.42,'sawtooth',0.11,pr[0]*0.85); osc(pr[1],0.42,'triangle',0.06); },i*220); }); }
 
   // 屬性克制：key beats val
   var BEATS = { proud:'derp', derp:'hyper', hyper:'clingy', clingy:'sturdy', sturdy:'proud' };
@@ -356,6 +369,7 @@
     // 前衝
     $(atkKey==='me'?'myAv':'enemyAv').classList.add(atkKey==='me'?'lunge-m':'lunge-e');
     log(attacker.name+' 使出 '+move.n+'！');
+    if(move.p>=90) charge();
     await wait(320);
     $(atkKey==='me'?'myAv':'enemyAv').classList.remove('lunge-m','lunge-e');
     // 命中判定
