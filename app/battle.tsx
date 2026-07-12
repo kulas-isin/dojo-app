@@ -56,6 +56,7 @@ export default function BattleScreen() {
   const [result, setResult] = useState<null | 'win' | 'lose'>(null);
   const [logText, setLogText] = useState('準備對戰！');
   const [effText, setEffText] = useState('');
+  const [muted, setMuted] = useState(false);
 
   // 動畫值
   const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0) }).current;
@@ -290,6 +291,13 @@ export default function BattleScreen() {
 
       <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flashA }]} />
 
+      <Pressable
+        style={styles.mute}
+        onPress={() => { const m = !muted; setMuted(m); sfx.setMuted(m); }}
+      >
+        <Text style={{ fontSize: 20 }}>{muted ? '🔇' : '🔊'}</Text>
+      </Pressable>
+
       {/* 對手（上） */}
       <View style={styles.rowTop}>
         <HpCard fighter={foe} hpAnim={hpFoeA} meta={foeMeta} />
@@ -490,6 +498,7 @@ const styles = StyleSheet.create({
     fontSize: font.size.lg, paddingHorizontal: spacing.lg, paddingVertical: 6, borderRadius: radius.pill, overflow: 'hidden',
   },
   flash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff', zIndex: 16 },
+  mute: { position: 'absolute', top: 14, right: 14, zIndex: 40, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, paddingTop: 52 },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },

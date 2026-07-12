@@ -64,9 +64,9 @@ function noise(dur: number, g: number, freq: number, ftype: BiquadFilterType = '
   s.start();
   s.stop(a.currentTime + dur + 0.03);
 }
-function kick() { osc(150, 0.16, 'sine', 0.5, 45); noise(0.05, 0.35, 220); }
-function hat() { noise(0.028, 0.1, 8000, 'highpass'); }
-function snare() { noise(0.13, 0.28, 3200); osc(220, 0.08, 'triangle', 0.1); }
+function kick(g = 0.5) { osc(150, 0.16, 'sine', g, 45); noise(0.05, g * 0.7, 220); }
+function hat(g = 0.1) { noise(0.028, g, 8000, 'highpass'); }
+function snare(g = 0.28) { noise(0.13, g, 3200); osc(220, 0.08, 'triangle', g * 0.36); }
 
 export function unlock() { AC(); }
 export function setMuted(m: boolean) { muted = m; if (m) stopBgm(); }
@@ -88,11 +88,12 @@ const BASS = [110, 0, 110, 110, 98, 0, 98, 98, 87, 0, 87, 87, 98, 0, 110, 0];
 function bgmStep() {
   if (!muted) {
     const s = bstep % 16;
-    if (LEAD[s]) osc(LEAD[s], 0.14, 'square', 0.055, undefined, 7);
-    if (BASS[s]) osc(BASS[s], 0.17, 'triangle', 0.08);
-    if (s % 4 === 0) kick();
-    if (s % 2 === 1) hat();
-    if (s === 4 || s === 12) snare();
+    // 背景音樂調小聲，避免蓋過音效
+    if (LEAD[s]) osc(LEAD[s], 0.14, 'square', 0.026, undefined, 7);
+    if (BASS[s]) osc(BASS[s], 0.17, 'triangle', 0.04);
+    if (s % 4 === 0) kick(0.22);
+    if (s % 2 === 1) hat(0.045);
+    if (s === 4 || s === 12) snare(0.12);
   }
   bstep++;
 }
