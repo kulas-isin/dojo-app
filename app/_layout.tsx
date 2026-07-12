@@ -1,9 +1,15 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/auth/authStore';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
+  useEffect(() => {
+    useAuthStore.getState().init();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

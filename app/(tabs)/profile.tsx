@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccountCard } from '@/auth/AccountCard';
 import { Button } from '@/components/Button';
 import { Crown, PawPrint, Plus, RotateCcw } from '@/components/icons';
 import { Doodle } from '@/illustrations';
@@ -45,6 +46,10 @@ export default function ProfileScreen() {
           <Stat label="總得票" value={totalVotes} color={colors.gold} />
         </View>
       </View>
+
+      {/* 帳號（Phase 2） */}
+      <SectionTitle icon={<PawPrint size={20} color={colors.accent} strokeWidth={2.4} />} text="帳號" />
+      <AccountCard />
 
       {/* 頭銜 */}
       <SectionTitle icon={<Crown size={20} color={colors.gold} strokeWidth={2.4} />} text="我的頭銜" />
