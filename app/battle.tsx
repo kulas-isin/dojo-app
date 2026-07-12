@@ -26,7 +26,14 @@ function hpColors(pct: number): [string, string] {
 }
 
 function haptic(kind: 'light' | 'heavy') {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web') {
+    // Android Chrome 支援；iOS Safari 不支援網頁震動（原生 App 才有）
+    try {
+      const nav: any = typeof navigator !== 'undefined' ? navigator : null;
+      if (nav && nav.vibrate) nav.vibrate(kind === 'heavy' ? [0, 22, 24, 26] : 14);
+    } catch {}
+    return;
+  }
   Haptics.impactAsync(
     kind === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light,
   ).catch(() => {});
@@ -51,20 +58,30 @@ export default function BattleScreen() {
 
   const [myHp, setMyHp] = useState(mine?.maxHp ?? 1);
   const [foeHp, setFoeHp] = useState(foe?.maxHp ?? 1);
+  const [myMp, setMyMp] = useState(mine?.maxMp ?? 1);
+  const [foeMp, setFoeMp] = useState(foe?.maxMp ?? 1);
   const [busy, setBusy] = useState(true);
   const [started, setStarted] = useState(false);
   const [result, setResult] = useState<null | 'win' | 'lose'>(null);
   const [logText, setLogText] = useState('準備對戰！');
   const [effText, setEffText] = useState('');
   const [muted, setMuted] = useState(false);
+  const [combo, setCombo] = useState(0);
 
   // 動畫值
-  const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0) }).current;
-  const foeA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0) }).current;
+  const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0) }).current;
+  const foeA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0) }).current;
   const hpMyA = useRef(new Animated.Value(1)).current;
   const hpFoeA = useRef(new Animated.Value(1)).current;
+  const mpMyA = useRef(new Animated.Value(1)).current;
+  const mpFoeA = useRef(new Animated.Value(1)).current;
   const flashA = useRef(new Animated.Value(0)).current;
   const effA = useRef(new Animated.Value(0)).current;
+  const comboA = useRef(new Animated.Value(0)).current;
+  const redA = useRef(new Animated.Value(0)).current;
+  const redLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const comboRef = useRef(0);
+  const mpRef = useRef({ me: mine?.maxMp ?? 1, foe: foe?.maxMp ?? 1 }).current;
   type Part = { id: number; side: 'me' | 'foe'; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number };
   type Ring = { id: number; side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number };
   type Bolt = { id: number; side: 'me' | 'foe'; ox: number };
@@ -172,6 +189,37 @@ export default function BattleScreen() {
       Animated.timing(flashA, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start();
   };
+  const chargeGlow = (side: 'me' | 'foe') => {
+    const anim = side === 'me' ? myA : foeA;
+    Animated.sequence([
+      Animated.timing(anim.glow, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.timing(anim.glow, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  };
+  const showCombo = (n: number) => {
+    setCombo(n);
+    comboA.setValue(0);
+    Animated.sequence([
+      Animated.spring(comboA, { toValue: 1, useNativeDriver: true, friction: 5 }),
+      Animated.timing(comboA, { toValue: 0, duration: 400, delay: 550, useNativeDriver: true }),
+    ]).start();
+  };
+  const updateRed = () => {
+    const low = hpRef.foe > 0 && hpRef.foe / foe!.maxHp < 0.25;
+    if (low && !redLoop.current) {
+      redLoop.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(redA, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(redA, { toValue: 0.08, duration: 600, useNativeDriver: true }),
+        ]),
+      );
+      redLoop.current.start();
+    } else if (!low && redLoop.current) {
+      redLoop.current.stop();
+      redLoop.current = null;
+      Animated.timing(redA, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    }
+  };
 
   async function strike(attacker: Fighter, atkSide: 'me' | 'foe', move: Move) {
     const defSide = atkSide === 'me' ? 'foe' : 'me';
@@ -180,7 +228,7 @@ export default function BattleScreen() {
     const dAnim = defSide === 'me' ? myA : foeA;
 
     setLogText(`${attacker.name} 使出 ${move.name}！`);
-    if (move.power >= 90) sfx.chargeSfx();
+    if (move.power >= 90) { sfx.chargeSfx(); chargeGlow(atkSide); }
     // 前衝
     Animated.sequence([
       Animated.timing(aAnim.ty, { toValue: atkSide === 'me' ? -14 : 14, duration: 150, useNativeDriver: true }),
@@ -195,6 +243,7 @@ export default function BattleScreen() {
     if (res.eff === 'miss') {
       showEff('沒有命中！');
       setLogText(`${attacker.name} 的攻擊沒有命中…`);
+      if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
       await wait(650);
       return;
     }
@@ -230,19 +279,35 @@ export default function BattleScreen() {
     if (res.eff === 'super') { showEff('效果絕佳！'); sfx.superSfx(); }
     else if (res.eff === 'weak') showEff('效果不佳…');
 
+    if (defSide === 'foe') updateRed();
+    if (atkSide === 'me') { comboRef.current += 1; if (comboRef.current >= 2) showCombo(comboRef.current); }
+
     await wait(560);
   }
 
+  const spendMp = (side: 'me' | 'foe', cost: number) => {
+    mpRef[side] = Math.max(0, mpRef[side] - cost);
+    if (side === 'me') setMyMp(mpRef.me); else setFoeMp(mpRef.foe);
+    Animated.timing(side === 'me' ? mpMyA : mpFoeA, {
+      toValue: mpRef[side] / (side === 'me' ? mine!.maxMp : foe!.maxMp),
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
   async function playerTurn(i: number) {
     if (busy || result) return;
-    setBusy(true);
-    const meFirst = mine!.spd >= foe!.spd;
     const myMove = mine!.moves[i];
-    const foeMove = () => foe!.moves[aiChooseMove(foe!, mine!)];
+    if (myMove.cost > mpRef.me) { setLogText('MP 不足，換一招吧！'); return; }
+    setBusy(true);
+    spendMp('me', myMove.cost);
+    const foeMove = foe!.moves[aiChooseMove(foe!, mine!, mpRef.foe)];
+    spendMp('foe', foeMove.cost);
 
+    const meFirst = mine!.spd >= foe!.spd;
     const order: ['me' | 'foe', Move][] = meFirst
-      ? [['me', myMove], ['foe', foeMove()]]
-      : [['foe', foeMove()], ['me', myMove]];
+      ? [['me', myMove], ['foe', foeMove]]
+      : [['foe', foeMove], ['me', myMove]];
 
     for (const [side, move] of order) {
       const atk = side === 'me' ? mine! : foe!;
@@ -298,16 +363,30 @@ export default function BattleScreen() {
         <Text style={{ fontSize: 20 }}>{muted ? '🔇' : '🔊'}</Text>
       </Pressable>
 
+      {/* 道館主血量低 → 畫面泛紅 */}
+      <Animated.View pointerEvents="none" style={[styles.redTint, { opacity: redA }]} />
+
+      {/* 連續命中 COMBO */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.comboWrap,
+          { opacity: comboA, transform: [{ scale: comboA.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] },
+        ]}
+      >
+        {combo >= 2 ? <Text style={styles.comboText}>{combo} COMBO！</Text> : null}
+      </Animated.View>
+
       {/* 對手（上） */}
       <View style={styles.rowTop}>
-        <HpCard fighter={foe} hpAnim={hpFoeA} meta={foeMeta} />
-        <FighterAvatar pet={champEntry} anim={foeA} />
+        <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} />
+        <FighterAvatar pet={champEntry} anim={foeA} color={foeMeta.color} />
       </View>
 
       {/* 我方（下） */}
       <View style={styles.rowBottom}>
-        <FighterAvatar pet={myPet} anim={myA} />
-        <HpCard fighter={mine} hpAnim={hpMyA} meta={myMeta} />
+        <FighterAvatar pet={myPet} anim={myA} color={myMeta.color} />
+        <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} />
       </View>
 
       {/* 特效層 */}
@@ -321,17 +400,23 @@ export default function BattleScreen() {
       <View style={styles.panel}>
         <View style={styles.log}><Text style={styles.logText}>{logText}</Text></View>
         <View style={styles.moves}>
-          {mine.moves.map((m, i) => (
-            <Pressable
-              key={i}
-              disabled={busy || !!result || !started}
-              onPress={() => playerTurn(i)}
-              style={[styles.move, (busy || !started) && { opacity: 0.5 }]}
-            >
-              <Text style={styles.moveName}>{myMeta.emoji} {m.name}</Text>
-              <Text style={styles.moveMeta}>威力 {m.power} · 命中 {Math.round(m.acc * 100)}%</Text>
-            </Pressable>
-          ))}
+          {mine.moves.map((m, i) => {
+            const noMp = m.cost > myMp;
+            const disabled = busy || !!result || !started || noMp;
+            return (
+              <Pressable
+                key={i}
+                disabled={disabled}
+                onPress={() => playerTurn(i)}
+                style={[styles.move, disabled && { opacity: 0.45 }]}
+              >
+                <Text style={styles.moveName}>{myMeta.emoji} {m.name}</Text>
+                <Text style={styles.moveMeta}>
+                  威力 {m.power} · 命中 {Math.round(m.acc * 100)}% · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -364,20 +449,40 @@ export default function BattleScreen() {
   );
 }
 
-function FighterAvatar({ pet, anim }: { pet: any; anim: { tx: Animated.Value; ty: Animated.Value; hit: Animated.Value } }) {
+function FighterAvatar({
+  pet,
+  anim,
+  color,
+}: {
+  pet: any;
+  anim: { tx: Animated.Value; ty: Animated.Value; hit: Animated.Value; glow: Animated.Value };
+  color: string;
+}) {
   return (
-    <Animated.View style={[styles.avatar, { transform: [{ translateX: anim.tx }, { translateY: anim.ty }] }]}>
-      {pet?.avatarUri || pet?.mediaUri ? (
-        <Image source={pet.thumbUri ?? pet.avatarUri ?? pet.mediaUri} style={styles.avatarImg} contentFit="cover" />
-      ) : (
-        <View style={[styles.avatarImg, { backgroundColor: colors.cardAlt }]} />
-      )}
-      <Animated.View pointerEvents="none" style={[styles.avatarFlash, { opacity: anim.hit }]} />
+    <Animated.View style={{ transform: [{ translateX: anim.tx }, { translateY: anim.ty }] }}>
+      {/* 蓄力光暈 */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 40,
+          backgroundColor: color,
+          opacity: anim.glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
+          transform: [{ scale: anim.glow.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.18] }) }],
+        }}
+      />
+      <View style={styles.avatar}>
+        {pet?.avatarUri || pet?.mediaUri ? (
+          <Image source={pet.thumbUri ?? pet.avatarUri ?? pet.mediaUri} style={styles.avatarImg} contentFit="cover" />
+        ) : (
+          <View style={[styles.avatarImg, { backgroundColor: colors.cardAlt }]} />
+        )}
+        <Animated.View pointerEvents="none" style={[styles.avatarFlash, { opacity: anim.hit }]} />
+      </View>
     </Animated.View>
   );
 }
 
-function HpCard({ fighter, hpAnim, meta }: { fighter: Fighter; hpAnim: Animated.Value; meta: any }) {
+function HpCard({ fighter, hpAnim, mpAnim, mp, meta }: { fighter: Fighter; hpAnim: Animated.Value; mpAnim: Animated.Value; mp: number; meta: any }) {
   const [pctState, setPctState] = useState(100);
   useEffect(() => {
     const id = hpAnim.addListener(({ value }) => setPctState(Math.round(value * 100)));
@@ -385,6 +490,7 @@ function HpCard({ fighter, hpAnim, meta }: { fighter: Fighter; hpAnim: Animated.
   }, [hpAnim]);
   const [ca, cb] = hpColors(pctState);
   const w = hpAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+  const mw = mpAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
   return (
     <View style={styles.hpCard}>
       <View style={styles.hpRow1}>
@@ -399,7 +505,13 @@ function HpCard({ fighter, hpAnim, meta }: { fighter: Fighter; hpAnim: Animated.
           <LinearGradient colors={[ca, cb]} style={{ flex: 1 }} />
         </Animated.View>
       </View>
-      <Text style={styles.hpNum}>{Math.round((pctState / 100) * fighter.maxHp)} / {fighter.maxHp}</Text>
+      <Text style={styles.hpNum}>HP {Math.round((pctState / 100) * fighter.maxHp)} / {fighter.maxHp}</Text>
+      <View style={styles.mpTrack}>
+        <Animated.View style={{ width: mw, height: '100%' }}>
+          <LinearGradient colors={['#6EA8E6', '#3F6FBF']} style={{ flex: 1 }} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+        </Animated.View>
+      </View>
+      <Text style={styles.mpNum}>MP {mp} / {fighter.maxMp}</Text>
     </View>
   );
 }
@@ -427,6 +539,7 @@ function Particle({ side, color, dx, dy, size, spin, ox, oy }: { side: 'me' | 'f
         height: size,
         borderRadius: spin ? 3 : size / 2,
         backgroundColor: color,
+        zIndex: 20,
         opacity: a.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
         transform,
       }}
@@ -453,6 +566,7 @@ function Ring({ side, color, size, ox, oy }: { side: 'me' | 'foe'; color: string
         borderRadius: size / 2,
         borderWidth: 4,
         borderColor: color,
+        zIndex: 20,
         opacity: a.interpolate({ inputRange: [0, 1], outputRange: [0.85, 0] }),
         transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.3, 2] }) }],
       }}
@@ -475,13 +589,15 @@ function Bolt({ side, ox }: { side: 'me' | 'foe'; ox: number }) {
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: side === 'foe' ? undefined : 78 + ox,
-        right: side === 'foe' ? 78 - ox : undefined,
-        top: side === 'foe' ? -30 : undefined,
-        bottom: side === 'me' ? -30 : undefined,
-        width: 3,
-        height: 150,
-        backgroundColor: '#F2C230',
+        left: side === 'foe' ? undefined : 76 + ox,
+        right: side === 'foe' ? 76 - ox : undefined,
+        top: side === 'foe' ? -20 : undefined,
+        bottom: side === 'me' ? -20 : undefined,
+        width: 5,
+        height: 160,
+        backgroundColor: '#FFE45C',
+        borderRadius: 2,
+        zIndex: 25,
         opacity: a,
       }}
     />
@@ -512,6 +628,11 @@ const styles = StyleSheet.create({
   lv: { color: colors.textDim, fontSize: font.size.xs, fontWeight: font.weight.bold },
   track: { height: 12, backgroundColor: colors.cardAlt, borderRadius: 7, overflow: 'hidden', marginTop: spacing.sm },
   hpNum: { fontSize: font.size.xs, color: colors.textDim, textAlign: 'right', marginTop: 3, fontVariant: ['tabular-nums'] },
+  mpTrack: { height: 7, backgroundColor: colors.cardAlt, borderRadius: 4, overflow: 'hidden', marginTop: 4 },
+  mpNum: { fontSize: 10, color: '#3F6FBF', textAlign: 'right', marginTop: 2, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  redTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#E23B3B', zIndex: 14 },
+  comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
+  comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
   panel: { marginTop: 'auto', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: spacing.xl },
   log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, padding: spacing.md, minHeight: 50, borderWidth: 1, borderColor: colors.border },
   logText: { color: colors.text, fontSize: font.size.md },

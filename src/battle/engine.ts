@@ -6,6 +6,8 @@ export interface Move {
   power: number;
   type: BattleType;
   acc: number;
+  /** 消耗的 MP */
+  cost: number;
 }
 
 export interface Fighter {
@@ -14,6 +16,7 @@ export interface Fighter {
   type: BattleType;
   level: number;
   maxHp: number;
+  maxMp: number;
   atk: number;
   def: number;
   spd: number;
@@ -32,10 +35,15 @@ const MOVE_SETS: Record<BattleType, [string, string, string]> = {
 function movesFor(type: BattleType): Move[] {
   const [a, b, c] = MOVE_SETS[type];
   return [
-    { name: a, power: 45, type, acc: 1.0 },
-    { name: b, power: 70, type, acc: 0.95 },
-    { name: c, power: 95, type, acc: 0.72 },
+    { name: a, power: 45, type, acc: 1.0, cost: 0 },
+    { name: b, power: 70, type, acc: 0.95, cost: 4 },
+    { name: c, power: 95, type, acc: 0.72, cost: 8 },
   ];
+}
+
+/** MP 上限：隨等級成長 */
+function maxMpFor(level: number): number {
+  return 12 + level * 2;
 }
 
 export function makeFighter(pet: Pet): Fighter {
@@ -46,6 +54,7 @@ export function makeFighter(pet: Pet): Fighter {
     type: s.type,
     level: s.level,
     maxHp: s.hp,
+    maxMp: maxMpFor(s.level),
     atk: s.atk,
     def: s.def,
     spd: s.spd,
@@ -91,17 +100,18 @@ export function attack(a: Fighter, d: Fighter, move: Move): AttackResult {
   return { dmg, eff };
 }
 
-/** AI 選招：70% 選期望傷害最高、30% 隨機 */
-export function aiChooseMove(ai: Fighter, foe: Fighter): number {
-  if (Math.random() < 0.3) return Math.floor(Math.random() * ai.moves.length);
-  let best = 0;
+/** AI 選招：只考慮 MP 夠的招；70% 選期望傷害最高、30% 隨機 */
+export function aiChooseMove(ai: Fighter, foe: Fighter, mp = Infinity): number {
+  const affordable = ai.moves
+    .map((m, i) => ({ m, i }))
+    .filter((x) => x.m.cost <= mp);
+  const pool = affordable.length ? affordable : ai.moves.map((m, i) => ({ m, i }));
+  if (Math.random() < 0.3) return pool[Math.floor(Math.random() * pool.length)].i;
+  let best = pool[0].i;
   let bestScore = -1;
-  ai.moves.forEach((m, i) => {
+  pool.forEach(({ m, i }) => {
     const score = m.power * m.acc * typeMultiplier(m.type, foe.type);
-    if (score > bestScore) {
-      bestScore = score;
-      best = i;
-    }
+    if (score > bestScore) { bestScore = score; best = i; }
   });
   return best;
 }
