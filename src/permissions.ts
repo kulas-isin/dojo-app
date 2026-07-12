@@ -1,4 +1,4 @@
-import type { Pet, Post } from './types';
+import type { Comment, Pet, Post } from './types';
 
 /**
  * 權限判斷（對應 ROADMAP 權限矩陣）。
@@ -29,4 +29,10 @@ export function canDeletePost(userId: string, pet: Pet, post: Post): boolean {
 export function canViewProfile(userId: string, pet: Pet): boolean {
   if (pet.visibility === 'public') return true;
   return pet.ownerId === userId;
+}
+
+/** 能否刪除留言：留言作者本人，或該寵物的 owner/caretaker */
+export function canDeleteComment(userId: string, pet: Pet, comment: Comment): boolean {
+  if (comment.authorId === userId) return true;
+  return pet.kind === 'owned' ? pet.ownerId === userId : isCaretaker(userId, pet);
 }

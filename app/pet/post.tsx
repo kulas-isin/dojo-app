@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -9,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Heart, PetIcon } from '@/components/icons';
+import { Flag, Heart, MessageCircle, PetIcon } from '@/components/icons';
 import { canDeletePost } from '@/permissions';
 import { useStore } from '@/store/useStore';
 import { colors, font, spacing } from '@/theme';
@@ -23,9 +24,26 @@ export default function PostViewer() {
 
   const pets = useStore((s) => s.pets);
   const allPosts = useStore((s) => s.posts);
+  const allComments = useStore((s) => s.comments);
+  const reportedPosts = useStore((s) => s.reportedPosts);
   const me = useStore((s) => s.user.id);
   const likePost = useStore((s) => s.likePost);
   const deletePost = useStore((s) => s.deletePost);
+  const reportPost = useStore((s) => s.reportPost);
+
+  const commentCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    allComments.forEach((c) => (m[c.postId] = (m[c.postId] ?? 0) + 1));
+    return m;
+  }, [allComments]);
+
+  const onReport = (postId: string) => {
+    if (reportedPosts[postId]) return;
+    Alert.alert('檢舉這則貼文？', '若內容不當，達門檻會自動隱藏待照顧者/管理員審核。', [
+      { text: '取消', style: 'cancel' },
+      { text: '檢舉', style: 'destructive', onPress: () => reportPost(postId) },
+    ]);
+  };
 
   const pet = useMemo(() => pets.find((p) => p.id === petId), [pets, petId]);
   const posts = useMemo(
@@ -64,25 +82,45 @@ export default function PostViewer() {
               <Text style={styles.text}>{item.caption}</Text>
 
               <View style={styles.metaRow}>
-                <Pressable style={styles.like} onPress={() => likePost(item.id)}>
-                  <Heart
-                    size={20}
-                    color={item.liked ? colors.primary : colors.textDim}
-                    strokeWidth={2.4}
-                    fill={item.liked ? colors.primary : 'none'}
-                  />
-                  <Text style={[styles.likeN, item.liked && { color: colors.primary }]}>{item.likes}</Text>
-                </Pressable>
-                {pet && canDeletePost(me, pet, item) ? (
-                  <Pressable
-                    onPress={() => {
-                      deletePost(item.id);
-                      router.back();
-                    }}
-                  >
-                    <Text style={styles.del}>刪除</Text>
+                <View style={styles.metaLeft}>
+                  <Pressable style={styles.like} onPress={() => likePost(item.id)}>
+                    <Heart
+                      size={20}
+                      color={item.liked ? colors.primary : colors.textDim}
+                      strokeWidth={2.4}
+                      fill={item.liked ? colors.primary : 'none'}
+                    />
+                    <Text style={[styles.likeN, item.liked && { color: colors.primary }]}>{item.likes}</Text>
                   </Pressable>
-                ) : null}
+                  <Pressable
+                    style={styles.like}
+                    onPress={() =>
+                      router.push({ pathname: '/pet/comments', params: { postId: item.id } })
+                    }
+                  >
+                    <MessageCircle size={20} color={colors.textDim} strokeWidth={2.4} />
+                    <Text style={styles.likeN}>{commentCount[item.id] ?? 0}</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.metaRight}>
+                  <Pressable onPress={() => onReport(item.id)} hitSlop={8}>
+                    <Flag
+                      size={18}
+                      color={reportedPosts[item.id] ? colors.danger : colors.textMuted}
+                      strokeWidth={2.2}
+                    />
+                  </Pressable>
+                  {pet && canDeletePost(me, pet, item) ? (
+                    <Pressable
+                      onPress={() => {
+                        deletePost(item.id);
+                        router.back();
+                      }}
+                    >
+                      <Text style={styles.del}>刪除</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             </View>
           </View>
@@ -101,6 +139,8 @@ const styles = StyleSheet.create({
   time: { color: colors.textMuted, fontSize: font.size.xs },
   text: { color: colors.text, fontSize: font.size.md, lineHeight: 23 },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+  metaLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  metaRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   like: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   likeN: { color: colors.textDim, fontSize: font.size.md, fontWeight: font.weight.bold },
   del: { color: colors.danger, fontSize: font.size.sm, fontWeight: font.weight.bold },

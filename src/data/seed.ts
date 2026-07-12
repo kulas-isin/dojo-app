@@ -1,4 +1,4 @@
-import type { Battle, Entry, Gym, Pet, Post, User } from '../types';
+import type { Battle, Comment, Entry, Gym, Pet, Post, User } from '../types';
 
 const HOUR = 1000 * 60 * 60;
 const now = Date.now();
@@ -301,5 +301,32 @@ export const seedPosts: Post[] = [
     createdAt: now - 40 * HOUR,
     likes: 305,
     liked: false,
+  },
+];
+
+export const seedComments: Comment[] = [
+  {
+    id: 'c-1',
+    postId: 'p-coco-1',
+    authorId: 'u-bella',
+    authorName: 'Bella',
+    text: '可可也太可愛了吧！下次一起遛狗～',
+    createdAt: now - 2 * HOUR,
+  },
+  {
+    id: 'c-2',
+    postId: 'sp-1',
+    authorId: 'u-cody',
+    authorName: 'Cody',
+    text: '這隻我也有看過！很親人，希望快點被認養 🧡',
+    createdAt: now - 18 * HOUR,
+  },
+  {
+    id: 'c-3',
+    postId: 'sp-1',
+    authorId: 'me',
+    authorName: '訓練家小明',
+    text: '我昨天有幫牠加水，狀況看起來不錯。',
+    createdAt: now - 16 * HOUR,
   },
 ];

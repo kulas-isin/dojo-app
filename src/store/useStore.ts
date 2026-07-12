@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   seedBattles,
+  seedComments,
   seedEntries,
   seedGyms,
   seedPets,
@@ -11,6 +12,7 @@ import {
 } from '../data/seed';
 import type {
   Battle,
+  Comment,
   Coordinate,
   Entry,
   Gym,
@@ -24,6 +26,8 @@ import type {
   User,
   Visibility,
 } from '../types';
+
+const REPORT_HIDE_THRESHOLD = 3;
 
 const HOUR = 1000 * 60 * 60;
 const uid = (prefix: string) =>
@@ -74,6 +78,9 @@ interface StoreState {
   votedBattles: Record<string, 'challenger' | 'defender'>;
   pets: Pet[];
   posts: Post[];
+  comments: Comment[];
+  /** 目前使用者已檢舉過的貼文，避免重複計數 */
+  reportedPosts: Record<string, true>;
 
   // --- actions ---
   createGym: (input: NewGymInput) => string;
@@ -85,6 +92,9 @@ interface StoreState {
   toggleFollowPet: (petId: string) => void;
   likePost: (postId: string) => void;
   deletePost: (postId: string) => void;
+  addComment: (postId: string, text: string) => void;
+  deleteComment: (commentId: string) => void;
+  reportPost: (postId: string) => void;
   resetAll: () => void;
 
   // --- selectors ---
@@ -96,6 +106,7 @@ interface StoreState {
   getLeaderboard: () => Entry[];
   getPet: (petId: string) => Pet | undefined;
   getPetPosts: (petId: string) => Post[];
+  getPostComments: (postId: string) => Comment[];
 }
 
 const initial = {
@@ -106,6 +117,8 @@ const initial = {
   votedBattles: {} as Record<string, 'challenger' | 'defender'>,
   pets: seedPets,
   posts: seedPosts,
+  comments: seedComments,
+  reportedPosts: {} as Record<string, true>,
 };
 
 export const useStore = create<StoreState>()(
@@ -313,10 +326,45 @@ export const useStore = create<StoreState>()(
       },
 
       deletePost: (postId) => {
-        set((s) => ({ posts: s.posts.filter((p) => p.id !== postId) }));
+        set((s) => ({
+          posts: s.posts.filter((p) => p.id !== postId),
+          comments: s.comments.filter((c) => c.postId !== postId),
+        }));
       },
 
-      resetAll: () => set({ ...initial, votedBattles: {} }),
+      addComment: (postId, text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const { user } = get();
+        const comment: Comment = {
+          id: uid('c'),
+          postId,
+          authorId: user.id,
+          authorName: user.name,
+          text: trimmed,
+          createdAt: Date.now(),
+        };
+        set((s) => ({ comments: [...s.comments, comment] }));
+      },
+
+      deleteComment: (commentId) => {
+        set((s) => ({ comments: s.comments.filter((c) => c.id !== commentId) }));
+      },
+
+      reportPost: (postId) => {
+        if (get().reportedPosts[postId]) return; // 一人一次
+        set((s) => ({
+          reportedPosts: { ...s.reportedPosts, [postId]: true },
+          posts: s.posts.map((p) => {
+            if (p.id !== postId) return p;
+            const reportCount = (p.reportCount ?? 0) + 1;
+            // 達門檻自動隱藏待審
+            return { ...p, reportCount, hidden: reportCount >= REPORT_HIDE_THRESHOLD };
+          }),
+        }));
+      },
+
+      resetAll: () => set({ ...initial, votedBattles: {}, reportedPosts: {} }),
 
       // --- selectors ---
       getGym: (gymId) => get().gyms.find((g) => g.id === gymId),
@@ -339,6 +387,10 @@ export const useStore = create<StoreState>()(
         get()
           .posts.filter((p) => p.petId === petId && !p.hidden)
           .sort((a, b) => b.createdAt - a.createdAt),
+      getPostComments: (postId) =>
+        get()
+          .comments.filter((c) => c.postId === postId)
+          .sort((a, b) => a.createdAt - b.createdAt),
     }),
     {
       name: 'pawdojo-store-v2',
@@ -351,6 +403,8 @@ export const useStore = create<StoreState>()(
         votedBattles: s.votedBattles,
         pets: s.pets,
         posts: s.posts,
+        comments: s.comments,
+        reportedPosts: s.reportedPosts,
       }),
     },
   ),

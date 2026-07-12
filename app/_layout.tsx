@@ -27,6 +27,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="pet/[id]" options={{ title: '寵物檔案' }} />
         <Stack.Screen name="pet/post" options={{ title: '', presentation: 'modal' }} />
+        <Stack.Screen name="pet/comments" options={{ title: '留言', presentation: 'modal' }} />
         <Stack.Screen
           name="pet/create"
           options={{ title: '建立檔案', presentation: 'modal' }}

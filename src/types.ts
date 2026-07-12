@@ -70,6 +70,16 @@ export interface Pet {
   area?: string;
 }
 
+/** 貼文留言 */
+export interface Comment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: number;
+}
+
 /** 一則生活紀錄貼文 */
 export interface Post {
   id: string;

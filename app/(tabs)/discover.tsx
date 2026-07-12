@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge } from '@/components/Badge';
-import { Heart, PawPrint, PetIcon, Plus } from '@/components/icons';
+import { Heart, MessageCircle, PetIcon, Plus } from '@/components/icons';
 import { Blob, Doodle, EmptyState } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { strayStatusMeta } from '@/strayMeta';
@@ -22,8 +22,15 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const pets = useStore((s) => s.pets);
   const posts = useStore((s) => s.posts);
+  const comments = useStore((s) => s.comments);
   const likePost = useStore((s) => s.likePost);
   const [filter, setFilter] = useState<Filter>('all');
+
+  const commentCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    comments.forEach((c) => (m[c.postId] = (m[c.postId] ?? 0) + 1));
+    return m;
+  }, [comments]);
 
   const petsById = useMemo(() => {
     const m: Record<string, Pet> = {};
@@ -85,7 +92,12 @@ export default function DiscoverScreen() {
           />
         }
         renderItem={({ item }) => (
-          <PostCard post={item} pet={petsById[item.petId]} onLike={() => likePost(item.id)} />
+          <PostCard
+            post={item}
+            pet={petsById[item.petId]}
+            comments={commentCount[item.id] ?? 0}
+            onLike={() => likePost(item.id)}
+          />
         )}
       />
 
@@ -100,7 +112,17 @@ export default function DiscoverScreen() {
   );
 }
 
-function PostCard({ post, pet, onLike }: { post: Post; pet?: Pet; onLike: () => void }) {
+function PostCard({
+  post,
+  pet,
+  comments,
+  onLike,
+}: {
+  post: Post;
+  pet?: Pet;
+  comments: number;
+  onLike: () => void;
+}) {
   if (!pet) return null;
   const meta = pet.status ? strayStatusMeta(pet.status) : null;
   return (
@@ -138,6 +160,13 @@ function PostCard({ post, pet, onLike }: { post: Post; pet?: Pet; onLike: () => 
               fill={post.liked ? colors.primary : 'none'}
             />
             <Text style={[styles.likeN, post.liked && { color: colors.primary }]}>{post.likes}</Text>
+          </Pressable>
+          <Pressable
+            style={styles.like}
+            onPress={() => router.push({ pathname: '/pet/comments', params: { postId: post.id } })}
+          >
+            <MessageCircle size={19} color={colors.textDim} strokeWidth={2.4} />
+            <Text style={styles.likeN}>{comments}</Text>
           </Pressable>
         </View>
       </View>
@@ -180,7 +209,7 @@ const styles = StyleSheet.create({
   cardMedia: { width: '100%', height: 260, backgroundColor: colors.cardAlt },
   cardBody: { padding: spacing.md, gap: spacing.sm },
   cardCap: { color: colors.text, fontSize: font.size.md, lineHeight: 21 },
-  cardMetaRow: { flexDirection: 'row', alignItems: 'center' },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   like: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   likeN: { color: colors.textDim, fontSize: font.size.md, fontWeight: font.weight.bold },
   fab: {
