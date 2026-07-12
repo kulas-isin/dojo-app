@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
+import { uploadMedia } from '@/lib/storage';
 import { useStore } from '@/store/useStore';
 import { STRAY_STATUS } from '@/strayMeta';
 import { colors, font, radius, spacing } from '@/theme';
@@ -64,11 +65,12 @@ export default function CreatePetScreen() {
     }
     setBusy(true);
     try {
+      const avatarUrl = await uploadMedia(avatar, session.user.id);
       const id = await createPet({
         kind,
         name,
         petType,
-        avatarUri: avatar,
+        avatarUri: avatarUrl,
         bio,
         ...(isStray ? { area, status } : { visibility }),
       });

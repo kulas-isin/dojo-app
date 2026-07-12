@@ -14,6 +14,7 @@ import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { PetMedia } from '@/components/PetMedia';
 import { Camera, ImagePlus } from '@/components/icons';
+import { uploadMedia } from '@/lib/storage';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing } from '@/theme';
 import type { MediaType } from '@/types';
@@ -54,9 +55,10 @@ export default function AddPostScreen() {
     }
     setBusy(true);
     try {
+      const url = await uploadMedia(media.uri, session.user.id);
       await addPost({
         petId: String(petId),
-        mediaUri: media.uri,
+        mediaUri: url,
         mediaType: media.type,
         caption,
       });
