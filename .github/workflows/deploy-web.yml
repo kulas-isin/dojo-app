@@ -32,10 +32,11 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: '1'
 
-      - name: SPA fallback + disable Jekyll
+      - name: SPA fallback + disable Jekyll + 風格指南
         run: |
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
+          cp docs/style-guide.html dist/style-guide.html
 
       - name: Publish to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
