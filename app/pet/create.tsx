@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '@/auth/authStore';
-import { BATTLE_TYPES, SPECIES_BASE, STAT_BUDGET } from '@/battle/stats';
+import { BATTLE_TYPES, STAT_BUDGET, baseFor } from '@/battle/stats';
 import { Button } from '@/components/Button';
 import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
 import { uploadMedia } from '@/lib/storage';
@@ -60,7 +60,7 @@ export default function CreatePetScreen() {
   const [battleType, setBattleType] = useState<string | null>(null);
   const [pts, setPts] = useState<Record<StatKey, number>>({ hp: 0, atk: 0, def: 0, spd: 0 });
 
-  const base = SPECIES_BASE[petType];
+  const base = baseFor(petType, battleType ?? 'derp');
   const remaining = STAT_BUDGET - (pts.hp + pts.atk + pts.def + pts.spd);
   const adjust = (k: StatKey, d: number) => {
     setPts((p) => {
@@ -220,7 +220,7 @@ export default function CreatePetScreen() {
           </View>
 
           <Text style={styles.label}>對戰個性</Text>
-          <Text style={styles.hint}>你最懂牠！選一個個性，決定屬性與克制。</Text>
+          <Text style={styles.hint}>你最懂牠！個性會影響屬性克制與數值傾向。</Text>
           <View style={styles.chipRow}>
             {BATTLE_TYPES.map((t) => {
               const active = battleType === t.key;
@@ -237,6 +237,12 @@ export default function CreatePetScreen() {
               );
             })}
           </View>
+          {battleType ? (
+            <Text style={styles.bias}>
+              {BATTLE_TYPES.find((t) => t.key === battleType)?.bias} ·{' '}
+              剋 {BATTLE_TYPES.find((x) => x.key === BATTLE_TYPES.find((t) => t.key === battleType)?.beats)?.label}
+            </Text>
+          ) : null}
 
           <View style={styles.allocHead}>
             <Text style={styles.label}>分配能力點數</Text>
@@ -350,6 +356,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.text, fontWeight: font.weight.semibold, fontSize: font.size.sm },
   err: { color: colors.danger, fontSize: font.size.sm, marginTop: spacing.md },
   hint: { color: colors.textDim, fontSize: font.size.xs, marginBottom: spacing.sm },
+  bias: { color: colors.primary, fontSize: font.size.sm, fontWeight: font.weight.bold, marginTop: spacing.sm },
   allocHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   remaining: { color: colors.textDim, fontSize: font.size.sm, fontWeight: font.weight.bold },
   allocRow: {

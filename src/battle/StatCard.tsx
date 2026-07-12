@@ -24,10 +24,13 @@ export function StatCard({ pet }: { pet: Pet }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={[styles.typeChip, { backgroundColor: meta.color }]}>
-          <Text style={styles.typeText}>
-            {meta.emoji} {meta.label}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View style={[styles.typeChip, { backgroundColor: meta.color }]}>
+            <Text style={styles.typeText}>
+              {meta.emoji} {meta.label}
+            </Text>
+          </View>
+          <Text style={styles.bias}>{meta.bias}</Text>
         </View>
         <Text style={styles.level}>Lv.{s.level}</Text>
       </View>
@@ -51,6 +54,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
   typeChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
   typeText: { color: colors.onColor, fontWeight: font.weight.bold, fontSize: font.size.sm },
+  bias: { color: colors.textDim, fontSize: font.size.xs, fontWeight: font.weight.semibold },
   level: { color: colors.text, fontWeight: font.weight.heavy, fontSize: font.size.lg },
   statRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   statLabel: { width: 40, color: colors.textDim, fontSize: font.size.sm, fontWeight: font.weight.semibold },
