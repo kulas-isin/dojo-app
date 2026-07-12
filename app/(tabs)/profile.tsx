@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AccountCard } from '@/auth/AccountCard';
+import { displayName, useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Crown, PawPrint, Plus, RotateCcw } from '@/components/icons';
 import { Doodle } from '@/illustrations';
@@ -14,7 +15,10 @@ export default function ProfileScreen() {
   const entries = useStore((s) => s.entries);
   const pets = useStore((s) => s.pets);
   const currentUserId = useStore((s) => s.currentUserId);
+  const session = useAuthStore((s) => s.session);
   const resetAll = useStore((s) => s.resetAll);
+
+  const shownName = session ? displayName(session) : '訪客（未登入）';
 
   const myEntries = entries.filter((e) => e.ownerId === user.id);
   const myPets = pets.filter((p) => p.ownerId === currentUserId);
@@ -40,7 +44,7 @@ export default function ProfileScreen() {
         <View style={styles.avatar}>
           <PawPrint size={40} color={colors.primary} strokeWidth={2.2} />
         </View>
-        <Text style={styles.name}>{user.name}</Text>
+        <Text style={styles.name}>{shownName}</Text>
         <View style={styles.statsRow}>
           <Stat label="勝場" value={user.wins} color={colors.accent} />
           <Stat label="敗場" value={user.losses} color={colors.primary} />
