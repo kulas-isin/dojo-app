@@ -72,6 +72,62 @@
 
 ---
 
+## 🧩 寵物檔案：統一模型與權限治理（2026-06 討論定案）
+
+**決策**：把「浪浪」與「個人寵物」**合併成同一套寵物檔案**，用 `kind` 區分；
+浪浪走**混合權限**；先做本機原型 + 個人寵物 + 探索動態牆。
+
+### 統一資料模型（草案）
+```
+Pet {
+  id, name, petType, avatarUri, bio, createdAt
+  kind: 'owned' | 'stray'
+  ownerId?            // owned：擁有者
+  reporterId?         // stray：建立/回報者
+  caretakerIds?: []   // stray：照顧者群（取代單一主人）
+  status?             // stray：待認養/已結紮/已認養/未結紮
+  area?               // stray：出沒地點
+  visibility: 'public' | 'private'  // 個人寵物可設隱私
+  followers
+}
+Post {
+  id, petId, authorId, mediaUri, mediaType, caption, createdAt
+  likes, reportCount, hidden
+  // 未來：editHistory[]
+}
+```
+
+### 權限矩陣
+| 動作 | owned（個人寵物） | stray（浪浪） |
+|---|---|---|
+| 改檔案（名字/狀態/隱私） | 只有 ownerId | reporter + caretakerIds |
+| 新增紀錄 | 只有 owner | 任何登入者（共筆） |
+| 刪除某則紀錄 | owner | 該則作者本人，或任一照顧者 |
+| 看 / 追蹤 / 讚 / 留言 | 所有人（public） | 所有人 |
+| 邀請/認證照顧者 | — | 現有照顧者 |
+
+### 沒有單一擁有者時的治理機制
+1. **實名帳號**＝可問責底層（需 Phase 2）。
+2. **角色**：回報者→預設照顧者；照顧者可認證更多照顧者（志工/TNR/收容所）。
+3. **貼文權限**：作者刪自己的；照顧者可刪任何一則、置頂、隱藏。
+4. **檢舉機制**：任何人可檢舉，達門檻自動隱藏待審。
+5. **敏感狀態**（已認養/離世）需照顧者確認或雙人確認。
+6. **編輯歷史**可回溯、可還原（wiki 式）。
+7. **信任分級/限流**：新帳號限制發文頻率，擋洗版。
+8. **App 管理員**：處理升級爭議、停權濫用。
+
+### 探索動態牆（別人滑得到）
+- 全域探索動態，混合所有 public 寵物的貼文；可切換 **追蹤中／附近／最新／熱門**。
+
+### 本機原型範圍（現在做）
+- 統一 Pet/Post 模型 + `ownerId/reporterId/caretakerIds/authorId` 欄位先設好。
+- 個人寵物檔案（可設 public/private）＋探索動態牆（用模擬用戶）。
+- 權限用 `can*()` helper 判斷（`canEditProfile`、`canAddRecord`、`canDeletePost`）。
+- ⚠️ **真正的多人權限與檢舉要等 Phase 2 帳號＋後端才會實際生效**；
+  現階段先把欄位與 UI 佔位做好，避免之後大改。
+
+---
+
 ## 🔧 關鍵技術考量
 > 上述大部分功能都需要**真正的後端**，因為要跨用戶共享資料（別人也看得到浪浪、對戰、排行）。
 
