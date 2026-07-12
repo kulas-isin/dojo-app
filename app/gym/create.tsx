@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Button } from '@/components/Button';
-import { Castle, GymIcon, MapPin } from '@/components/icons';
+import { Castle, Check, GymIcon, HeartHandshake, MapPin } from '@/components/icons';
 import { GYM_ICON_KEYS } from '@/components/icons';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing } from '@/theme';
@@ -21,6 +21,7 @@ export default function CreateGymScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState<string>('castle');
+  const [isStray, setIsStray] = useState(false);
 
   const latitude = Number(params.latitude ?? 25.0303);
   const longitude = Number(params.longitude ?? 121.5354);
@@ -30,6 +31,7 @@ export default function CreateGymScreen() {
       name,
       description,
       icon,
+      isStray,
       coordinate: { latitude, longitude },
     });
     router.replace(`/gym/${gymId}`);
@@ -78,6 +80,14 @@ export default function CreateGymScreen() {
           );
         })}
       </View>
+
+      <Pressable style={styles.strayToggle} onPress={() => setIsStray((v) => !v)}>
+        <View style={[styles.checkbox, isStray && styles.checkboxOn]}>
+          {isStray ? <Check size={16} color={colors.onColor} strokeWidth={3} /> : null}
+        </View>
+        <HeartHandshake size={18} color={colors.accent} strokeWidth={2.2} />
+        <Text style={styles.strayText}>這是流浪動物聚集地</Text>
+      </Pressable>
 
       <View style={styles.locationBox}>
         <View style={styles.locationRow}>
@@ -132,6 +142,28 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   iconBtnActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  strayToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  strayText: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.semibold },
   locationBox: {
     marginTop: spacing.lg,
     backgroundColor: colors.card,

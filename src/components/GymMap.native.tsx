@@ -31,8 +31,13 @@ export function GymMap({
           onPress={() => onSelectGym(gym.id)}
           tracksViewChanges={false}
         >
-          <View style={styles.pin}>
-            <GymIcon name={gym.icon} size={22} color={colors.primary} strokeWidth={2.4} />
+          <View style={[styles.pin, { borderColor: gym.isStray ? colors.accent : colors.primary }]}>
+            <GymIcon
+              name={gym.icon}
+              size={22}
+              color={gym.isStray ? colors.accent : colors.primary}
+              strokeWidth={2.4}
+            />
           </View>
         </Marker>
       ))}

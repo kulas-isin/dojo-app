@@ -25,6 +25,16 @@ export default function RootLayout() {
           name="gym/challenge"
           options={{ title: '發起挑戰', presentation: 'modal' }}
         />
+        <Stack.Screen name="stray/[id]" options={{ title: '浪浪檔案' }} />
+        <Stack.Screen name="stray/post" options={{ title: '', presentation: 'modal' }} />
+        <Stack.Screen
+          name="stray/create"
+          options={{ title: '建立浪浪檔案', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="stray/add-post"
+          options={{ title: '新增紀錄', presentation: 'modal' }}
+        />
       </Stack>
     </SafeAreaProvider>
   );

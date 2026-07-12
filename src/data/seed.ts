@@ -1,4 +1,4 @@
-import type { Battle, Entry, Gym, User } from '../types';
+import type { Battle, Entry, Gym, StrayPet, StrayPost, User } from '../types';
 
 const HOUR = 1000 * 60 * 60;
 const now = Date.now();
@@ -123,5 +123,95 @@ export const seedBattles: Battle[] = [
     status: 'active',
     createdAt: now - 50 * HOUR,
     endsAt: now + 22 * HOUR,
+  },
+];
+
+export const seedStrays: StrayPet[] = [
+  {
+    id: 'stray-1',
+    name: '三花',
+    petType: 'cat',
+    avatarUri: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=600',
+    area: '大安區・巷口便利商店旁',
+    status: 'adoptable',
+    bio: '親人的三花貓，會主動討摸，正在找一個溫暖的家。',
+    followers: 342,
+    following: false,
+    createdAt: now - 200 * HOUR,
+  },
+  {
+    id: 'stray-2',
+    name: '小黑',
+    petType: 'dog',
+    avatarUri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600',
+    area: '河濱公園・橋下',
+    status: 'neutered',
+    bio: '穩重的浪浪大哥，已完成 TNR，是公園的守護者。',
+    followers: 128,
+    following: true,
+    createdAt: now - 160 * HOUR,
+  },
+  {
+    id: 'stray-3',
+    name: '橘子',
+    petType: 'cat',
+    avatarUri: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=600',
+    area: '信義區・公園長椅',
+    status: 'adopted',
+    bio: '曾經的浪浪，現在已經有家了！謝謝大家的照顧 🧡',
+    followers: 501,
+    following: false,
+    createdAt: now - 120 * HOUR,
+  },
+];
+
+export const seedStrayPosts: StrayPost[] = [
+  {
+    id: 'sp-1',
+    strayId: 'stray-1',
+    mediaUri: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=800',
+    mediaType: 'photo',
+    caption: '今天三花在店門口曬太陽，看到有人就喵喵叫討罐罐。',
+    createdAt: now - 20 * HOUR,
+  },
+  {
+    id: 'sp-2',
+    strayId: 'stray-1',
+    mediaUri: 'https://images.unsplash.com/photo-1495360010541-f48722b34f7d?w=800',
+    mediaType: 'photo',
+    caption: '志工幫牠準備了乾淨的水和飼料，吃得好開心。',
+    createdAt: now - 60 * HOUR,
+  },
+  {
+    id: 'sp-3',
+    strayId: 'stray-1',
+    mediaUri: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800',
+    mediaType: 'photo',
+    caption: '睡飽飽的三花，誰能拒絕這張臉？求認養！',
+    createdAt: now - 100 * HOUR,
+  },
+  {
+    id: 'sp-4',
+    strayId: 'stray-2',
+    mediaUri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800',
+    mediaType: 'photo',
+    caption: '小黑今天巡邏河濱一整圈，盡責的好孩子。',
+    createdAt: now - 30 * HOUR,
+  },
+  {
+    id: 'sp-5',
+    strayId: 'stray-2',
+    mediaUri: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=800',
+    mediaType: 'photo',
+    caption: '耳朵有剪耳記號，代表已經結紮囉。',
+    createdAt: now - 90 * HOUR,
+  },
+  {
+    id: 'sp-6',
+    strayId: 'stray-3',
+    mediaUri: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=800',
+    mediaType: 'photo',
+    caption: '橘子被認養的第一天，在新家探索每個角落。',
+    createdAt: now - 40 * HOUR,
   },
 ];

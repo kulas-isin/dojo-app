@@ -5,6 +5,8 @@ import {
   seedBattles,
   seedEntries,
   seedGyms,
+  seedStrayPosts,
+  seedStrays,
   seedUser,
 } from '../data/seed';
 import type {
@@ -14,6 +16,9 @@ import type {
   Gym,
   MediaType,
   PetType,
+  StrayPet,
+  StrayPost,
+  StrayStatus,
   Title,
   User,
 } from '../types';
@@ -26,6 +31,7 @@ export interface NewGymInput {
   name: string;
   description: string;
   icon: string;
+  isStray?: boolean;
   coordinate: Coordinate;
 }
 
@@ -37,6 +43,22 @@ export interface NewEntryInput {
   mediaType: MediaType;
 }
 
+export interface NewStrayInput {
+  name: string;
+  petType: PetType;
+  avatarUri: string;
+  area: string;
+  status: StrayStatus;
+  bio: string;
+}
+
+export interface NewStrayPostInput {
+  strayId: string;
+  mediaUri: string;
+  mediaType: MediaType;
+  caption: string;
+}
+
 interface StoreState {
   user: User;
   gyms: Gym[];
@@ -44,12 +66,17 @@ interface StoreState {
   battles: Battle[];
   /** 紀錄目前使用者在每場對戰投給了哪一邊 */
   votedBattles: Record<string, 'challenger' | 'defender'>;
+  strays: StrayPet[];
+  strayPosts: StrayPost[];
 
   // --- actions ---
   createGym: (input: NewGymInput) => string;
   submitChallenge: (input: NewEntryInput) => { entryId: string; battleId?: string };
   voteBattle: (battleId: string, side: 'challenger' | 'defender') => void;
   resolveBattle: (battleId: string) => void;
+  createStray: (input: NewStrayInput) => string;
+  addStrayPost: (input: NewStrayPostInput) => void;
+  toggleFollowStray: (strayId: string) => void;
   resetAll: () => void;
 
   // --- selectors ---
@@ -59,6 +86,8 @@ interface StoreState {
   getActiveBattle: (gymId: string) => Battle | undefined;
   getGymEntries: (gymId: string) => Entry[];
   getLeaderboard: () => Entry[];
+  getStray: (strayId: string) => StrayPet | undefined;
+  getStrayPosts: (strayId: string) => StrayPost[];
 }
 
 const initial = {
@@ -67,6 +96,8 @@ const initial = {
   entries: seedEntries,
   battles: seedBattles,
   votedBattles: {} as Record<string, 'challenger' | 'defender'>,
+  strays: seedStrays,
+  strayPosts: seedStrayPosts,
 };
 
 export const useStore = create<StoreState>()(
@@ -80,6 +111,7 @@ export const useStore = create<StoreState>()(
           name: input.name.trim() || '無名道館',
           description: input.description.trim(),
           icon: input.icon || 'castle',
+          isStray: input.isStray ?? false,
           coordinate: input.coordinate,
           championEntryId: null,
           createdBy: get().user.id,
@@ -209,6 +241,49 @@ export const useStore = create<StoreState>()(
         });
       },
 
+      createStray: (input) => {
+        const stray: StrayPet = {
+          id: uid('stray'),
+          name: input.name.trim() || '無名浪浪',
+          petType: input.petType,
+          avatarUri: input.avatarUri,
+          area: input.area.trim(),
+          status: input.status,
+          bio: input.bio.trim(),
+          followers: 0,
+          following: false,
+          createdAt: Date.now(),
+        };
+        set((s) => ({ strays: [stray, ...s.strays] }));
+        return stray.id;
+      },
+
+      addStrayPost: (input) => {
+        const post: StrayPost = {
+          id: uid('sp'),
+          strayId: input.strayId,
+          mediaUri: input.mediaUri,
+          mediaType: input.mediaType,
+          caption: input.caption.trim(),
+          createdAt: Date.now(),
+        };
+        set((s) => ({ strayPosts: [post, ...s.strayPosts] }));
+      },
+
+      toggleFollowStray: (strayId) => {
+        set((s) => ({
+          strays: s.strays.map((st) =>
+            st.id === strayId
+              ? {
+                  ...st,
+                  following: !st.following,
+                  followers: st.followers + (st.following ? -1 : 1),
+                }
+              : st,
+          ),
+        }));
+      },
+
       resetAll: () => set({ ...initial, votedBattles: {} }),
 
       // --- selectors ---
@@ -227,6 +302,11 @@ export const useStore = create<StoreState>()(
           .sort((a, b) => b.votes - a.votes),
       getLeaderboard: () =>
         [...get().entries].sort((a, b) => b.votes - a.votes).slice(0, 50),
+      getStray: (strayId) => get().strays.find((s) => s.id === strayId),
+      getStrayPosts: (strayId) =>
+        get()
+          .strayPosts.filter((p) => p.strayId === strayId)
+          .sort((a, b) => b.createdAt - a.createdAt),
     }),
     {
       name: 'pawdojo-store-v1',
@@ -237,6 +317,8 @@ export const useStore = create<StoreState>()(
         entries: s.entries,
         battles: s.battles,
         votedBattles: s.votedBattles,
+        strays: s.strays,
+        strayPosts: s.strayPosts,
       }),
     },
   ),

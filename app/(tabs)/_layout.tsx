@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Map, PawPrint, Trophy } from 'lucide-react-native';
+import { HeartHandshake, Map, PawPrint, Trophy } from 'lucide-react-native';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
@@ -29,6 +29,15 @@ export default function TabsLayout() {
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <Map size={focused ? 26 : 23} color={color} strokeWidth={2.2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="strays"
+        options={{
+          title: '浪浪',
+          tabBarIcon: ({ color, focused }) => (
+            <HeartHandshake size={focused ? 26 : 23} color={color} strokeWidth={2.2} />
           ),
         }}
       />

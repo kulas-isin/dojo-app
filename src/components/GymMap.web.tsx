@@ -78,9 +78,17 @@ export function GymMap({
               <Pressable
                 key={gym.id}
                 onPress={() => onSelectGym(gym.id)}
-                style={[styles.pin, { left: x - 23, top: y - 23 }]}
+                style={[
+                  styles.pin,
+                  { left: x - 23, top: y - 23, borderColor: gym.isStray ? colors.accent : colors.primary },
+                ]}
               >
-                <GymIcon name={gym.icon} size={22} color={colors.primary} strokeWidth={2.4} />
+                <GymIcon
+                  name={gym.icon}
+                  size={22}
+                  color={gym.isStray ? colors.accent : colors.primary}
+                  strokeWidth={2.4}
+                />
               </Pressable>
             );
           })}

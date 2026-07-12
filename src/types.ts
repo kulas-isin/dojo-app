@@ -35,12 +35,44 @@ export interface Battle {
 }
 
 /** 地圖上的道館 */
+/** 流浪動物狀態 */
+export type StrayStatus = 'intact' | 'neutered' | 'adoptable' | 'adopted';
+
+/** 流浪動物檔案（IG 式） */
+export interface StrayPet {
+  id: string;
+  name: string;
+  petType: PetType;
+  avatarUri: string;
+  /** 出沒地點的文字描述 */
+  area: string;
+  status: StrayStatus;
+  /** 簡短介紹 */
+  bio: string;
+  followers: number;
+  /** 目前使用者是否已追蹤 */
+  following: boolean;
+  createdAt: number;
+}
+
+/** 流浪動物的一則生活紀錄貼文 */
+export interface StrayPost {
+  id: string;
+  strayId: string;
+  mediaUri: string;
+  mediaType: MediaType;
+  caption: string;
+  createdAt: number;
+}
+
 export interface Gym {
   id: string;
   name: string;
   description: string;
   /** 圖示 key，對應 src/components/icons.tsx 的 GYM_ICON_KEYS */
   icon: string;
+  /** 是否為流浪動物聚集地 */
+  isStray?: boolean;
   coordinate: Coordinate;
   championEntryId: string | null;
   createdBy: string;

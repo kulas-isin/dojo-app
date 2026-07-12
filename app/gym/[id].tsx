@@ -62,11 +62,21 @@ export default function GymScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 道館資訊 */}
       <View style={styles.gymHeader}>
-        <View style={styles.gymIconCircle}>
-          <GymIcon name={gym.icon} size={30} color={colors.primary} strokeWidth={2.2} />
+        <View style={[styles.gymIconCircle, gym.isStray && { backgroundColor: colors.accentSoft }]}>
+          <GymIcon
+            name={gym.icon}
+            size={30}
+            color={gym.isStray ? colors.accent : colors.primary}
+            strokeWidth={2.2}
+          />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.gymName}>{gym.name}</Text>
+          {gym.isStray ? (
+            <View style={{ marginTop: 4, marginBottom: 2 }}>
+              <Badge label="流浪動物聚集地" color={colors.accent} bg={colors.accentSoft} />
+            </View>
+          ) : null}
           <Text style={styles.gymDesc}>{gym.description || '一座神秘的道館。'}</Text>
         </View>
       </View>
