@@ -64,8 +64,14 @@ export default function BattleScreen() {
   const hpFoeA = useRef(new Animated.Value(1)).current;
   const flashA = useRef(new Animated.Value(0)).current;
   const effA = useRef(new Animated.Value(0)).current;
-  const [parts, setParts] = useState<{ id: number; side: 'me' | 'foe'; color: string; dx: number; dy: number }[]>([]);
-  const partId = useRef(0);
+  type Part = { id: number; side: 'me' | 'foe'; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number };
+  type Ring = { id: number; side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number };
+  type Bolt = { id: number; side: 'me' | 'foe'; ox: number };
+  const [parts, setParts] = useState<Part[]>([]);
+  const [rings, setRings] = useState<Ring[]>([]);
+  const [bolts, setBolts] = useState<Bolt[]>([]);
+  const fxId = useRef(0);
+  const shakeA = useRef(new Animated.Value(0)).current;
   // 即時 HP（state 更新非同步，用 ref 當戰鬥即時真相）
   const hpRef = useRef({ me: mine?.maxHp ?? 1, foe: foe?.maxHp ?? 1 }).current;
 
@@ -82,14 +88,72 @@ export default function BattleScreen() {
 
   const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-  const spawnBurst = (side: 'me' | 'foe', color: string, n: number) => {
-    const items = Array.from({ length: n }, () => {
-      const ang = Math.random() * Math.PI * 2;
-      const d = 24 + Math.random() * 40;
-      return { id: partId.current++, side, color, dx: Math.cos(ang) * d, dy: Math.sin(ang) * d };
+  const spawnBurst = (
+    side: 'me' | 'foe',
+    color: string,
+    n: number,
+    opt: { rise?: boolean; fall?: boolean; spin?: boolean; size?: number; dist?: number; ox?: number; oy?: number } = {},
+  ) => {
+    const dist = opt.dist ?? 1;
+    const items: Part[] = Array.from({ length: n }, () => {
+      let ang: number;
+      if (opt.rise) ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.4;
+      else if (opt.fall) ang = Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      else ang = Math.random() * Math.PI * 2;
+      const d = (24 + Math.random() * 40) * dist;
+      return {
+        id: fxId.current++, side, color, size: opt.size ?? 9, spin: !!opt.spin,
+        ox: opt.ox ?? 0, oy: opt.oy ?? 0, dx: Math.cos(ang) * d, dy: Math.sin(ang) * d,
+      };
     });
     setParts((p) => [...p, ...items]);
     setTimeout(() => setParts((p) => p.filter((x) => !items.find((it) => it.id === x.id))), 560);
+  };
+  const spawnRing = (side: 'me' | 'foe', color: string, size: number, ox = 0, oy = 0) => {
+    const it: Ring = { id: fxId.current++, side, color, size, ox, oy };
+    setRings((r) => [...r, it]);
+    setTimeout(() => setRings((r) => r.filter((x) => x.id !== it.id)), 580);
+  };
+  const spawnBolt = (side: 'me' | 'foe', ox = 0) => {
+    const ids = [0, 1, 2].map(() => {
+      const it: Bolt = { id: fxId.current++, side, ox: ox + (Math.random() - 0.5) * 40 };
+      return it;
+    });
+    setBolts((b) => [...b, ...ids]);
+    setTimeout(() => setBolts((b) => b.filter((x) => !ids.find((it) => it.id === x.id))), 340);
+  };
+  const doShake = (px: number) => {
+    Animated.sequence([
+      Animated.timing(shakeA, { toValue: -px, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeA, { toValue: px, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeA, { toValue: -px * 0.6, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeA, { toValue: 0, duration: 55, useNativeDriver: true }),
+    ]).start();
+  };
+
+  // 單段元素爆發（tier 影響量/範圍/光圈大小）
+  const burst = (fx: string, side: 'me' | 'foe', color: string, tier: number, ox: number, oy: number) => {
+    const n = 5 + tier * 4, dist = 1 + (tier - 1) * 0.45, size = 48 + tier * 22;
+    if (fx === 'fire') { spawnBurst(side, color, n, { rise: true, size: 10, dist, ox, oy }); spawnRing(side, '#F0642F', size, ox, oy); flash(); }
+    else if (fx === 'leaf') { spawnBurst(side, color, n, { spin: true, size: 11, dist, ox, oy }); spawnRing(side, '#7FB88F', size, ox, oy); }
+    else if (fx === 'bolt') { spawnBolt(side, ox); spawnBurst(side, color, n, { size: 7, dist, ox, oy }); flash(); doShake(4); }
+    else if (fx === 'water') { spawnRing(side, '#49A9C7', size, ox, oy); setTimeout(() => spawnRing(side, '#8FD0E6', size + 16, ox, oy), 110); spawnBurst(side, color, n, { size: 9, dist, ox, oy }); }
+    else if (fx === 'rock') { spawnBurst(side, color, n, { fall: true, size: 12, dist, ox, oy }); spawnRing(side, '#9A7B4A', size, ox, oy); doShake(9); }
+    else spawnBurst(side, color, n, { ox, oy });
+  };
+  // 威力分級：小招1段、中招2段、大招3段連爆＋大範圍
+  const typeFx = (fx: string, side: 'me' | 'foe', color: string, power: number) => {
+    const tier = power >= 90 ? 3 : power >= 65 ? 2 : 1;
+    for (let w = 0; w < tier; w++) {
+      setTimeout(() => {
+        const spread = tier === 3 ? 46 : 22;
+        const ox = w === 0 ? 0 : (Math.random() - 0.5) * spread;
+        const oy = w === 0 ? 0 : (Math.random() - 0.5) * spread * 0.7;
+        burst(fx, side, color, tier, ox, oy);
+        if (tier === 3 && w > 0) flash();
+      }, w * 150);
+    }
+    if (tier >= 2) setTimeout(() => doShake(tier === 3 ? 8 : 5), (tier - 1) * 150);
   };
 
   const showEff = (txt: string) => {
@@ -145,12 +209,12 @@ export default function BattleScreen() {
       useNativeDriver: false,
     }).start();
 
-    // 特效 + 音效
+    // 特效 + 音效（分屬性 + 威力分級多段）
     sfx.moveSfx(meta.fx as any, tier);
     sfx.hitSfx();
     haptic(tier >= 3 ? 'heavy' : 'light');
-    spawnBurst(defSide, meta.color, tier >= 3 ? 16 : tier * 5 + 4);
-    if (meta.fx === 'fire' || meta.fx === 'bolt' || res.eff === 'super') flash();
+    typeFx(meta.fx, defSide, meta.color, move.power);
+    if (res.eff === 'super') flash();
     // 被打震動
     Animated.sequence([
       Animated.timing(dAnim.tx, { toValue: -6, duration: 40, useNativeDriver: true }),
@@ -212,7 +276,7 @@ export default function BattleScreen() {
   const foeMeta = typeMeta(foe.type);
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, { transform: [{ translateX: shakeA }] }]}>
       {/* 效果文字（固定最上方） */}
       <Animated.View
         pointerEvents="none"
@@ -238,9 +302,11 @@ export default function BattleScreen() {
         <HpCard fighter={mine} hpAnim={hpMyA} meta={myMeta} />
       </View>
 
-      {/* 粒子 */}
+      {/* 特效層 */}
+      {bolts.map((b) => <Bolt key={b.id} side={b.side} ox={b.ox} />)}
+      {rings.map((r) => <Ring key={r.id} side={r.side} color={r.color} size={r.size} ox={r.ox} oy={r.oy} />)}
       {parts.map((p) => (
-        <Particle key={p.id} side={p.side} color={p.color} dx={p.dx} dy={p.dy} />
+        <Particle key={p.id} side={p.side} color={p.color} dx={p.dx} dy={p.dy} size={p.size} spin={p.spin} ox={p.ox} oy={p.oy} />
       ))}
 
       {/* 面板 */}
@@ -286,7 +352,7 @@ export default function BattleScreen() {
           </View>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -330,38 +396,92 @@ function HpCard({ fighter, hpAnim, meta }: { fighter: Fighter; hpAnim: Animated.
   );
 }
 
-function Particle({ side, color, dx, dy }: { side: 'me' | 'foe'; color: string; dx: number; dy: number }) {
+function Particle({ side, color, dx, dy, size, spin, ox, oy }: { side: 'me' | 'foe'; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(a, { toValue: 1, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(a, { toValue: 1, duration: 520, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   }, [a]);
-  const top = side === 'foe' ? 92 : undefined;
-  const bottom = side === 'me' ? 150 : undefined;
+  const transform: any[] = [
+    { translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, dx] }) },
+    { translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, dy] }) },
+  ];
+  if (spin) transform.push({ rotate: a.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '260deg'] }) });
   return (
     <Animated.View
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: side === 'foe' ? undefined : 70,
-        right: side === 'foe' ? 70 : undefined,
-        top,
-        bottom,
-        width: 9,
-        height: 9,
-        borderRadius: 5,
+        left: side === 'foe' ? undefined : 74 + ox,
+        right: side === 'foe' ? 74 - ox : undefined,
+        top: side === 'foe' ? 96 + oy : undefined,
+        bottom: side === 'me' ? 96 + oy : undefined,
+        width: size,
+        height: size,
+        borderRadius: spin ? 3 : size / 2,
         backgroundColor: color,
         opacity: a.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-        transform: [
-          { translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, dx] }) },
-          { translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, dy] }) },
-        ],
+        transform,
+      }}
+    />
+  );
+}
+
+function Ring({ side, color, size, ox, oy }: { side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: 560, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [a]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: side === 'foe' ? undefined : 78 + ox - size / 2,
+        right: side === 'foe' ? 78 - ox - size / 2 : undefined,
+        top: side === 'foe' ? 100 + oy - size / 2 : undefined,
+        bottom: side === 'me' ? 100 + oy - size / 2 : undefined,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 4,
+        borderColor: color,
+        opacity: a.interpolate({ inputRange: [0, 1], outputRange: [0.85, 0] }),
+        transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.3, 2] }) }],
+      }}
+    />
+  );
+}
+
+function Bolt({ side, ox }: { side: 'me' | 'foe'; ox: number }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(a, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(a, { toValue: 0.3, duration: 60, useNativeDriver: true }),
+      Animated.timing(a, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(a, { toValue: 0, duration: 100, useNativeDriver: true }),
+    ]).start();
+  }, [a]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: side === 'foe' ? undefined : 78 + ox,
+        right: side === 'foe' ? 78 - ox : undefined,
+        top: side === 'foe' ? -30 : undefined,
+        bottom: side === 'me' ? -30 : undefined,
+        width: 3,
+        height: 150,
+        backgroundColor: '#F2C230',
+        opacity: a,
       }}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgElevated },
+  screen: { flex: 1, backgroundColor: colors.bgElevated, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.xl },
   dim: { color: colors.textDim, fontSize: font.size.md, textAlign: 'center' },
   effWrap: { position: 'absolute', top: 12, left: 0, right: 0, alignItems: 'center', zIndex: 30 },
