@@ -1,0 +1,279 @@
+<title>PawDojo · 插畫風視覺提案</title>
+<style>
+  :root{
+    --canvas:#F3E9DA; --canvas-2:#EADBC6;
+    --ink:#2E2A26; --ink-dim:#6E6558;
+    --coral:#E8805C; --coral-deep:#D2643F;
+    --sage:#5E9B7E; --teal:#3F8E8A;
+    --butter:#E7B24C; --plum:#B48BC4;
+    --peach:#FBE1D2; --mint:#DDEBDF; --cream:#FBF6EE; --sky:#D9E8EC; --lilac:#EADFF0;
+    --sans:"ui-rounded","SF Pro Rounded",-apple-system,system-ui,"PingFang TC","Noto Sans TC",sans-serif;
+  }
+  @media (prefers-color-scheme:dark){ :root{ --canvas:#2A2118; --canvas-2:#352A1E; --ink-page:#F3E9DA; } }
+  :root[data-theme="light"]{ --canvas:#F3E9DA; --canvas-2:#EADBC6; }
+  :root[data-theme="dark"]{ --canvas:#2A2118; --canvas-2:#352A1E; }
+
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:
+      radial-gradient(120% 90% at 12% 0%, var(--canvas-2), transparent 60%),
+      var(--canvas);
+      color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .page{max-width:900px;margin:0 auto;padding:clamp(22px,5vw,54px) clamp(16px,4vw,40px)}
+
+  /* 標頭 */
+  .head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+  .logo{width:56px;height:56px;border-radius:20px;background:var(--coral);display:grid;place-items:center;box-shadow:0 8px 20px rgba(210,100,63,.35);transform:rotate(-4deg)}
+  .head h1{margin:0;font-size:clamp(26px,4.5vw,36px);font-weight:800;letter-spacing:-.02em;color:var(--ink-page,var(--ink))}
+  .head p{margin:2px 0 0;color:var(--ink-dim);font-weight:600;font-size:14px}
+  .swatches{display:flex;gap:8px;margin:18px 0 30px;flex-wrap:wrap}
+  .sw{width:30px;height:30px;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+
+  .stage{display:flex;gap:clamp(20px,5vw,44px);flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .col .cap{font-weight:800;color:var(--ink-page,var(--ink));font-size:15px}
+  .col .cap small{display:block;font-weight:600;color:var(--ink-dim);font-size:12px;text-align:center;margin-top:2px}
+
+  /* 手機外框 */
+  .phone{width:320px;max-width:86vw;background:#FBF6EE;border-radius:44px;padding:12px;
+    box-shadow:0 30px 60px -18px rgba(60,40,20,.45), 0 0 0 2px rgba(255,255,255,.6) inset;position:relative}
+  .screen{background:#FBF6EE;border-radius:34px;overflow:hidden;position:relative;height:640px}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#2E2A26;border-radius:16px;z-index:40}
+  .sb{position:relative;z-index:30;display:flex;justify-content:space-between;align-items:center;padding:14px 22px 4px;font-size:12px;font-weight:800;color:var(--ink)}
+  .scroll{position:absolute;inset:0;overflow:hidden}
+
+  /* 有機背景色塊 */
+  .blob{position:absolute;border-radius:50%;filter:blur(2px);opacity:.9;z-index:0}
+
+  /* 通用卡片 */
+  .card{background:#fff;border-radius:26px;box-shadow:0 10px 26px -14px rgba(80,50,20,.35);position:relative;z-index:2}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:800}
+  .btn{border:0;border-radius:999px;font-family:var(--sans);font-weight:800;font-size:14px;padding:11px 16px;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+  .btn.coral{background:var(--coral);color:#fff;box-shadow:0 8px 16px -6px rgba(210,100,63,.5)}
+  .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 2px var(--canvas-2)}
+
+  .petart{display:block;width:100%;height:100%}
+  .doodle{position:absolute;z-index:3;pointer-events:none}
+
+  /* ---------- A. 寵物檔案 ---------- */
+  .pf-hero{height:150px;position:relative;overflow:hidden;background:
+      radial-gradient(120% 120% at 80% -10%, var(--peach), transparent 55%),
+      linear-gradient(160deg,#FBD9A6,#F5B78B)}
+  .pf-hero .h-doodle{position:absolute;opacity:.5}
+  .pf-avatar{width:112px;height:112px;border-radius:32px;background:var(--mint);position:absolute;left:22px;bottom:-46px;z-index:5;
+     box-shadow:0 12px 26px -10px rgba(60,40,20,.5), 0 0 0 6px #FBF6EE;overflow:hidden;display:grid;place-items:center}
+  .pf-body{padding:58px 22px 18px}
+  .pf-name{display:flex;align-items:center;gap:8px;font-size:23px;font-weight:800;letter-spacing:-.01em}
+  .pf-row{display:flex;align-items:center;gap:6px;color:var(--ink-dim);font-weight:600;font-size:13px;margin-top:6px}
+  .pf-bio{color:var(--ink);font-size:13.5px;line-height:1.5;margin:12px 0 0}
+  .pf-stats{display:flex;gap:26px;margin:16px 0}
+  .pf-stats .n{font-size:19px;font-weight:800}
+  .pf-stats .l{font-size:11px;color:var(--ink-dim);font-weight:600}
+  .pf-actions{display:flex;gap:10px}
+  .pf-actions .btn{flex:1}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:16px}
+  .tile{aspect-ratio:1;border-radius:16px;overflow:hidden;position:relative;display:grid;place-items:center}
+
+  /* ---------- B. 探索動態 ---------- */
+  .df-head{padding:6px 20px 0}
+  .df-title{font-size:26px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+  .filters{display:flex;gap:8px;margin:14px 0 4px;overflow:hidden}
+  .filter{padding:8px 15px;border-radius:999px;font-size:13px;font-weight:800;background:#fff;color:var(--ink-dim);box-shadow:inset 0 0 0 2px var(--canvas-2)}
+  .filter.on{background:var(--ink);color:#FBF6EE;box-shadow:none}
+  .feed{padding:14px 16px 26px;display:flex;flex-direction:column;gap:16px}
+  .post{overflow:hidden}
+  .post-h{display:flex;align-items:center;gap:10px;padding:12px 14px}
+  .post-av{width:42px;height:42px;border-radius:14px;overflow:hidden;display:grid;place-items:center;flex:none}
+  .post-h .nm{font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:6px}
+  .post-h .mt{font-size:11.5px;color:var(--ink-dim);font-weight:600}
+  .post-media{height:210px;position:relative;overflow:hidden;display:grid;place-items:center}
+  .post-body{padding:12px 14px 15px}
+  .post-cap{font-size:13.5px;line-height:1.5}
+  .post-meta{display:flex;align-items:center;gap:14px;margin-top:10px;color:var(--ink-dim);font-weight:700;font-size:12.5px}
+
+  /* 底部分頁 */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:74px;background:rgba(251,246,238,.94);backdrop-filter:blur(8px);
+    display:flex;justify-content:space-around;align-items:center;padding-bottom:12px;box-shadow:0 -1px 0 rgba(0,0,0,.05);z-index:20}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:#B7AE9E;font-size:10.5px;font-weight:800}
+  .tab.on{color:var(--coral)}
+
+  .foot{margin-top:34px;color:var(--ink-dim);font-size:13px;font-weight:600;text-align:center;line-height:1.7}
+  .foot b{color:var(--ink-page,var(--ink))}
+
+  @media (prefers-reduced-motion:no-preference){
+    .float{animation:fl 6s ease-in-out infinite}
+    @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  }
+</style>
+
+<!-- 可重複使用的插畫（symbol） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cat" viewBox="0 0 120 120">
+    <path d="M28 46 L34 16 L58 40 Z" fill="var(--fur)"/><path d="M92 46 L86 16 L62 40 Z" fill="var(--fur)"/>
+    <path d="M34 40 L37 25 L49 39 Z" fill="var(--fur2)"/><path d="M86 40 L83 25 L71 39 Z" fill="var(--fur2)"/>
+    <circle cx="60" cy="68" r="35" fill="var(--fur)"/>
+    <ellipse cx="60" cy="80" rx="21" ry="15" fill="var(--fur2)" opacity=".6"/>
+    <circle cx="48" cy="65" r="5" fill="#2E2A26"/><circle cx="72" cy="65" r="5" fill="#2E2A26"/>
+    <circle cx="49.6" cy="63.2" r="1.6" fill="#fff"/><circle cx="73.6" cy="63.2" r="1.6" fill="#fff"/>
+    <path d="M55 75 h10 l-5 5 Z" fill="#E8805C"/>
+    <path d="M60 80 q-4 5 -9 3 M60 80 q4 5 9 3" stroke="#2E2A26" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <g stroke="#2E2A26" stroke-width="1.8" stroke-linecap="round" opacity=".55"><path d="M40 73 h-17"/><path d="M40 79 h-16"/><path d="M80 73 h17"/><path d="M80 79 h16"/></g>
+  </symbol>
+  <symbol id="dog" viewBox="0 0 120 120">
+    <ellipse cx="29" cy="58" rx="14" ry="27" fill="var(--fur2)"/><ellipse cx="91" cy="58" rx="14" ry="27" fill="var(--fur2)"/>
+    <circle cx="60" cy="58" r="34" fill="var(--fur)"/>
+    <ellipse cx="60" cy="77" rx="23" ry="18" fill="var(--fur2)"/>
+    <circle cx="48" cy="54" r="5" fill="#2E2A26"/><circle cx="72" cy="54" r="5" fill="#2E2A26"/>
+    <circle cx="49.6" cy="52.2" r="1.6" fill="#fff"/><circle cx="73.6" cy="52.2" r="1.6" fill="#fff"/>
+    <ellipse cx="60" cy="71" rx="6.5" ry="5" fill="#2E2A26"/>
+    <path d="M60 76 v6 M60 82 q-6 4 -11 1 M60 82 q6 4 11 1" stroke="#2E2A26" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="paw" viewBox="0 0 24 24"><circle cx="6" cy="10" r="2.4"/><circle cx="11" cy="7" r="2.4"/><circle cx="17" cy="9" r="2.4"/><path d="M7 15c0-3 3-4 5-4s5 1 5 4-3 4.5-5 4.5S7 18 7 15Z"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.6-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.6C19 15.4 12 20 12 20Z"/></symbol>
+  <symbol id="spark" viewBox="0 0 24 24"><path d="M12 2c.6 4.8 2.6 6.8 7.4 7.4-4.8.6-6.8 2.6-7.4 7.4-.6-4.8-2.6-6.8-7.4-7.4C9.4 8.8 11.4 6.8 12 2Z"/></symbol>
+</svg>
+
+<div class="page">
+  <div class="head">
+    <div class="logo"><svg width="30" height="30" fill="#fff"><use href="#paw"/></svg></div>
+    <div>
+      <h1>PawDojo · 插畫風提案</h1>
+      <p>暖色手繪感 · 有機色塊 · 圓潤字體 — v1 視覺方向</p>
+    </div>
+  </div>
+  <div class="swatches">
+    <div class="sw" style="background:#E8805C"></div>
+    <div class="sw" style="background:#5E9B7E"></div>
+    <div class="sw" style="background:#E7B24C"></div>
+    <div class="sw" style="background:#FBE1D2"></div>
+    <div class="sw" style="background:#DDEBDF"></div>
+    <div class="sw" style="background:#D9E8EC"></div>
+    <div class="sw" style="background:#EADFF0"></div>
+    <div class="sw" style="background:#2E2A26"></div>
+  </div>
+
+  <div class="stage">
+    <!-- ========== A. 寵物檔案頁 ========== -->
+    <div class="col">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="sb"><span>9:41</span><span>􀙲 􀖇 􀛨</span></div>
+        <div class="scroll">
+          <div class="pf-hero">
+            <svg class="h-doodle float" style="top:20px;right:26px" width="30" height="30" fill="#fff"><use href="#spark"/></svg>
+            <svg class="h-doodle" style="top:64px;right:70px;opacity:.4" width="20" height="20" fill="#fff"><use href="#heart"/></svg>
+            <svg class="h-doodle" style="bottom:14px;right:24px;opacity:.45" width="26" height="26" fill="#fff"><use href="#paw"/></svg>
+          </div>
+          <div class="pf-avatar" style="background:#FBE1D2">
+            <svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:88%;height:88%"><use href="#cat"/></svg>
+          </div>
+
+          <div class="pf-body">
+            <div class="pf-name">麻糬
+              <svg width="18" height="18" fill="#E8805C" style="opacity:.9"><use href="#paw"/></svg>
+            </div>
+            <div style="margin-top:8px"><span class="chip" style="background:#FBE1D2;color:#C25E38">🧡 待認養</span></div>
+            <div class="pf-row">📍 大安區・巷口便利商店旁</div>
+            <p class="pf-bio">親人的三花貓，會主動討摸、愛曬太陽。志工每天餵食，正在找一個溫暖的家。</p>
+
+            <div class="pf-stats">
+              <div><div class="n">12</div><div class="l">紀錄</div></div>
+              <div><div class="n">342</div><div class="l">關注</div></div>
+              <div><div class="n">3</div><div class="l">照顧者</div></div>
+            </div>
+
+            <div class="pf-actions">
+              <button class="btn coral"><svg width="16" height="16" fill="#fff"><use href="#heart"/></svg> 關注</button>
+              <button class="btn ghost">＋ 新增紀錄</button>
+            </div>
+
+            <div class="grid">
+              <div class="tile" style="background:#DDEBDF"><svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:74%;height:74%"><use href="#cat"/></svg></div>
+              <div class="tile" style="background:#FBE1D2"><svg class="petart" style="--fur:#B98A63;--fur2:#E6C6A6;width:74%;height:74%"><use href="#cat"/></svg></div>
+              <div class="tile" style="background:#D9E8EC"><svg class="petart" style="--fur:#7C7C86;--fur2:#C3C3CC;width:74%;height:74%"><use href="#cat"/></svg></div>
+              <div class="tile" style="background:#EADFF0"><svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:74%;height:74%"><use href="#cat"/></svg></div>
+              <div class="tile" style="background:#F6E7C4"><svg class="petart" style="--fur:#5F5F68;--fur2:#B6B6BF;width:74%;height:74%"><use href="#cat"/></svg></div>
+              <div class="tile" style="background:#FBE1D2"><svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:74%;height:74%"><use href="#cat"/></svg></div>
+            </div>
+          </div>
+          <div style="height:80px"></div>
+        </div>
+      </div></div>
+      <div class="cap">寵物檔案頁<small>浪浪 · 待認養 · 照片牆</small></div>
+    </div>
+
+    <!-- ========== B. 探索動態牆 ========== -->
+    <div class="col">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="sb"><span>9:41</span><span>􀙲 􀖇 􀛨</span></div>
+        <div class="scroll">
+          <div class="blob" style="width:180px;height:180px;background:#FBE1D2;top:-40px;right:-40px"></div>
+          <div class="blob" style="width:120px;height:120px;background:#DDEBDF;top:120px;left:-50px"></div>
+
+          <div class="df-head" style="position:relative;z-index:2">
+            <div class="df-title">探索 <svg width="22" height="22" fill="#E7B24C"><use href="#spark"/></svg></div>
+            <div class="filters">
+              <div class="filter on">全部</div>
+              <div class="filter">浪浪</div>
+              <div class="filter">追蹤中</div>
+            </div>
+          </div>
+
+          <div class="feed">
+            <!-- 個人寵物貼文 -->
+            <div class="card post">
+              <div class="post-h">
+                <div class="post-av" style="background:#D9E8EC"><svg class="petart" style="--fur:#6E6E78;--fur2:#BEBEC7;width:84%;height:84%"><use href="#dog"/></svg></div>
+                <div style="flex:1">
+                  <div class="nm">可可 <span class="chip" style="background:#DDEBDF;color:#3F7D64;padding:2px 8px;font-size:10px">我的</span></div>
+                  <div class="mt">2 小時前</div>
+                </div>
+                <svg width="20" height="20" fill="#C9BFAE"><use href="#paw"/></svg>
+              </div>
+              <div class="post-media" style="background:radial-gradient(120% 120% at 30% 20%,#EAF3EC,#CFE6D6)">
+                <svg class="petart" style="--fur:#6E6E78;--fur2:#BEBEC7;width:56%;height:78%"><use href="#dog"/></svg>
+                <svg class="doodle" style="top:18px;right:22px" width="24" height="24" fill="#5E9B7E" opacity=".5"><use href="#spark"/></svg>
+              </div>
+              <div class="post-body">
+                <div class="post-cap">今天散步遇到好多朋友，累癱在草地上 🐾</div>
+                <div class="post-meta"><span style="display:flex;align-items:center;gap:5px"><svg width="15" height="15" fill="#E8805C"><use href="#heart"/></svg> 86</span><span>· 河濱公園</span></div>
+              </div>
+            </div>
+
+            <!-- 浪浪貼文 -->
+            <div class="card post">
+              <div class="post-h">
+                <div class="post-av" style="background:#FBE1D2"><svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:84%;height:84%"><use href="#cat"/></svg></div>
+                <div style="flex:1">
+                  <div class="nm">麻糬 <span class="chip" style="background:#FBE1D2;color:#C25E38;padding:2px 8px;font-size:10px">待認養</span></div>
+                  <div class="mt">共筆紀錄 · Aki</div>
+                </div>
+                <svg width="20" height="20" fill="#C9BFAE"><use href="#paw"/></svg>
+              </div>
+              <div class="post-media" style="background:radial-gradient(120% 120% at 70% 20%,#FCEfe0,#F7D9BE)">
+                <svg class="petart" style="--fur:#E8945C;--fur2:#F6C89E;width:52%;height:80%"><use href="#cat"/></svg>
+                <svg class="doodle" style="bottom:16px;left:20px" width="22" height="22" fill="#E8805C" opacity=".5"><use href="#heart"/></svg>
+              </div>
+              <div class="post-body">
+                <div class="post-cap">在店門口曬太陽，看到人就喵喵叫討罐罐，超親人的！</div>
+                <div class="post-meta"><span style="display:flex;align-items:center;gap:5px"><svg width="15" height="15" fill="#E8805C"><use href="#heart"/></svg> 128</span><span>· 大安區</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tab"><svg width="22" height="22" fill="none" stroke="#B7AE9E" stroke-width="2"><path d="M4 9 11 4l7 5v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z"/></svg>地圖</div>
+          <div class="tab on"><svg width="22" height="22" fill="#E8805C"><use href="#spark"/></svg>探索</div>
+          <div class="tab"><svg width="22" height="22" fill="none" stroke="#B7AE9E" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M9 8h4"/></svg>排行</div>
+          <div class="tab"><svg width="22" height="22" fill="#B7AE9E"><use href="#paw"/></svg>我的</div>
+        </div>
+      </div></div>
+      <div class="cap">探索動態牆<small>混合個人寵物 + 浪浪 · 可篩選</small></div>
+    </div>
+  </div>
+
+  <p class="foot">
+    <b>這是插畫風方向提案</b>：寵物用手繪向量插畫呈現（可換成真照片或保留插畫風）。<br>
+    覺得對味 → 我把這套色彩與插畫語言套進真 App；想更獨特 → 換上專業繪師或開源插畫素材。
+  </p>
+</div>
