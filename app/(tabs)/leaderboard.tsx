@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PetMedia } from '@/components/PetMedia';
 import { useStore } from '@/store/useStore';
@@ -7,8 +8,12 @@ import { colors, petEmoji, radius, spacing } from '@/theme';
 const medal = ['🥇', '🥈', '🥉'];
 
 export default function LeaderboardScreen() {
-  const leaderboard = useStore((s) => s.getLeaderboard());
+  const entries = useStore((s) => s.entries);
   const gyms = useStore((s) => s.gyms);
+  const leaderboard = useMemo(
+    () => [...entries].sort((a, b) => b.votes - a.votes).slice(0, 50),
+    [entries],
+  );
 
   const gymName = (gymId: string) =>
     gyms.find((g) => g.id === gymId)?.name ?? '道館';

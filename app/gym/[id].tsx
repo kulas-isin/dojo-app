@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
@@ -11,14 +12,36 @@ export default function GymScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const gymId = String(id);
 
-  const gym = useStore((s) => s.gyms.find((g) => g.id === gymId));
-  const champion = useStore((s) => s.getChampion(gymId));
-  const battle = useStore((s) => s.getActiveBattle(gymId));
-  const entries = useStore((s) => s.getGymEntries(gymId));
-  const votedSide = useStore((s) => (battle ? s.votedBattles[battle.id] : undefined));
+  // 直接選取原始陣列，衍生資料用 useMemo 計算，避免每次 render 產生新陣列
+  // 造成 Zustand 的無限重繪。
+  const gyms = useStore((s) => s.gyms);
+  const allEntries = useStore((s) => s.entries);
+  const battles = useStore((s) => s.battles);
+  const votedBattles = useStore((s) => s.votedBattles);
   const voteBattle = useStore((s) => s.voteBattle);
   const resolveBattle = useStore((s) => s.resolveBattle);
-  const getEntry = useStore((s) => s.getEntry);
+
+  const gym = useMemo(() => gyms.find((g) => g.id === gymId), [gyms, gymId]);
+  const entries = useMemo(
+    () =>
+      allEntries
+        .filter((e) => e.gymId === gymId)
+        .sort((a, b) => b.votes - a.votes),
+    [allEntries, gymId],
+  );
+  const champion = useMemo(
+    () =>
+      gym?.championEntryId
+        ? allEntries.find((e) => e.id === gym.championEntryId)
+        : undefined,
+    [gym, allEntries],
+  );
+  const battle = useMemo(
+    () => battles.find((b) => b.gymId === gymId && b.status === 'active'),
+    [battles, gymId],
+  );
+  const votedSide = battle ? votedBattles[battle.id] : undefined;
+  const getEntry = (entryId: string) => allEntries.find((e) => e.id === entryId);
 
   if (!gym) {
     return (
