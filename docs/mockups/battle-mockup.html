@@ -43,8 +43,20 @@
   .fill{height:100%;border-radius:7px;transition:width .5s ease, background .5s}
   .hpnum{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:3px;text-align:right}
 
-  .dmg{position:absolute;font-weight:900;font-size:26px;color:var(--coral);text-shadow:0 2px 0 #fff;pointer-events:none;animation:floatUp .8s forwards}
-  @keyframes floatUp{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-40px);opacity:0}}
+  .avatar svg{transition:filter .2s}
+  .avatar.idle svg{animation:breathe 3.2s ease-in-out infinite}
+  @keyframes breathe{50%{transform:translateY(-3px) scale(1.02)}}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:16}
+  .flash.go{animation:flash .3s}
+  @keyframes flash{0%{opacity:0}18%{opacity:.72}100%{opacity:0}}
+  .particle{position:absolute;width:9px;height:9px;border-radius:50%;pointer-events:none;z-index:14;transition:transform .5s cubic-bezier(.2,.7,.3,1),opacity .5s}
+  .ring{position:absolute;width:60px;height:60px;border-radius:50%;border:4px solid var(--butter);opacity:0;pointer-events:none;z-index:12}
+  .ring.go{animation:ring .55s}
+  @keyframes ring{0%{opacity:.85;transform:scale(.3)}100%{opacity:0;transform:scale(2)}}
+  .dmg{position:absolute;font-weight:900;font-size:26px;color:var(--coral);text-shadow:0 2px 0 #fff;pointer-events:none;animation:floatUp .85s cubic-bezier(.2,.9,.3,1) forwards}
+  .dmg.super{font-size:36px;color:#E8805C}
+  .dmg.weak{font-size:20px;color:#8a8375}
+  @keyframes floatUp{0%{transform:translateY(6px) scale(.5);opacity:0}18%{transform:translateY(0) scale(1.25);opacity:1}32%{transform:scale(1)}100%{transform:translateY(-46px) scale(1);opacity:0}}
   .eff{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(.6);font-weight:900;font-size:22px;
      color:var(--butter);text-shadow:0 2px 0 rgba(0,0,0,.15);opacity:0;pointer-events:none}
   .eff.show{animation:pop .9s}
@@ -95,10 +107,11 @@
 <div class="wrap">
   <div class="topbar">⚔️ 大安森林公園道館 · 對戰</div>
   <div class="arena" id="arena">
+    <div class="flash" id="flash"></div>
     <div class="eff" id="eff"></div>
 
     <div class="side enemy">
-      <div class="avatar" id="enemyAv"><svg style="--fur:#B98A63;--fur2:#E6C6A6"><use href="#dog"/></svg></div>
+      <div class="avatar idle" id="enemyAv"><svg style="--fur:#B98A63;--fur2:#E6C6A6"><use href="#dog"/></svg></div>
       <div class="hpbox">
         <div class="hprow1"><span class="nm">阿福 <span class="chip" style="background:#3F8E8A">💧黏人精</span></span><span class="lv">Lv.5</span></div>
         <div class="track"><div class="fill" id="enemyHp"></div></div>
@@ -109,7 +122,7 @@
     <div style="height:6px"></div>
 
     <div class="side mine">
-      <div class="avatar" id="myAv"><svg style="--fur:#E8945C;--fur2:#F6C89E"><use href="#cat"/></svg></div>
+      <div class="avatar idle" id="myAv"><svg style="--fur:#E8945C;--fur2:#F6C89E"><use href="#cat"/></svg></div>
       <div class="hpbox">
         <div class="hprow1"><span class="nm">麻糬 <span class="chip" style="background:#C0872E">⚡過動</span></span><span class="lv">Lv.5</span></div>
         <div class="track"><div class="fill" id="myHp"></div></div>
@@ -150,15 +163,46 @@
   }
 
   var $=function(id){return document.getElementById(id)};
-  function hpColor(p){ return p>50?'#5E9B7E':p>22?'#E7B24C':'#E8805C'; }
+  function hpGrad(p){
+    var a = p>50?'#6FB08E':p>22?'#EBBE5C':'#EE9270';
+    var b = p>50?'#4F8F6C':p>22?'#D19A2E':'#D2643F';
+    return 'linear-gradient(180deg,'+a+','+b+')';
+  }
   function paint(){
     [['my',me],['enemy',foe]].forEach(function(x){
       var pct=Math.max(0,x[1].hp/x[1].maxHp*100);
       $(x[0]+'Hp').style.width=pct+'%';
-      $(x[0]+'Hp').style.background=hpColor(pct);
+      $(x[0]+'Hp').style.backgroundImage=hpGrad(pct);
       $(x[0]+'HpNum').textContent=Math.max(0,Math.round(x[1].hp))+' / '+x[1].maxHp;
     });
   }
+  function avCenter(side){
+    var av=$(side==='me'?'myAv':'enemyAv'); var r=av.getBoundingClientRect(); var a=$('arena').getBoundingClientRect();
+    return { x:r.left-a.left+r.width/2, y:r.top-a.top+r.height/2 };
+  }
+  function spawnParticles(side, color, n){
+    if(RM) return;
+    var c=avCenter(side);
+    for(var k=0;k<n;k++){
+      var p=document.createElement('div'); p.className='particle'; p.style.background=color;
+      p.style.left=(c.x-4)+'px'; p.style.top=(c.y-4)+'px'; $('arena').appendChild(p);
+      (function(el){
+        requestAnimationFrame(function(){
+          var ang=Math.random()*6.28, d=26+Math.random()*34;
+          el.style.transform='translate('+Math.cos(ang)*d+'px,'+Math.sin(ang)*d+'px) scale('+(0.4+Math.random()*0.6)+')';
+          el.style.opacity='0';
+        });
+        setTimeout(function(){el.remove()},520);
+      })(p);
+    }
+  }
+  function ring(side){
+    if(RM) return;
+    var c=avCenter(side); var r=document.createElement('div'); r.className='ring';
+    r.style.left=(c.x-30)+'px'; r.style.top=(c.y-30)+'px'; $('arena').appendChild(r);
+    void r.offsetWidth; r.classList.add('go'); setTimeout(function(){r.remove()},560);
+  }
+  function flash(){ if(RM) return; var f=$('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
   function renderMoves(){
     var el=$('moves'); el.innerHTML='';
     me.moves.forEach(function(m,i){
@@ -171,11 +215,11 @@
   function log(t){ $('log').textContent=t; }
   function wait(ms){ return new Promise(function(r){ setTimeout(r, RM?0:ms); }); }
 
-  function floatDmg(side, dmg){
-    var av=$(side==='me'?'myAv':'enemyAv'); var r=av.getBoundingClientRect(); var a=$('arena').getBoundingClientRect();
-    var s=document.createElement('div'); s.className='dmg'; s.textContent='-'+dmg;
-    s.style.left=(r.left-a.left+30)+'px'; s.style.top=(r.top-a.top+10)+'px';
-    $('arena').appendChild(s); setTimeout(function(){s.remove()},800);
+  function floatDmg(side, dmg, eff){
+    var c=avCenter(side);
+    var s=document.createElement('div'); s.className='dmg'+(eff==='super'?' super':eff==='weak'?' weak':''); s.textContent='-'+dmg;
+    s.style.left=(c.x-6)+'px'; s.style.top=(c.y-24)+'px';
+    $('arena').appendChild(s); setTimeout(function(){s.remove()},860);
   }
   function showEff(txt,color){ var e=$('eff'); e.textContent=txt; e.style.color=color; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show'); }
 
@@ -192,15 +236,20 @@
     var m = mult(attacker.type, defender.type);
     var base = ((2*attacker.lv)/5+2)*(move.p*attacker.atk)/Math.max(1,defender.def)/50+2;
     var dmg = Math.max(1, Math.floor(base*m*(0.85+Math.random()*0.15)));
+    var eff = m>1?'super':m<1?'weak':'normal';
     defender.hp -= dmg;
-    // 被打
-    $(defKey==='me'?'myAv':'enemyAv').classList.add('hit');
-    floatDmg(defKey, dmg);
-    if(m>1){ showEff('效果絕佳！','#E8805C'); if(!RM){ $('arena').classList.add('shake'); setTimeout(function(){$('arena').classList.remove('shake')},320);} }
+    // 命中特效
+    var dav = $(defKey==='me'?'myAv':'enemyAv');
+    dav.classList.add('hit');
+    spawnParticles(defKey, m>1?'#E8805C':'#E7B24C', m>1?12:7);
+    floatDmg(defKey, dmg, eff);
+    if(m>1){ flash(); ring(defKey); showEff('效果絕佳！','#E8805C');
+      if(!RM){ $('arena').classList.add('shake'); setTimeout(function(){$('arena').classList.remove('shake')},320);} }
     else if(m<1){ showEff('效果不佳…','#6E6558'); }
+    await wait(90); // 命中頓格，增加重量感
     paint();
-    await wait(520);
-    $(defKey==='me'?'myAv':'enemyAv').classList.remove('hit');
+    await wait(480);
+    dav.classList.remove('hit');
   }
 
   function aiPick(){
@@ -208,7 +257,7 @@
     var best=0,bs=-1; foe.moves.forEach(function(m,i){ var s=m.p*m.acc*mult(foe.type,me.type); if(s>bs){bs=s;best=i;} }); return best;
   }
   function faint(who){
-    var side=who===me?'my':'enemy'; $(side+'Av').classList.add('faint');
+    var side=who===me?'my':'enemy'; var el=$(side+'Av'); el.classList.remove('idle'); el.classList.add('faint');
   }
   async function end(win){
     await wait(400); faint(win?foe:me); await wait(700);
@@ -235,7 +284,9 @@
     busy=false; renderMoves(); log('要出哪一招？');
   }
 
-  window.reset=function(){ $('overlay').classList.remove('show'); $('myAv').classList.remove('faint'); $('enemyAv').classList.remove('faint'); seed(); paint(); busy=false; renderMoves(); log('要出哪一招？'); };
+  window.reset=function(){ $('overlay').classList.remove('show');
+    ['myAv','enemyAv'].forEach(function(id){ $(id).classList.remove('faint'); $(id).classList.add('idle'); });
+    seed(); paint(); busy=false; renderMoves(); log('要出哪一招？'); };
   seed(); paint(); renderMoves();
 })();
 </script>
