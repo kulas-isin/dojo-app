@@ -9,11 +9,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useAuthStore } from '@/auth/authStore';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
-import { Heart, ImagePlus, MapPin, PawPrint, PetIcon } from '@/components/icons';
+import { Heart, ImagePlus, MapPin, PawPrint, PetIcon, Shield } from '@/components/icons';
 import { EmptyState } from '@/illustrations';
-import { canAddRecord, canViewProfile } from '@/permissions';
+import { canAddRecord, canEditProfile, canViewProfile } from '@/permissions';
 import { useStore } from '@/store/useStore';
 import { strayStatusMeta } from '@/strayMeta';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -26,6 +27,7 @@ export default function PetProfileScreen() {
   const pets = useStore((s) => s.pets);
   const allPosts = useStore((s) => s.posts);
   const me = useStore((s) => s.currentUserId);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
   const toggleFollow = useStore((s) => s.toggleFollowPet);
 
   const pet = useMemo(() => pets.find((p) => p.id === petId), [pets, petId]);
@@ -131,7 +133,17 @@ export default function PetProfileScreen() {
       </View>
 
       {isStray ? (
-        <Text style={styles.coop}>🐾 這是共筆檔案，任何人都能幫牠新增紀錄。</Text>
+        <Text style={styles.coop}>這是共筆檔案，任何人都能幫牠新增紀錄。</Text>
+      ) : null}
+
+      {isAdmin || canEditProfile(me, pet) ? (
+        <Button
+          label="審核被檢舉的貼文"
+          icon={Shield}
+          variant="ghost"
+          onPress={() => router.push({ pathname: '/moderation', params: { petId } })}
+          style={{ marginTop: spacing.md }}
+        />
       ) : null}
 
       {posts.length === 0 ? (

@@ -24,6 +24,7 @@ import {
   PawPrint,
   Plus,
   RotateCcw,
+  Shield,
   Swords,
   Trees,
   Trophy,
@@ -120,6 +121,7 @@ export {
   PawPrint,
   Plus,
   RotateCcw,
+  Shield,
   Swords,
   Trophy,
 };

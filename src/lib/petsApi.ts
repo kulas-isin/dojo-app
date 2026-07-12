@@ -153,6 +153,28 @@ export async function deletePostRemote(postId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** 審核佇列：被隱藏或被檢舉過的貼文（RLS 會自動限制為管理員=全站 / 照顧者=自己檔案） */
+export async function fetchModeration(petId?: string): Promise<Post[]> {
+  let q = supabase
+    .from('posts')
+    .select('*')
+    .or('hidden.eq.true,report_count.gt.0')
+    .order('report_count', { ascending: false });
+  if (petId) q = q.eq('pet_id', petId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map(mapPost);
+}
+
+/** 核可（還原）：取消隱藏並標記已核可，之後不再自動隱藏 */
+export async function approvePostRemote(postId: string): Promise<void> {
+  const { error } = await supabase
+    .from('posts')
+    .update({ hidden: false, approved: true })
+    .eq('id', postId);
+  if (error) throw error;
+}
+
 export async function addCommentRemote(
   postId: string,
   userId: string,

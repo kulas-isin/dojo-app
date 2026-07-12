@@ -198,3 +198,47 @@ on conflict (id) do nothing;
 
 create policy "media read" on storage.objects for select using (bucket_id = 'media');
 create policy "media upload" on storage.objects for insert to authenticated with check (bucket_id = 'media');
+
+-- ========== 審核台 / 管理員（Phase 2 續） ==========
+alter table profiles add column if not exists is_admin boolean not null default false;
+alter table posts add column if not exists approved boolean not null default false;
+
+-- 觸發器：已核可(approved)則不再自動隱藏
+create or replace function sync_post_reports() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare c int; ap boolean;
+begin
+  select count(*) into c from post_reports where post_id = new.post_id;
+  select approved into ap from posts where id = new.post_id;
+  update posts set report_count = c, hidden = (c >= 3 and not coalesce(ap, false)) where id = new.post_id;
+  return null;
+end; $$;
+
+-- 讀取：作者 / 管理員 / 該檔案 owner|caretaker（可見隱藏）/ 一般可見的未隱藏
+drop policy if exists "posts read" on posts;
+create policy "posts read" on posts for select using (
+  author_id = auth.uid()
+  or exists (select 1 from profiles pr where pr.id = auth.uid() and pr.is_admin)
+  or exists (select 1 from pets p where p.id = posts.pet_id and (
+       p.owner_id = auth.uid() or p.reporter_id = auth.uid() or auth.uid() = any(p.caretaker_ids)))
+  or (not hidden and exists (select 1 from pets p where p.id = posts.pet_id and (
+       p.visibility = 'public' or p.owner_id = auth.uid() or p.reporter_id = auth.uid() or auth.uid() = any(p.caretaker_ids))))
+);
+
+-- 更新：owner|caretaker|admin（供還原/核可）
+drop policy if exists "posts update" on posts;
+create policy "posts update" on posts for update using (
+  exists (select 1 from profiles pr where pr.id = auth.uid() and pr.is_admin)
+  or exists (select 1 from pets p where p.id = posts.pet_id and (p.owner_id = auth.uid() or auth.uid() = any(p.caretaker_ids)))
+);
+
+-- 刪除：作者 / owner|caretaker / admin
+drop policy if exists "posts delete" on posts;
+create policy "posts delete" on posts for delete using (
+  author_id = auth.uid()
+  or exists (select 1 from profiles pr where pr.id = auth.uid() and pr.is_admin)
+  or exists (select 1 from pets p where p.id = posts.pet_id and (p.owner_id = auth.uid() or auth.uid() = any(p.caretaker_ids)))
+);
+
+-- 設定管理員（改成你的 email）
+-- update profiles set is_admin = true where id in (select id from auth.users where email = 'you@example.com');

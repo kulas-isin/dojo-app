@@ -50,6 +50,7 @@ export default function RootLayout() {
           name="pet/add-post"
           options={{ title: '新增紀錄', presentation: 'modal' }}
         />
+        <Stack.Screen name="moderation" options={{ title: '審核台' }} />
       </Stack>
     </SafeAreaProvider>
   );

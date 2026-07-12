@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AccountCard } from '@/auth/AccountCard';
 import { displayName, useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
-import { Crown, PawPrint, Plus } from '@/components/icons';
+import { Crown, PawPrint, Plus, Shield } from '@/components/icons';
 import { Doodle } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -17,6 +17,7 @@ export default function ProfileScreen() {
   const pets = useStore((s) => s.pets);
   const currentUserId = useStore((s) => s.currentUserId);
   const session = useAuthStore((s) => s.session);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
 
   const shownName = session ? displayName(session) : '訪客（未登入）';
 
@@ -48,6 +49,16 @@ export default function ProfileScreen() {
       {/* 帳號（Phase 2） */}
       <SectionTitle icon={<PawPrint size={20} color={colors.accent} strokeWidth={2.4} />} text="帳號" />
       <AccountCard />
+
+      {isAdmin ? (
+        <Button
+          label="審核台（管理員）"
+          icon={Shield}
+          variant="ghost"
+          onPress={() => router.push('/moderation')}
+          style={{ marginTop: spacing.md }}
+        />
+      ) : null}
 
       {/* 頭銜 */}
       <SectionTitle icon={<Crown size={20} color={colors.gold} strokeWidth={2.4} />} text="我的頭銜" />
