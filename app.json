@@ -31,6 +31,9 @@
       "bundler": "metro",
       "output": "single"
     },
+    "experiments": {
+      "baseUrl": "/dojo-app"
+    },
     "plugins": [
       "expo-router",
       [
