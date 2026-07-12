@@ -1,33 +1,36 @@
 /**
- * PawDojo 設計 Tokens — Claude 溫暖亮色系
- * 暖象牙底、珊瑚主色、深墨文字、留白多。
- * 所有 UI 都應該走這裡的 tokens，不要寫死色碼。
+ * PawDojo 設計 Tokens — 插畫風暖色系
+ * 暖奶油底、珊瑚主色、沙綠與奶油黃、粉彩色塊。
+ * 插畫用於 UI 裝飾與空狀態；寵物照片維持用戶真實上傳。
  */
 
 export const colors = {
   // 底色與表面
-  bg: '#FAF9F5', // 暖象牙
-  bgElevated: '#F2EFE6', // 次層背景
-  card: '#FFFFFF', // 卡片
-  cardAlt: '#F5F2EA', // 卡片內的淡色區塊
-  border: '#E7E2D6', // 邊框
+  bg: '#FBF6EE', // 暖奶油
+  bgElevated: '#F3E9DA', // 次層背景
+  card: '#FFFFFF',
+  cardAlt: '#F5EFE4', // 卡內淡色區塊
+  border: '#EAE0D0',
 
   // 文字
-  text: '#1F1E1C', // 近墨黑
-  textDim: '#77726A', // 次要文字
-  textMuted: '#A8A296', // 更淡的說明文字
-  onColor: '#FFFFFF', // 疊在彩色上的文字
+  text: '#2E2A26', // 暖墨
+  textDim: '#6E6558',
+  textMuted: '#A89E8C',
+  onColor: '#FFFFFF',
 
   // 品牌 / 語意色
-  primary: '#D97757', // 珊瑚（挑戰、主要按鈕）
-  primarySoft: '#F6E1D7', // 珊瑚的淡底
-  accent: '#2F6F5B', // 深沙綠（衛冕、成功、次要）
-  accentSoft: '#DCEAE3',
-  gold: '#B8842B', // 琥珀金（冠軍、頭銜）
-  goldSoft: '#F1E6CC',
+  primary: '#E8805C', // 珊瑚
+  primarySoft: '#FBE1D2', // 珊瑚粉彩底
+  accent: '#5E9B7E', // 沙綠
+  accentSoft: '#DDEBDF',
+  gold: '#C0872E', // 琥珀金（文字可讀）
+  goldSoft: '#F6E7C4',
   danger: '#C0453B',
-  success: '#2F6F5B',
+  success: '#5E9B7E',
 };
+
+/** 粉彩色塊：用於照片牆底、色塊 blob、標籤底等裝飾 */
+export const tints = ['#FBE1D2', '#DDEBDF', '#D9E8EC', '#EADFF0', '#F6E7C4'];
 
 export const spacing = {
   xs: 4,
@@ -39,9 +42,9 @@ export const spacing = {
 };
 
 export const radius = {
-  sm: 10,
-  md: 16,
-  lg: 24,
+  sm: 12,
+  md: 18,
+  lg: 26,
   pill: 999,
 };
 
@@ -63,13 +66,13 @@ export const font = {
   },
 };
 
-/** 卡片預設陰影（亮色系用很淡的柔和陰影） */
+/** 卡片預設陰影（暖色柔和陰影） */
 export const shadow = {
   card: {
-    shadowColor: '#1F1E1C',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowColor: '#5A3A1A',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
 };

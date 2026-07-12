@@ -6,8 +6,9 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { PetMedia } from '@/components/PetMedia';
 import { Crown, GymIcon, Heart, PawPrint, PetIcon, Swords } from '@/components/icons';
+import { EmptyState } from '@/illustrations';
 import { useStore } from '@/store/useStore';
-import { colors, font, radius, shadow, spacing } from '@/theme';
+import { colors, font, radius, shadow, spacing, tints } from '@/theme';
 import { timeLeft } from '@/utils/time';
 
 export default function GymScreen() {
@@ -97,7 +98,12 @@ export default function GymScreen() {
         </View>
       ) : (
         <View style={styles.emptyChampion}>
-          <Text style={styles.dim}>這座道館還沒有衛冕者，第一個上傳的毛孩直接登頂！</Text>
+          <EmptyState
+            doodle="star"
+            tint={tints[4]}
+            title="王座虛位以待"
+            subtitle="還沒有衛冕者，第一個上傳的毛孩直接登頂！"
+          />
         </View>
       )}
 

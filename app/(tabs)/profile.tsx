@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Crown, PawPrint, RotateCcw } from '@/components/icons';
+import { Doodle } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import { timeAgo } from '@/utils/time';
@@ -25,6 +26,12 @@ export default function ProfileScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 頭像卡 */}
       <View style={styles.hero}>
+        <View style={styles.heroDeco} pointerEvents="none">
+          <Doodle name="sparkle" size={18} color={colors.gold} opacity={0.8} />
+        </View>
+        <View style={styles.heroDeco2} pointerEvents="none">
+          <Doodle name="paw" size={22} color={colors.primarySoft} />
+        </View>
         <View style={styles.avatar}>
           <PawPrint size={40} color={colors.primary} strokeWidth={2.2} />
         </View>
@@ -108,8 +115,11 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
     ...shadow.card,
   },
+  heroDeco: { position: 'absolute', top: 16, right: 20 },
+  heroDeco2: { position: 'absolute', top: 24, left: 20 },
   avatar: {
     width: 84,
     height: 84,

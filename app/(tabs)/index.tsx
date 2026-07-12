@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GymMap } from '@/components/GymMap';
 import { PawPrint, Plus } from '@/components/icons';
+import { Doodle } from '@/illustrations';
 import { SEED_CENTER } from '@/data/seed';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -56,6 +57,7 @@ export default function MapScreen() {
         <View style={styles.titleRow}>
           <PawPrint size={26} color={colors.primary} strokeWidth={2.4} />
           <Text style={styles.title}>PawDojo</Text>
+          <Doodle name="sparkle" size={18} color={colors.gold} opacity={0.9} />
         </View>
         <Text style={styles.subtitle}>
           {gyms.length} 座道館等你挑戰 · 邊遛狗邊玩

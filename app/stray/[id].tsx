@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Heart, ImagePlus, MapPin, PetIcon } from '@/components/icons';
+import { EmptyState } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { strayStatusMeta } from '@/strayMeta';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -96,7 +97,11 @@ export default function StrayProfileScreen() {
 
       {/* 照片牆 */}
       {posts.length === 0 ? (
-        <Text style={styles.empty}>還沒有紀錄，幫牠新增第一則生活日記吧！</Text>
+        <EmptyState
+          doodle="paw"
+          title="還沒有紀錄"
+          subtitle="幫牠新增第一則生活日記吧！"
+        />
       ) : (
         <View style={[styles.grid, { gap }]}>
           {posts.map((p, index) => (
