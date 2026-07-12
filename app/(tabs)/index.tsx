@@ -17,19 +17,32 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
 
   useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    let active = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
-        const loc = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
+        // 先抓一次目前位置
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
         });
+        if (active) {
+          setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        }
+        // 之後省電地持續跟隨：走約 8 公尺才更新一次
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 8, timeInterval: 4000 },
+          (l) => setUserLocation({ latitude: l.coords.latitude, longitude: l.coords.longitude }),
+        );
       } catch {
         // 取不到位置就用示範中心點
       }
     })();
+    return () => {
+      active = false;
+      sub?.remove();
+    };
   }, []);
 
   const handlePickLocation = (coordinate: Coordinate) => {

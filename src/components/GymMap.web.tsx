@@ -129,14 +129,35 @@ function SpriteLayer({
   useMapEvents({ move: bump, zoom: bump, resize: bump });
   const project = (lat: number, lng: number) => map.latLngToContainerPoint([lat, lng]);
 
+  // 先算好每個道館在畫面上的位置與距離，近的優先顯示名牌
+  const items = gyms.map((g) => ({
+    g,
+    p: project(g.coordinate.latitude, g.coordinate.longitude),
+    dist: userLocation ? distMeters(userLocation, g.coordinate) : null,
+  }));
+  // 名牌避免重疊：由近到遠貪婪擺放，會撞到已擺放名牌的就先不顯示
+  const placed: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  const showLabel = new Set<string>();
+  [...items]
+    .sort((a, b) => (a.dist ?? 1e12) - (b.dist ?? 1e12))
+    .forEach((it) => {
+      const text = it.g.name + (it.dist != null ? ` · ${fmtDist(it.dist)}` : '');
+      const w = text.length * 9 + 14;
+      const h = 16;
+      const r = { x1: it.p.x - w / 2, y1: it.p.y + 3, x2: it.p.x + w / 2, y2: it.p.y + 3 + h };
+      const clash = placed.some((q) => !(r.x2 < q.x1 || r.x1 > q.x2 || r.y2 < q.y1 || r.y1 > q.y2));
+      if (!clash) {
+        placed.push(r);
+        showLabel.add(it.g.id);
+      }
+    });
+
   return (
     <>
-      {gyms.map((g) => {
-        const p = project(g.coordinate.latitude, g.coordinate.longitude);
+      {items.map(({ g, p, dist }) => {
         const src = g.isStray ? sprites.stray : sprites.dojo;
         const w = g.isStray ? 46 : 42;
         const h = g.isStray ? 34 : 52;
-        const dist = userLocation ? distMeters(userLocation, g.coordinate) : null;
         return (
           <div key={g.id}>
             <img
@@ -153,13 +174,15 @@ function SpriteLayer({
                 cursor: 'pointer', zIndex: 400, display: 'block',
               }}
             />
-            <div
-              className="paw-label"
-              style={{ position: 'absolute', left: p.x, top: p.y + 3, transform: 'translateX(-50%)', zIndex: 401 }}
-            >
-              {g.name}
-              {dist != null ? ` · ${fmtDist(dist)}` : ''}
-            </div>
+            {showLabel.has(g.id) ? (
+              <div
+                className="paw-label"
+                style={{ position: 'absolute', left: p.x, top: p.y + 3, transform: 'translateX(-50%)', zIndex: 401 }}
+              >
+                {g.name}
+                {dist != null ? ` · ${fmtDist(dist)}` : ''}
+              </div>
+            ) : null}
           </div>
         );
       })}
