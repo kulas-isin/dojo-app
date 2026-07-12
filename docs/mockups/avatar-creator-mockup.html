@@ -1,0 +1,288 @@
+<title>PawDojo · 捏臉工作室 Mockup</title>
+<style>
+  :root{
+    --cream:#fbf6ee; --card:#fff; --ink:#241f1b; --ink2:#4a4038;
+    --coral:#e8805c; --coral-dk:#c9613f; --sage:#5e9b7e; --gold:#f6c453;
+    --border:#e6dccb; --dim:#8a7d68;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#17130f; color:var(--ink);
+    font-family:"DejaVu Sans Mono","SFMono-Regular",Menlo,Consolas,monospace;
+    display:flex; align-items:center; justify-content:center; min-height:100%; padding:14px;
+  }
+  .phone{
+    width:100%; max-width:420px; aspect-ratio:9/16; max-height:calc(100vh - 28px);
+    background:var(--cream); border-radius:22px; overflow:hidden; position:relative;
+    border:3px solid #3a332c; box-shadow:0 24px 60px rgba(0,0,0,.55);
+    display:flex; flex-direction:column;
+  }
+  .px{text-shadow:1.5px 1.5px 0 rgba(0,0,0,.18)}
+
+  header{padding:16px 18px 10px; text-align:center}
+  header h1{font-size:20px; letter-spacing:.5px}
+  header h1 b{color:var(--coral)}
+  header p{font-size:11px; color:var(--dim); margin-top:3px; font-weight:700}
+
+  /* mode tabs */
+  .tabs{display:flex; gap:8px; padding:0 18px 12px}
+  .tabs button{
+    flex:1; border:2px solid var(--ink); border-radius:10px; padding:8px 0;
+    font-size:14px; font-weight:800; cursor:pointer; background:var(--card); color:var(--ink);
+    box-shadow:2px 2px 0 rgba(0,0,0,.12); transition:transform .05s;
+  }
+  .tabs button.on{background:var(--coral); color:#fff}
+  .tabs button:active{transform:translate(1px,1px)}
+
+  /* preview */
+  .stage{display:flex; align-items:center; justify-content:center; padding:4px 18px 10px}
+  .frame{
+    position:relative; width:210px; height:210px; border-radius:16px;
+    border:3px solid var(--ink);
+    background:
+      radial-gradient(circle at 50% 62%, #fff 0%, #f4ead9 55%, #ecdcc2 100%);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.6), 4px 5px 0 rgba(0,0,0,.15);
+    display:grid; place-items:center; overflow:hidden;
+  }
+  .frame::before{ /* platform */
+    content:""; position:absolute; bottom:26px; width:120px; height:26px; border-radius:50%;
+    background:rgba(94,155,126,.28);
+  }
+  #pv{width:190px; height:190px; image-rendering:pixelated; position:relative}
+  .dice{
+    position:absolute; top:8px; right:8px; width:34px; height:34px; border-radius:9px;
+    border:2px solid var(--ink); background:var(--gold); font-size:16px; cursor:pointer;
+    box-shadow:2px 2px 0 rgba(0,0,0,.2); z-index:2;
+  }
+  .dice:active{transform:translate(1px,1px)}
+
+  /* controls */
+  .panel{flex:1; overflow-y:auto; padding:2px 16px 10px; display:flex; flex-direction:column; gap:9px}
+  .row{
+    background:var(--card); border:2px solid var(--border); border-radius:12px;
+    padding:9px 11px; display:flex; align-items:center; gap:10px;
+  }
+  .row .lab{font-size:12.5px; font-weight:800; width:46px; flex:none; color:var(--ink2)}
+  .pick{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .pick .val{font-size:13px; font-weight:800; min-width:52px; text-align:center}
+  .pick button{
+    width:28px; height:28px; border-radius:8px; border:2px solid var(--ink); background:var(--cream);
+    font-size:14px; font-weight:900; cursor:pointer; box-shadow:1.5px 1.5px 0 rgba(0,0,0,.15);
+  }
+  .pick button:active{transform:translate(1px,1px)}
+  .swatches{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end}
+  .sw{width:24px; height:24px; border-radius:7px; border:2px solid rgba(0,0,0,.25); cursor:pointer}
+  .sw.on{border:3px solid var(--ink); box-shadow:0 0 0 2px var(--gold)}
+
+  footer{padding:10px 16px 16px}
+  .done{
+    width:100%; border:none; border-radius:14px; padding:14px 0; font-size:16px; font-weight:900;
+    color:#fff; background:var(--coral); cursor:pointer; letter-spacing:1px;
+    box-shadow:0 5px 0 var(--coral-dk); transition:transform .06s,box-shadow .06s;
+  }
+  .done:active{transform:translateY(3px); box-shadow:0 2px 0 var(--coral-dk)}
+
+  .toast{
+    position:absolute; left:50%; top:44%; transform:translate(-50%,-50%) scale(.85);
+    background:var(--ink); color:#fff; border:3px solid #000; border-radius:8px;
+    padding:14px 20px; font-size:14px; font-weight:800; text-align:center; line-height:1.5;
+    box-shadow:5px 6px 0 rgba(0,0,0,.4); opacity:0; pointer-events:none; z-index:9;
+  }
+  .toast b{color:var(--gold)}
+  .toast.show{animation:pop 1.7s ease forwards}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.85)}14%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-54%) scale(1)}}
+  .panel::-webkit-scrollbar{width:0}
+</style>
+
+<div class="phone">
+  <header>
+    <h1 class="px">捏臉<b>工作室</b></h1>
+    <p>選一個角色，左右切換部位、點色塊換色</p>
+  </header>
+
+  <div class="tabs">
+    <button id="tabTrainer" class="on" onclick="setMode('trainer')">🧑 訓練家</button>
+    <button id="tabPet" onclick="setMode('pet')">🐾 寵物</button>
+  </div>
+
+  <div class="stage">
+    <div class="frame">
+      <button class="dice" title="隨機" onclick="randomize()">🎲</button>
+      <canvas id="pv" width="40" height="40"></canvas>
+    </div>
+  </div>
+
+  <div class="panel" id="panel"></div>
+
+  <footer>
+    <button class="done" onclick="save()">完成 · 儲存我的角色</button>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('pv');
+  const g = cv.getContext('2d');
+  const R = (x,y,w,h,c) => { g.fillStyle=c; g.fillRect(x,y,w,h); };
+  const hx = h => [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const shade = (h,f) => { const [r,gg,b]=hx(h); const c=v=>Math.max(0,Math.min(255,Math.round(v*f)));
+    return `rgb(${c(r)},${c(gg)},${c(b)})`; };
+
+  // palettes
+  const skins=['#f6d7b0','#efc199','#dca878','#c0895c','#9c6a44'];
+  const hairColors=['#241a12','#5e3d22','#8a5a2b','#c98a3c','#d94f42','#e8d7c0','#7d8894'];
+  const capColors=['#e8805c','#5e9b7e','#4f86c6','#f6c453','#9b6bd6','#2e2a26','#fbf6ee'];
+  const shirtColors=['#5e9b7e','#e8805c','#4f86c6','#f6c453','#c0453b','#2e2a26','#fbf6ee'];
+  const furColors=['#f4f2ee','#e8975c','#d9bd8f','#8a6b4e','#3a332c','#adb3ba'];
+
+  const cfg = {
+    trainer:{skin:1,hair:0,hairColor:1,cap:1,capColor:0,shirt:0,acc:0},
+    pet:{species:0,fur:1,pattern:2,face:0,collar:1},
+  };
+  const schema = {
+    trainer:[
+      {k:'skin',lab:'膚色',type:'color',pal:skins},
+      {k:'hair',lab:'髮型',type:'pick',opt:['短髮','呆毛','長髮','光頭']},
+      {k:'hairColor',lab:'髮色',type:'color',pal:hairColors},
+      {k:'cap',lab:'帽子',type:'pick',opt:['無','鴨舌帽','貝雷帽','髮帶']},
+      {k:'capColor',lab:'帽色',type:'color',pal:capColors},
+      {k:'shirt',lab:'上衣',type:'color',pal:shirtColors},
+      {k:'acc',lab:'配件',type:'pick',opt:['無','眼鏡','圍巾','耳機']},
+    ],
+    pet:[
+      {k:'species',lab:'物種',type:'pick',opt:['貓','狗']},
+      {k:'fur',lab:'毛色',type:'color',pal:furColors},
+      {k:'pattern',lab:'花紋',type:'pick',opt:['純色','雙色','虎斑','斑點']},
+      {k:'face',lab:'表情',type:'pick',opt:['開心','呆萌','酷']},
+      {k:'collar',lab:'配件',type:'pick',opt:['無','領巾','鈴鐺']},
+    ],
+  };
+  let mode='trainer';
+
+  // ---------- draw: trainer ----------
+  function drawTrainer(c){
+    const skin=skins[c.skin], hair=hairColors[c.hairColor], cap=capColors[c.capColor], shirt=shirtColors[c.shirt];
+    R(12,37,16,2,'rgba(0,0,0,.15)');                 // shadow
+    R(15,31,4,6,'#3a4759'); R(21,31,4,6,'#3a4759');  // legs
+    R(15,36,4,2,'#241f1b'); R(21,36,4,2,'#241f1b');  // shoes
+    R(9,21,3,8,shirt); R(28,21,3,8,shirt);           // arms
+    R(9,28,3,2,skin);  R(28,28,3,2,skin);            // hands
+    R(18,18,4,3,skin);                               // neck
+    R(12,20,16,12,shirt);                            // torso
+    R(12,20,16,2,shade(shirt,1.14));                 // collar hi
+    R(12,7,16,14,skin);                              // head
+    R(11,13,2,3,skin); R(27,13,2,3,skin);            // ears
+    // accessory drawn partly behind hair? draw base face first
+    R(16,13,2,3,'#241f1b'); R(22,13,2,3,'#241f1b');  // eyes
+    R(14,16,2,1,'rgba(232,128,92,.55)'); R(24,16,2,1,'rgba(232,128,92,.55)'); // blush
+    R(18,17,4,1,'#8a5a44');                          // mouth
+    // hair
+    if(c.hair!==3){ R(11,5,18,4,hair); R(11,9,2,5,hair); R(27,9,2,5,hair); }
+    if(c.hair===1){ R(14,3,3,3,hair); R(19,2,3,4,hair); R(24,3,3,3,hair); } // spiky
+    if(c.hair===2){ R(11,9,3,12,hair); R(26,9,3,12,hair); }                  // long
+    // cap
+    if(c.cap===1){ R(13,2,14,3,cap); R(11,4,18,4,cap); R(11,7,18,1,shade(cap,.78)); R(27,7,7,2,cap); }
+    if(c.cap===2){ R(12,2,16,5,cap); R(12,6,16,1,shade(cap,.85)); R(26,1,3,2,cap); }
+    if(c.cap===3){ R(11,6,18,2,cap); }
+    // accessory
+    if(c.acc===1){ // glasses
+      const d='#2e2a26';
+      R(15,12,5,1,d);R(15,15,5,1,d);R(15,12,1,4,d);R(19,12,1,4,d);
+      R(22,12,5,1,d);R(22,15,5,1,d);R(22,12,1,4,d);R(26,12,1,4,d);
+      R(20,13,2,1,d); R(16,13,3,2,'rgba(180,220,235,.6)'); R(23,13,3,2,'rgba(180,220,235,.6)');
+    }
+    if(c.acc===2){ R(12,19,16,3,'#e8805c'); R(24,21,3,4,'#e8805c'); } // scarf
+    if(c.acc===3){ R(11,4,18,2,'#2e2a26'); R(9,11,3,5,'#2e2a26'); R(28,11,3,5,'#2e2a26'); R(9,12,3,1,'#e8805c'); } // headphones
+  }
+
+  // ---------- draw: pet ----------
+  function drawPet(c){
+    const fur=furColors[c.fur], dark=shade(fur,.78), cat=c.species===0;
+    R(11,34,18,2,'rgba(0,0,0,.15)');                 // shadow
+    if(cat){ R(29,20,4,5,fur); R(30,16,3,5,fur); }   // cat tail up
+    else{ R(28,27,6,4,fur); }                        // dog tail
+    R(12,23,16,11,fur);                              // body
+    R(12,23,16,2,shade(fur,1.08));
+    if(cat){                                         // pointy ears
+      R(12,5,4,7,fur); R(13,4,2,3,fur); R(13,8,2,3,shade('#e8887f',1));
+      R(24,5,4,7,fur); R(25,4,2,3,fur); R(25,8,2,3,shade('#e8887f',1));
+    } else {                                          // floppy ears
+      R(8,10,5,10,dark); R(27,10,5,10,dark);
+    }
+    R(11,9,18,15,fur);                               // head
+    R(11,9,18,2,shade(fur,1.06));
+    // pattern
+    if(c.pattern===1){ R(16,17,8,6,'#fbf6ee'); R(15,27,10,7,'#fbf6ee'); }       // bicolor
+    if(c.pattern===2){ [ [13,10,2,6],[17,9,2,4],[21,9,2,4],[25,10,2,6],[14,25,2,6],[18,25,2,6],[22,25,2,6] ].forEach(s=>R(s[0],s[1],s[2],s[3],dark)); } // tabby
+    if(c.pattern===3){ [ [14,26,3,3],[22,25,3,3],[24,29,2,2],[13,12,3,3],[24,12,3,3] ].forEach(s=>R(s[0],s[1],s[2],s[3],dark)); } // spots
+    // face
+    if(c.face===2){ R(13,14,14,3,'#2e2a26'); R(14,14,3,1,'rgba(255,255,255,.7)'); } // cool shades
+    else if(c.face===1){ R(15,14,2,2,'#241f1b'); R(23,15,2,2,'#241f1b'); R(19,21,3,2,'#e8809a'); } // derp + tongue
+    else { R(15,15,3,1,'#241f1b'); R(22,15,3,1,'#241f1b'); }  // happy eyes
+    R(19,18,2,2,'#5a3a2e');                           // nose
+    if(c.face!==2){ R(18,20,1,1,'#5a3a2e'); R(21,20,1,1,'#5a3a2e'); } // mouth dots
+    // collar
+    if(c.collar===1){ R(13,24,14,2,'#e8805c'); R(18,26,3,3,'#e8805c'); }   // bandana
+    if(c.collar===2){ R(12,24,16,2,'#c9613f'); R(19,25,3,3,'#f6c453'); }   // bell
+  }
+
+  function draw(){
+    g.clearRect(0,0,40,40);
+    if(mode==='trainer') drawTrainer(cfg.trainer); else drawPet(cfg.pet);
+  }
+
+  // ---------- UI ----------
+  const panel=document.getElementById('panel');
+  function buildPanel(){
+    panel.innerHTML='';
+    schema[mode].forEach(ctrl=>{
+      const row=document.createElement('div'); row.className='row';
+      const lab=document.createElement('div'); lab.className='lab'; lab.textContent=ctrl.lab; row.appendChild(lab);
+      if(ctrl.type==='pick'){
+        const wrap=document.createElement('div'); wrap.className='pick';
+        const dec=document.createElement('button'); dec.textContent='◀';
+        const val=document.createElement('div'); val.className='val'; val.textContent=ctrl.opt[cfg[mode][ctrl.k]];
+        const inc=document.createElement('button'); inc.textContent='▶';
+        const step=d=>{ const n=ctrl.opt.length; cfg[mode][ctrl.k]=(cfg[mode][ctrl.k]+d+n)%n; val.textContent=ctrl.opt[cfg[mode][ctrl.k]]; draw(); };
+        dec.onclick=()=>step(-1); inc.onclick=()=>step(1);
+        wrap.append(dec,val,inc); row.appendChild(wrap);
+      } else {
+        const wrap=document.createElement('div'); wrap.className='swatches';
+        ctrl.pal.forEach((col,i)=>{
+          const s=document.createElement('div'); s.className='sw'+(cfg[mode][ctrl.k]===i?' on':'');
+          s.style.background=col; s.onclick=()=>{ cfg[mode][ctrl.k]=i; buildPanel(); draw(); };
+          wrap.appendChild(s);
+        });
+        row.appendChild(wrap);
+      }
+      panel.appendChild(row);
+    });
+  }
+
+  window.setMode=(m)=>{
+    mode=m;
+    document.getElementById('tabTrainer').classList.toggle('on',m==='trainer');
+    document.getElementById('tabPet').classList.toggle('on',m==='pet');
+    buildPanel(); draw();
+  };
+  window.randomize=()=>{
+    schema[mode].forEach(ctrl=>{
+      const n = ctrl.type==='pick'?ctrl.opt.length:ctrl.pal.length;
+      cfg[mode][ctrl.k]=Math.floor(Math.random()*n);
+    });
+    buildPanel(); draw();
+  };
+  const toast=document.getElementById('toast');
+  window.save=()=>{
+    toast.innerHTML = mode==='trainer'
+      ? '訓練家造型已儲存！<br><b>地圖與對戰</b>都會換成你 🧑'
+      : '寵物造型已儲存！<br>可當作 <b>對戰 sprite</b> 🐾';
+    toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show');
+  };
+
+  buildPanel(); draw();
+})();
+</script>
