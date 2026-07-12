@@ -161,7 +161,7 @@ export default function GymScreen() {
 
       {/* 發起挑戰 */}
       <Button
-        label={champion ? '上傳毛孩，挑戰衛冕者' : '上傳毛孩，搶下首任王座'}
+        label={champion ? '派出寵物挑戰衛冕者' : '派出寵物搶下首任王座'}
         icon={champion ? Swords : Crown}
         onPress={() => router.push({ pathname: '/gym/challenge', params: { gymId } })}
         style={{ marginTop: spacing.xl }}

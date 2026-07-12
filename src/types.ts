@@ -6,10 +6,12 @@ export interface Coordinate {
   longitude: number;
 }
 
-/** 一筆寵物參賽作品（照片或影片） */
+/** 一筆寵物參賽作品（連動到寵物檔案） */
 export interface Entry {
   id: string;
   gymId: string;
+  /** 連動的寵物檔案 id */
+  petId?: string;
   ownerId: string;
   ownerName: string;
   petName: string;

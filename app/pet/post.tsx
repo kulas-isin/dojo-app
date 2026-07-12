@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -39,10 +38,7 @@ export default function PostViewer() {
 
   const onReport = (postId: string) => {
     if (reportedPosts[postId]) return;
-    Alert.alert('檢舉這則貼文？', '若內容不當，達門檻會自動隱藏待照顧者/管理員審核。', [
-      { text: '取消', style: 'cancel' },
-      { text: '檢舉', style: 'destructive', onPress: () => reportPost(postId) },
-    ]);
+    reportPost(postId);
   };
 
   const pet = useMemo(() => pets.find((p) => p.id === petId), [pets, petId]);

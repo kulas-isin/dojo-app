@@ -2,7 +2,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -33,6 +32,7 @@ export default function AddPostScreen() {
 
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [media, setMedia] = useState<{ uri: string; type: MediaType } | null>(null);
 
   const pickMedia = async () => {
@@ -50,10 +50,11 @@ export default function AddPostScreen() {
   const handleSubmit = async () => {
     if (!media || !petId) return;
     if (!session) {
-      Alert.alert('請先登入', '到「我的」分頁登入後就能發佈紀錄。');
+      setErr('請先到「我的」分頁登入後再發佈紀錄。');
       return;
     }
     setBusy(true);
+    setErr(null);
     try {
       const uploaded = await uploadMedia(media.uri, session.user.id, media.type);
       await addPost({
@@ -65,7 +66,7 @@ export default function AddPostScreen() {
       });
       router.replace(`/pet/${petId}`);
     } catch (e: any) {
-      Alert.alert('發佈失敗', e?.message ?? '請稍後再試');
+      setErr(`發佈失敗：${e?.message ?? '請稍後再試'}`);
     } finally {
       setBusy(false);
     }
@@ -106,6 +107,8 @@ export default function AddPostScreen() {
         multiline
         maxLength={200}
       />
+
+      {err ? <Text style={styles.err}>{err}</Text> : null}
 
       <Button
         label="發佈紀錄"
@@ -155,4 +158,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   multiline: { height: 110, textAlignVertical: 'top' },
+  err: { color: colors.danger, fontSize: font.size.sm, marginTop: spacing.md },
 });

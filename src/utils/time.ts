@@ -9,8 +9,10 @@ export function timeLeft(endsAt: number): string {
 
 export function timeAgo(ts: number): string {
   const ms = Date.now() - ts;
-  const h = Math.floor(ms / (1000 * 60 * 60));
-  if (h < 1) return '剛剛';
+  const min = Math.floor(ms / (1000 * 60));
+  if (min < 1) return '剛剛';
+  if (min < 60) return `${min} 分鐘前`;
+  const h = Math.floor(min / 60);
   if (h < 24) return `${h} 小時前`;
   const d = Math.floor(h / 24);
   return `${d} 天前`;

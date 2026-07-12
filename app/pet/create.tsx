@@ -2,7 +2,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -41,6 +40,7 @@ export default function CreatePetScreen() {
   const session = useAuthStore((s) => s.session);
 
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [petType, setPetType] = useState<PetType>(isStray ? 'cat' : 'dog');
   const [area, setArea] = useState('');
@@ -60,10 +60,11 @@ export default function CreatePetScreen() {
   const handleCreate = async () => {
     if (!avatar || !name.trim()) return;
     if (!session) {
-      Alert.alert('請先登入', '到「我的」分頁登入後就能建立檔案。');
+      setErr('請先到「我的」分頁登入後再建立檔案。');
       return;
     }
     setBusy(true);
+    setErr(null);
     try {
       const uploaded = await uploadMedia(avatar, session.user.id, 'photo');
       const id = await createPet({
@@ -77,7 +78,7 @@ export default function CreatePetScreen() {
       });
       if (id) router.replace(`/pet/${id}`);
     } catch (e: any) {
-      Alert.alert('建立失敗', e?.message ?? '請稍後再試');
+      setErr(`建立失敗：${e?.message ?? '請稍後再試'}`);
     } finally {
       setBusy(false);
     }
@@ -193,6 +194,8 @@ export default function CreatePetScreen() {
         maxLength={120}
       />
 
+      {err ? <Text style={styles.err}>{err}</Text> : null}
+
       <Button
         label={isStray ? '建立浪浪檔案' : '建立寵物檔案'}
         icon={isStray ? HeartHandshake : PawPrint}
@@ -258,4 +261,5 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.text, fontWeight: font.weight.semibold, fontSize: font.size.sm },
+  err: { color: colors.danger, fontSize: font.size.sm, marginTop: spacing.md },
 });

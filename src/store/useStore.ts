@@ -50,6 +50,7 @@ export interface NewGymInput {
 
 export interface NewEntryInput {
   gymId: string;
+  petId?: string;
   petName: string;
   petType: PetType;
   mediaUri: string;
@@ -144,6 +145,11 @@ function authUser() {
     : null;
 }
 
+/** 遊戲用身分：登入用帳號，未登入退回本機示範身分 */
+function gameIdentity(fallback: { id: string; name: string }) {
+  return authUser() ?? fallback;
+}
+
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
@@ -158,7 +164,7 @@ export const useStore = create<StoreState>()(
           isStray: input.isStray ?? false,
           coordinate: input.coordinate,
           championEntryId: null,
-          createdBy: get().user.id,
+          createdBy: gameIdentity(get().user).id,
           createdAt: Date.now(),
         };
         set((s) => ({ gyms: [gym, ...s.gyms] }));
@@ -166,12 +172,13 @@ export const useStore = create<StoreState>()(
       },
 
       submitChallenge: (input) => {
-        const { user } = get();
+        const me = gameIdentity(get().user);
         const entry: Entry = {
           id: uid('entry'),
           gymId: input.gymId,
-          ownerId: user.id,
-          ownerName: user.name,
+          petId: input.petId,
+          ownerId: me.id,
+          ownerName: me.name,
           petName: input.petName.trim() || '神秘毛孩',
           petType: input.petType,
           mediaUri: input.mediaUri,

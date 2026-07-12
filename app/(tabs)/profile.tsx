@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AccountCard } from '@/auth/AccountCard';
 import { displayName, useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
-import { Crown, PawPrint, Plus, RotateCcw } from '@/components/icons';
+import { Crown, PawPrint, Plus } from '@/components/icons';
 import { Doodle } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -17,20 +17,12 @@ export default function ProfileScreen() {
   const pets = useStore((s) => s.pets);
   const currentUserId = useStore((s) => s.currentUserId);
   const session = useAuthStore((s) => s.session);
-  const resetAll = useStore((s) => s.resetAll);
 
   const shownName = session ? displayName(session) : '訪客（未登入）';
 
-  const myEntries = entries.filter((e) => e.ownerId === user.id);
+  const myEntries = entries.filter((e) => e.ownerId === currentUserId);
   const myPets = pets.filter((p) => p.ownerId === currentUserId);
   const totalVotes = myEntries.reduce((sum, e) => sum + e.votes, 0);
-
-  const confirmReset = () => {
-    Alert.alert('重置示範資料', '會清空所有道館與戰績，回到初始狀態。確定嗎？', [
-      { text: '取消', style: 'cancel' },
-      { text: '重置', style: 'destructive', onPress: resetAll },
-    ]);
-  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -113,14 +105,6 @@ export default function ProfileScreen() {
           ))}
         </View>
       )}
-
-      <Button
-        label="重置示範資料"
-        variant="ghost"
-        icon={RotateCcw}
-        onPress={confirmReset}
-        style={{ marginTop: spacing.xl }}
-      />
     </ScrollView>
   );
 }
