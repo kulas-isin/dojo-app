@@ -24,19 +24,26 @@ export default function ChallengeScreen() {
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const pet = myPets.find((p) => p.id === selectedId);
     if (!pet || !gymId) return;
-    submitChallenge({
-      gymId: String(gymId),
-      petId: pet.id,
-      petName: pet.name,
-      petType: pet.petType,
-      mediaUri: pet.avatarUri,
-      mediaType: 'photo',
-    });
-    router.replace(`/gym/${gymId}`);
+    setBusy(true);
+    try {
+      await submitChallenge({
+        gymId: String(gymId),
+        petId: pet.id,
+        petName: pet.name,
+        petType: pet.petType,
+        mediaUri: pet.avatarUri,
+        thumbUri: pet.thumbUri,
+        mediaType: 'photo',
+      });
+      router.replace(`/gym/${gymId}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -101,6 +108,7 @@ export default function ChallengeScreen() {
             label="送出挑戰"
             icon={Swords}
             onPress={handleSubmit}
+            loading={busy}
             disabled={!selectedId}
             style={{ marginTop: spacing.xl }}
           />

@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Castle, Check, GymIcon, HeartHandshake, MapPin } from '@/components/icons';
 import { GYM_ICON_KEYS } from '@/components/icons';
@@ -17,24 +18,40 @@ import { colors, font, radius, spacing } from '@/theme';
 export default function CreateGymScreen() {
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
   const createGym = useStore((s) => s.createGym);
+  const session = useAuthStore((s) => s.session);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState<string>('castle');
   const [isStray, setIsStray] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const latitude = Number(params.latitude ?? 25.0303);
   const longitude = Number(params.longitude ?? 121.5354);
 
-  const handleCreate = () => {
-    const gymId = createGym({
-      name,
-      description,
-      icon,
-      isStray,
-      coordinate: { latitude, longitude },
-    });
-    router.replace(`/gym/${gymId}`);
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    if (!session) {
+      setErr('請先到「我的」分頁登入後再建立道館。');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const gymId = await createGym({
+        name,
+        description,
+        icon,
+        isStray,
+        coordinate: { latitude, longitude },
+      });
+      if (gymId) router.replace(`/gym/${gymId}`);
+    } catch (e: any) {
+      setErr(`建立失敗：${e?.message ?? '請稍後再試'}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -99,10 +116,13 @@ export default function CreateGymScreen() {
         </Text>
       </View>
 
+      {err ? <Text style={styles.err}>{err}</Text> : null}
+
       <Button
         label="建立道館"
         icon={Castle}
         onPress={handleCreate}
+        loading={busy}
         disabled={!name.trim()}
         style={{ marginTop: spacing.xl }}
       />
@@ -175,4 +195,5 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dim: { color: colors.textDim, fontSize: font.size.sm },
   coord: { color: colors.accent, fontSize: font.size.md, fontWeight: font.weight.semibold, marginTop: 4 },
+  err: { color: colors.danger, fontSize: font.size.sm, marginTop: spacing.md },
 });

@@ -14,11 +14,13 @@ import {
   setLikeRemote,
 } from '../lib/petsApi';
 import {
-  seedBattles,
-  seedEntries,
-  seedGyms,
-  seedUser,
-} from '../data/seed';
+  createGymRemote,
+  fetchGyms,
+  resolveBattleRemote,
+  submitChallengeRemote,
+  voteBattleRemote,
+} from '../lib/gymsApi';
+import { seedUser } from '../data/seed';
 import type {
   Battle,
   Comment,
@@ -54,6 +56,7 @@ export interface NewEntryInput {
   petName: string;
   petType: PetType;
   mediaUri: string;
+  thumbUri?: string;
   mediaType: MediaType;
 }
 
@@ -97,10 +100,11 @@ interface StoreState {
   socialLoading: boolean;
 
   // --- actions ---
-  createGym: (input: NewGymInput) => string;
-  submitChallenge: (input: NewEntryInput) => { entryId: string; battleId?: string };
-  voteBattle: (battleId: string, side: 'challenger' | 'defender') => void;
-  resolveBattle: (battleId: string) => void;
+  syncGyms: () => Promise<void>;
+  createGym: (input: NewGymInput) => Promise<string | null>;
+  submitChallenge: (input: NewEntryInput) => Promise<void>;
+  voteBattle: (battleId: string, side: 'challenger' | 'defender') => Promise<void>;
+  resolveBattle: (battleId: string) => Promise<void>;
   syncSocial: () => Promise<void>;
   createPet: (input: NewPetInput) => Promise<string | null>;
   addPost: (input: NewPostInput) => Promise<void>;
@@ -126,9 +130,9 @@ interface StoreState {
 
 const initial = {
   user: seedUser,
-  gyms: seedGyms,
-  entries: seedEntries,
-  battles: seedBattles,
+  gyms: [] as Gym[],
+  entries: [] as Entry[],
+  battles: [] as Battle[],
   votedBattles: {} as Record<string, 'challenger' | 'defender'>,
   pets: [] as Pet[],
   posts: [] as Post[],
@@ -155,128 +159,53 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       ...initial,
 
-      createGym: (input) => {
-        const gym: Gym = {
-          id: uid('gym'),
-          name: input.name.trim() || '無名道館',
-          description: input.description.trim(),
-          icon: input.icon || 'castle',
-          isStray: input.isStray ?? false,
-          coordinate: input.coordinate,
-          championEntryId: null,
-          createdBy: gameIdentity(get().user).id,
-          createdAt: Date.now(),
-        };
-        set((s) => ({ gyms: [gym, ...s.gyms] }));
-        return gym.id;
-      },
-
-      submitChallenge: (input) => {
-        const me = gameIdentity(get().user);
-        const entry: Entry = {
-          id: uid('entry'),
-          gymId: input.gymId,
-          petId: input.petId,
-          ownerId: me.id,
-          ownerName: me.name,
-          petName: input.petName.trim() || '神秘毛孩',
-          petType: input.petType,
-          mediaUri: input.mediaUri,
-          mediaType: input.mediaType,
-          votes: 0,
-          createdAt: Date.now(),
-        };
-
-        const gym = get().gyms.find((g) => g.id === input.gymId);
-        // 道館還沒有衛冕者 → 直接登頂
-        if (!gym || !gym.championEntryId) {
-          set((s) => ({
-            entries: [entry, ...s.entries],
-            gyms: s.gyms.map((g) =>
-              g.id === input.gymId ? { ...g, championEntryId: entry.id } : g,
-            ),
-          }));
-          return { entryId: entry.id };
+      syncGyms: async () => {
+        const u = authUser();
+        try {
+          const data = await fetchGyms(u?.id ?? null);
+          set({
+            gyms: data.gyms,
+            entries: data.entries,
+            battles: data.battles,
+            votedBattles: data.votedBattles,
+          });
+        } catch (e) {
+          console.warn('[syncGyms] 失敗', e);
         }
-
-        // 已有衛冕者 → 建立一場對戰（若已有進行中的對戰則沿用其衛冕者）
-        const existing = get().battles.find(
-          (b) => b.gymId === input.gymId && b.status === 'active',
-        );
-        const defenderId = existing?.defenderEntryId ?? gym.championEntryId;
-        const battle: Battle = {
-          id: uid('battle'),
-          gymId: input.gymId,
-          challengerEntryId: entry.id,
-          defenderEntryId: defenderId,
-          challengerVotes: 0,
-          defenderVotes: 0,
-          status: 'active',
-          createdAt: Date.now(),
-          endsAt: Date.now() + 24 * HOUR,
-        };
-        set((s) => ({
-          entries: [entry, ...s.entries],
-          battles: [battle, ...s.battles],
-        }));
-        return { entryId: entry.id, battleId: battle.id };
       },
 
-      voteBattle: (battleId, side) => {
-        const already = get().votedBattles[battleId];
-        if (already) return; // 一場對戰只能投一票
-        const battle = get().battles.find((b) => b.id === battleId);
-        if (!battle || battle.status !== 'active') return;
-        const entryId =
-          side === 'challenger' ? battle.challengerEntryId : battle.defenderEntryId;
-        set((s) => ({
-          votedBattles: { ...s.votedBattles, [battleId]: side },
-          battles: s.battles.map((b) =>
-            b.id === battleId
-              ? {
-                  ...b,
-                  challengerVotes:
-                    b.challengerVotes + (side === 'challenger' ? 1 : 0),
-                  defenderVotes: b.defenderVotes + (side === 'defender' ? 1 : 0),
-                }
-              : b,
-          ),
-          entries: s.entries.map((e) =>
-            e.id === entryId ? { ...e, votes: e.votes + 1 } : e,
-          ),
-        }));
+      createGym: async (input) => {
+        const u = authUser();
+        if (!u) return null;
+        const id = await createGymRemote(input, u.id);
+        await get().syncGyms();
+        return id;
       },
 
-      resolveBattle: (battleId) => {
+      submitChallenge: async (input) => {
+        const u = authUser();
+        if (!u) return;
+        await submitChallengeRemote(input, u.id, u.name);
+        await get().syncGyms();
+      },
+
+      voteBattle: async (battleId, side) => {
+        const u = authUser();
+        if (!u || get().votedBattles[battleId]) return;
+        await voteBattleRemote(battleId, side, u.id);
+        await get().syncGyms();
+      },
+
+      resolveBattle: async (battleId) => {
+        const u = authUser();
+        if (!u) return;
         const battle = get().battles.find((b) => b.id === battleId);
-        if (!battle || battle.status !== 'active') return;
-        const challengerWins = battle.challengerVotes > battle.defenderVotes;
-        const winnerEntryId = challengerWins
-          ? battle.challengerEntryId
-          : battle.defenderEntryId;
-        const loserEntryId = challengerWins
-          ? battle.defenderEntryId
-          : battle.challengerEntryId;
-
-        const winnerEntry = get().entries.find((e) => e.id === winnerEntryId);
-        const loserEntry = get().entries.find((e) => e.id === loserEntryId);
-        const gym = get().gyms.find((g) => g.id === battle.gymId);
-
-        set((s) => {
-          // 更新對戰狀態
-          const battles = s.battles.map((b) =>
-            b.id === battleId
-              ? { ...b, status: 'finished' as const, winnerEntryId }
-              : b,
-          );
-          // 換上新衛冕者
-          const gyms = s.gyms.map((g) =>
-            g.id === battle.gymId ? { ...g, championEntryId: winnerEntryId } : g,
-          );
-
-          // 若贏家是目前使用者 → 頒發頭銜並記錄戰績
-          let user = s.user;
-          if (winnerEntry?.ownerId === s.user.id) {
+        const gym = battle ? get().gyms.find((g) => g.id === battle.gymId) : undefined;
+        const res = await resolveBattleRemote(battleId);
+        await get().syncGyms();
+        // 若贏家是目前使用者 → 本機頒發頭銜與勝場
+        if (res?.winnerOwnerId && res.winnerOwnerId === u.id) {
+          set((s) => {
             const title: Title = {
               id: uid('title'),
               label: `${gym?.name ?? '道館'} 衛冕者`,
@@ -284,12 +213,9 @@ export const useStore = create<StoreState>()(
               gymName: gym?.name ?? '道館',
               earnedAt: Date.now(),
             };
-            user = { ...s.user, wins: s.user.wins + 1, titles: [title, ...s.user.titles] };
-          } else if (loserEntry?.ownerId === s.user.id) {
-            user = { ...s.user, losses: s.user.losses + 1 };
-          }
-          return { battles, gyms, user };
-        });
+            return { user: { ...s.user, wins: s.user.wins + 1, titles: [title, ...s.user.titles] } };
+          });
+        }
       },
 
       syncSocial: async () => {
@@ -415,13 +341,9 @@ export const useStore = create<StoreState>()(
     {
       name: 'pawdojo-store-v2',
       storage: createJSONStorage(() => AsyncStorage),
-      // 只保存本機遊戲資料；社群（pets/posts/comments）以雲端為準，不本機持久化
+      // 只保存本機頭銜/戰績；道館與社群皆以雲端為準，不本機持久化
       partialize: (s) => ({
         user: s.user,
-        gyms: s.gyms,
-        entries: s.entries,
-        battles: s.battles,
-        votedBattles: s.votedBattles,
       }),
     },
   ),

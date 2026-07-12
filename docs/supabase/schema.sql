@@ -242,3 +242,96 @@ create policy "posts delete" on posts for delete using (
 
 -- 設定管理員（改成你的 email）
 -- update profiles set is_admin = true where id in (select id from auth.users where email = 'you@example.com');
+
+-- ========== 道館對戰（上雲）==========
+create table if not exists gyms (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text not null default '',
+  icon text not null default 'castle',
+  is_stray boolean not null default false,
+  lat double precision not null,
+  lng double precision not null,
+  champion_entry_id uuid,
+  created_by uuid references auth.users on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists entries (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  pet_id uuid references pets on delete set null,
+  owner_id uuid references auth.users on delete set null,
+  owner_name text not null default '訓練家',
+  pet_name text not null,
+  pet_type text not null check (pet_type in ('cat','dog','other')),
+  media_url text not null,
+  thumb_url text,
+  media_type text not null default 'photo',
+  votes int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists battles (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  challenger_entry_id uuid not null references entries on delete cascade,
+  defender_entry_id uuid not null references entries on delete cascade,
+  challenger_votes int not null default 0,
+  defender_votes int not null default 0,
+  status text not null default 'active' check (status in ('active','finished')),
+  winner_entry_id uuid,
+  created_at timestamptz not null default now(),
+  ends_at timestamptz not null
+);
+
+create table if not exists battle_votes (
+  battle_id uuid not null references battles on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  side text not null check (side in ('challenger','defender')),
+  primary key (battle_id, user_id)
+);
+
+-- 計數觸發器：對戰票數 + entry 票數
+create or replace function sync_battle_votes() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare cv int; dv int; ce uuid; de uuid; bid uuid;
+begin
+  bid := coalesce(new.battle_id, old.battle_id);
+  select count(*) filter (where side='challenger'), count(*) filter (where side='defender')
+    into cv, dv from battle_votes where battle_id = bid;
+  update battles set challenger_votes = cv, defender_votes = dv where id = bid
+    returning challenger_entry_id, defender_entry_id into ce, de;
+  update entries set votes = cv where id = ce;
+  update entries set votes = dv where id = de;
+  return null;
+end; $$;
+drop trigger if exists trg_battle_votes on battle_votes;
+create trigger trg_battle_votes after insert or delete on battle_votes
+  for each row execute function sync_battle_votes();
+
+alter table gyms enable row level security;
+alter table entries enable row level security;
+alter table battles enable row level security;
+alter table battle_votes enable row level security;
+
+create policy "gyms read" on gyms for select using (true);
+create policy "gyms insert" on gyms for insert to authenticated with check (created_by = auth.uid());
+create policy "gyms update" on gyms for update to authenticated using (true);
+
+create policy "entries read" on entries for select using (true);
+create policy "entries insert" on entries for insert to authenticated with check (owner_id = auth.uid());
+
+create policy "battles read" on battles for select using (true);
+create policy "battles insert" on battles for insert to authenticated with check (true);
+create policy "battles update" on battles for update to authenticated using (true);
+
+create policy "battle_votes read" on battle_votes for select using (true);
+create policy "battle_votes self" on battle_votes for insert to authenticated with check (user_id = auth.uid());
+
+-- 示範道館（無衛冕者，第一位挑戰者登頂）
+insert into gyms (id, name, description, icon, is_stray, lat, lng) values
+('a1111111-1111-1111-1111-111111111111','大安森林公園道館','綠意盎然的遛狗聖地。','trees',false,25.0303,121.5354),
+('a2222222-2222-2222-2222-222222222222','信義商圈道館','都會時尚毛孩聚集地。','city',false,25.0360,121.5645),
+('a3333333-3333-3333-3333-333333333333','河濱公園道館','奔跑吧毛孩！','bike',false,25.0478,121.5318)
+on conflict (id) do nothing;

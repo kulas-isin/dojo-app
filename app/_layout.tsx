@@ -13,9 +13,10 @@ export default function RootLayout() {
     useAuthStore.getState().init();
   }, []);
 
-  // 啟動與登入狀態改變時，從雲端同步社群資料
+  // 啟動與登入狀態改變時，從雲端同步社群與道館資料
   useEffect(() => {
     useStore.getState().syncSocial();
+    useStore.getState().syncGyms();
   }, [userId]);
 
   return (

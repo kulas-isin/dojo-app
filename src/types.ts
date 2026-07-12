@@ -17,6 +17,7 @@ export interface Entry {
   petName: string;
   petType: PetType;
   mediaUri: string;
+  thumbUri?: string;
   mediaType: MediaType;
   votes: number;
   createdAt: number;
