@@ -29,6 +29,13 @@ export default function ChallengeScreen() {
   const handleSubmit = async () => {
     const pet = myPets.find((p) => p.id === selectedId);
     if (!pet || !gymId) return;
+
+    // 已有衛冕者 → 進入回合制對戰；沒有 → 直接登頂
+    if (gym?.championEntryId) {
+      router.replace({ pathname: '/battle', params: { gymId: String(gymId), myPetId: pet.id } });
+      return;
+    }
+
     setBusy(true);
     try {
       await submitChallenge({

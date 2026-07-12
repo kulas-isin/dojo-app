@@ -18,17 +18,19 @@ interface TypeMeta {
   mod: Partial<Record<StatKey, number>>;
   /** 數值傾向文字（UI 用） */
   bias: string;
+  /** 特效/音效主題 key */
+  fx: 'fire' | 'leaf' | 'bolt' | 'water' | 'rock';
 }
 
 const UP = 1.15;
 const DOWN = 0.85;
 
 export const BATTLE_TYPES: TypeMeta[] = [
-  { key: 'proud', label: '傲嬌', emoji: '🔥', element: '火', color: '#E8805C', beats: 'derp', blurb: '攻擊高、氣勢強', mod: { atk: UP, def: DOWN }, bias: '攻擊↑ 防禦↓' },
-  { key: 'derp', label: '天然呆', emoji: '🌿', element: '草', color: '#5E9B7E', beats: 'hyper', blurb: '均衡、招式帶驚喜', mod: {}, bias: '均衡・無弱項' },
-  { key: 'hyper', label: '過動', emoji: '⚡', element: '電', color: '#C0872E', beats: 'clingy', blurb: '速度爆表、先手', mod: { spd: UP, hp: DOWN }, bias: '速度↑ HP↓' },
-  { key: 'clingy', label: '黏人精', emoji: '💧', element: '水', color: '#3F8E8A', beats: 'sturdy', blurb: '防禦/纏鬥', mod: { def: UP, atk: DOWN }, bias: '防禦↑ 攻擊↓' },
-  { key: 'sturdy', label: '憨厚', emoji: '🪨', element: '地', color: '#8A6A3A', beats: 'proud', blurb: 'HP 高、肉盾', mod: { hp: UP, spd: DOWN }, bias: 'HP↑ 速度↓' },
+  { key: 'proud', label: '傲嬌', emoji: '🔥', element: '火', color: '#E8805C', beats: 'derp', blurb: '攻擊高、氣勢強', mod: { atk: UP, def: DOWN }, bias: '攻擊↑ 防禦↓', fx: 'fire' },
+  { key: 'derp', label: '天然呆', emoji: '🌿', element: '草', color: '#5E9B7E', beats: 'hyper', blurb: '均衡、招式帶驚喜', mod: {}, bias: '均衡・無弱項', fx: 'leaf' },
+  { key: 'hyper', label: '過動', emoji: '⚡', element: '電', color: '#C0872E', beats: 'clingy', blurb: '速度爆表、先手', mod: { spd: UP, hp: DOWN }, bias: '速度↑ HP↓', fx: 'bolt' },
+  { key: 'clingy', label: '黏人精', emoji: '💧', element: '水', color: '#3F8E8A', beats: 'sturdy', blurb: '防禦/纏鬥', mod: { def: UP, atk: DOWN }, bias: '防禦↑ 攻擊↓', fx: 'water' },
+  { key: 'sturdy', label: '憨厚', emoji: '🪨', element: '地', color: '#8A6A3A', beats: 'proud', blurb: 'HP 高、肉盾', mod: { hp: UP, spd: DOWN }, bias: 'HP↑ 速度↓', fx: 'rock' },
 ];
 
 export function typeMeta(key: string | undefined): TypeMeta {

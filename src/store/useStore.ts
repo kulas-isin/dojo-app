@@ -111,6 +111,8 @@ interface StoreState {
   submitChallenge: (input: NewEntryInput) => Promise<void>;
   voteBattle: (battleId: string, side: 'challenger' | 'defender') => Promise<void>;
   resolveBattle: (battleId: string) => Promise<void>;
+  /** 本地 demo：對戰勝利後暫時把寵物升一級（不寫雲端） */
+  bumpPetLevelLocal: (petId: string) => void;
   syncSocial: () => Promise<void>;
   createPet: (input: NewPetInput) => Promise<string | null>;
   addPost: (input: NewPostInput) => Promise<void>;
@@ -222,6 +224,14 @@ export const useStore = create<StoreState>()(
             return { user: { ...s.user, wins: s.user.wins + 1, titles: [title, ...s.user.titles] } };
           });
         }
+      },
+
+      bumpPetLevelLocal: (petId) => {
+        set((s) => ({
+          pets: s.pets.map((p) =>
+            p.id === petId ? { ...p, level: (p.level ?? 1) + 1 } : p,
+          ),
+        }));
       },
 
       syncSocial: async () => {

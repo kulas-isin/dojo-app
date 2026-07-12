@@ -52,6 +52,7 @@ export default function RootLayout() {
           options={{ title: '新增紀錄', presentation: 'modal' }}
         />
         <Stack.Screen name="moderation" options={{ title: '審核台' }} />
+        <Stack.Screen name="battle" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
     </SafeAreaProvider>
   );

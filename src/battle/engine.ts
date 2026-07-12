@@ -20,19 +20,21 @@ export interface Fighter {
   moves: Move[];
 }
 
-const SIGNATURE: Record<BattleType, string> = {
-  proud: '傲嬌爆擊',
-  derp: '呆萌一擊',
-  hyper: '過動連踢',
-  clingy: '撒嬌纏繞',
-  sturdy: '憨厚重壓',
+/** 招式：寵物行為 × 元素/個性（惡趣味） */
+const MOVE_SETS: Record<BattleType, [string, string, string]> = {
+  proud: ['不理你尾巴甩', '傲嬌正義拳', '爆氣兔子蹬'],
+  derp: ['放空盯空氣', '呆萌翻肚肚', '亂入螃蟹步'],
+  hyper: ['半夜暴衝', '風火輪衝刺', '電流連環蹬'],
+  clingy: ['淚眼汪汪', '撒嬌踏踏', '纏人水牢'],
+  sturdy: ['憨憨坐好', '拆家重擊', '泰山壓頂'],
 };
 
 function movesFor(type: BattleType): Move[] {
+  const [a, b, c] = MOVE_SETS[type];
   return [
-    { name: '撲擊', power: 45, type, acc: 1.0 },
-    { name: SIGNATURE[type], power: 70, type, acc: 0.95 },
-    { name: '全力一擊', power: 95, type, acc: 0.72 },
+    { name: a, power: 45, type, acc: 1.0 },
+    { name: b, power: 70, type, acc: 0.95 },
+    { name: c, power: 95, type, acc: 0.72 },
   ];
 }
 
