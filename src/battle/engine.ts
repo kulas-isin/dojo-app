@@ -15,6 +15,32 @@ export interface MoveEffect {
   buffAtk?: number;
   /** 天然呆：隨機好運（有機率暴擊/加倍） */
   lucky?: boolean;
+
+  // ── 階段二擴充 ──
+  /** 先制：本回合必定先出手 */
+  priority?: boolean;
+  /** 減速：對手下一回合最後出手 */
+  slow?: boolean;
+  /** 控制：使對手跳過下一回合（開罐器/聞屁股…） */
+  control?: { chance: number; turns: number };
+  /** 吸血：回復造成傷害的比例 0..1 */
+  lifesteal?: number;
+  /** 無敵：下一次被攻擊必定閃過（躲貓貓） */
+  invuln?: boolean;
+  /** 蓄力：本回合不攻擊，下一次攻擊威力加倍 */
+  charge?: boolean;
+  /** 偷怒氣：從對手轉移的怒氣點數 */
+  stealRage?: number;
+  /** 清除自身所有異常狀態 */
+  cleanse?: boolean;
+  /** 降低對手攻擊階級 */
+  debuffAtk?: number;
+  /** 反傷：接下來幾回合受擊反彈 */
+  thorns?: boolean;
+  /** 多段：攻擊次數 */
+  multiHit?: number;
+  /** 隨機效果（各招自有邏輯） */
+  random?: 'nip' | 'laser' | 'trash';
 }
 
 export interface Move {
@@ -30,6 +56,8 @@ export interface Move {
   tag?: string;
   /** 惡搞描述（出招時 log 顯示） */
   flavor?: string;
+  /** 專屬動畫特效鍵（無則用元素預設） */
+  fx?: string;
 }
 
 export interface Fighter {

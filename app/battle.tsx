@@ -32,10 +32,12 @@ function hpColors(pct: number): [string, string] {
 }
 
 /** 戰鬥中的即時狀態 */
-interface St { poison: number; burn: number; stun: number; shield: number; atkStage: number }
-const blankSt = (): St => ({ poison: 0, burn: 0, stun: 0, shield: 0, atkStage: 0 });
+interface St { poison: number; burn: number; stun: number; shield: number; atkStage: number; slow: number; invuln: number; charge: number; thorns: number }
+const blankSt = (): St => ({ poison: 0, burn: 0, stun: 0, shield: 0, atkStage: 0, slow: 0, invuln: 0, charge: 0, thorns: 0 });
 const STATUS_ICON: Record<string, string> = { poison: '☠️', burn: '🔥', stun: '💫', shield: '🛡️', buff: '⬆️' };
 const RAGE_MAX = 100;
+/** 這些特效打在自己身上（增益/防禦/充能），其餘打在對手 */
+const SELF_FX = new Set(['heal', 'shield', 'buff', 'charge', 'rage', 'box', 'sparkle', 'trash', 'cleanse']);
 
 function haptic(kind: 'light' | 'heavy') {
   if (Platform.OS === 'web') {
@@ -203,6 +205,22 @@ export default function BattleScreen() {
     else if (fx === 'bolt') { spawnBolt(side, ox); spawnBurst(side, color, n, { size: 7, dist, ox, oy }); flash(); doShake(4); }
     else if (fx === 'water') { spawnRing(side, '#49A9C7', size, ox, oy); setTimeout(() => spawnRing(side, '#8FD0E6', size + 16, ox, oy), 110); spawnBurst(side, color, n, { size: 9, dist, ox, oy }); }
     else if (fx === 'rock') { spawnBurst(side, color, n, { fall: true, size: 12, dist, ox, oy }); spawnRing(side, '#9A7B4A', size, ox, oy); doShake(9); }
+    // ── 階段二：招式專屬特效 ──
+    else if (fx === 'poison') { spawnBurst(side, '#9B6BD6', n, { rise: true, spin: true, size: 9, dist, ox, oy }); spawnRing(side, '#7E4FB0', size, ox, oy); }
+    else if (fx === 'claw') { spawnBurst(side, '#F5ECDA', n, { size: 7, dist: dist * 1.35, ox, oy }); spawnRing(side, '#D9C7A0', size, ox, oy); flash(); }
+    else if (fx === 'chomp') { spawnBurst(side, color, n, { size: 12, dist, ox, oy }); spawnRing(side, '#E0A96D', size, ox, oy); doShake(6); }
+    else if (fx === 'love') { spawnBurst(side, '#EF9BB6', n, { rise: true, spin: true, size: 11, dist, ox, oy }); spawnRing(side, '#F2B8CC', size, ox, oy); }
+    else if (fx === 'laser') { spawnBurst(side, '#FF4D4D', n, { size: 6, dist: dist * 1.6, ox, oy }); spawnRing(side, '#FF4D4D', size, ox, oy); }
+    else if (fx === 'pee') { spawnBurst(side, '#E8D24B', n, { fall: true, size: 8, dist, ox, oy }); spawnRing(side, '#CBB43A', size, ox, oy); }
+    else if (fx === 'yell') { spawnRing(side, '#6E5A8A', size, ox, oy); setTimeout(() => spawnRing(side, '#9784B8', size + 18, ox, oy), 90); doShake(6); }
+    else if (fx === 'heal') { spawnBurst(side, '#78C088', n, { rise: true, size: 10, dist, ox, oy }); spawnRing(side, '#78C088', size, ox, oy); }
+    else if (fx === 'shield') { spawnRing(side, '#6EA8E6', size, ox, oy); setTimeout(() => spawnRing(side, '#9BC4F0', size + 14, ox, oy), 90); }
+    else if (fx === 'buff') { spawnBurst(side, '#F0C24B', n, { rise: true, size: 9, dist, ox, oy }); }
+    else if (fx === 'charge') { spawnRing(side, '#F0642F', size, ox, oy); spawnBurst(side, '#FFD9A0', n, { rise: true, size: 8, dist, ox, oy }); }
+    else if (fx === 'rage') { spawnBurst(side, '#F0C24B', n, { spin: true, size: 9, dist, ox, oy }); spawnRing(side, '#E0A93A', size, ox, oy); }
+    else if (fx === 'box') { spawnBurst(side, '#C79A5B', n, { size: 10, dist, ox, oy }); spawnRing(side, '#C79A5B', size, ox, oy); }
+    else if (fx === 'sparkle') { spawnBurst(side, '#FFE45C', n, { rise: true, spin: true, size: 8, dist, ox, oy }); }
+    else if (fx === 'trash') { spawnBurst(side, '#8A9A5B', n, { size: 9, dist, ox, oy }); spawnRing(side, '#6E7A47', size, ox, oy); }
     else spawnBurst(side, color, n, { ox, oy });
   };
   // 威力分級：小招1段、中招2段、大招3段連爆＋大範圍
@@ -327,8 +345,29 @@ export default function BattleScreen() {
 
     const meta = typeMeta(attacker.type);
     const isUlt = move.kind === 'ultimate';
+    const eff = move.effect;
+
+    // 蓄力招：本回合不攻擊，替下一擊充能
+    if (eff?.charge) {
+      stRef[atkSide].charge = 1; refreshSt();
+      chargeGlow(atkSide); typeFx('charge', atkSide, meta.color, 60);
+      showEff('🗿 蓄力中…下一擊翻倍！');
+      fillRage(atkSide, 8);
+      await wait(640);
+      return;
+    }
+
     const tier = isUlt || move.power >= 90 ? 3 : move.power >= 65 ? 2 : 1;
     const res = attack(attacker, defender, move);
+
+    // 躲貓貓無敵：下一次被攻擊必定閃過
+    if (res.eff !== 'miss' && stRef[defSide].invuln > 0) {
+      stRef[defSide].invuln = 0; refreshSt();
+      showEff('📦 躲進紙箱！'); pushLog(`${defender.name} 鑽進紙箱，完全躲過！`);
+      if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
+      await wait(600);
+      return;
+    }
 
     // 天然呆閃避
     if (res.eff !== 'miss' && defender.type === 'derp' && Math.random() < 0.15) {
@@ -351,6 +390,13 @@ export default function BattleScreen() {
     const lucky = (attacker.type === 'derp' && Math.random() < 0.18) || (!!move.effect?.lucky && Math.random() < 0.35);
     const sturdyMult = defender.type === 'sturdy' ? 0.85 : 1;
     let dmg = Math.max(1, Math.round(res.dmg * atkMult * powerMult * (lucky ? 1.5 : 1) * sturdyMult));
+    // 蓄力爆發：消耗充能，傷害翻倍
+    if (stRef[atkSide].charge > 0) { dmg *= 2; stRef[atkSide].charge = 0; refreshSt(); showEff('🗿 蓄力爆發！'); }
+    // 多段連擊
+    const hits = eff?.multiHit ?? 1;
+    if (hits > 1) dmg = Math.round(dmg * hits * 0.85);
+    // 追雷射點：高變異傷害
+    if (eff?.random === 'laser') dmg = Math.max(1, Math.round(dmg * (0.3 + Math.random() * 1.5)));
     // 護盾只吸收最多 60%，至少 1 點傷害一定會穿透（避免「完全打不動」）
     if (stRef[defSide].shield > 0) {
       const absorbed = Math.min(stRef[defSide].shield, Math.floor(dmg * 0.6));
@@ -358,13 +404,23 @@ export default function BattleScreen() {
       if (absorbed > 0) showEff('🛡️ 護盾擋下部分傷害');
     }
     setHp(defSide, hpRef[defSide] - dmg);
+    if (hits > 1) showEff(`💥 ${hits} 連擊！`);
+
+    // 吸血
+    if (eff?.lifesteal && dmg > 0) { setHp(atkSide, hpRef[atkSide] + Math.round(dmg * eff.lifesteal)); showEff('🩸 吸血回復'); }
+    // 反傷（防守方架起反傷）
+    if (stRef[defSide].thorns > 0 && dmg > 0 && hpRef[atkSide] > 0) {
+      setHp(atkSide, hpRef[atkSide] - Math.max(1, Math.round(dmg * 0.3))); showEff('🪞 反傷！');
+    }
 
     // 特效 + 音效
     if (isUlt) { flash(); sfx.chargeSfx(); }
     sfx.moveSfx(meta.fx as any, tier);
     sfx.hitSfx();
     haptic(tier >= 3 ? 'heavy' : 'light');
-    typeFx(meta.fx, defSide, meta.color, isUlt ? 130 : move.power);
+    const fxKind = move.fx ?? meta.fx;
+    const fxSide = SELF_FX.has(fxKind) ? atkSide : defSide;
+    typeFx(fxKind, fxSide, meta.color, isUlt ? 130 : move.power);
     if (isUlt) setTimeout(() => typeFx(meta.fx, defSide, meta.color, 130), 220);
     // 被打震動
     Animated.sequence([
@@ -386,7 +442,6 @@ export default function BattleScreen() {
     fillRage(defSide, 16);
 
     // 招式附加效果
-    const eff = move.effect;
     if (eff) {
       const aMax = maxHpOf(atkSide);
       if (eff.heal) { setHp(atkSide, hpRef[atkSide] + Math.round(aMax * eff.heal)); showEff('💚 回復體力'); }
@@ -397,6 +452,32 @@ export default function BattleScreen() {
         stRef[defSide][k] = Math.max(stRef[defSide][k], eff.status.turns);
         refreshSt();
         pushLog(`${defender.name} ${k === 'stun' ? '被電暈了！' : k === 'burn' ? '被灼傷了！' : '中毒了！'}`);
+      }
+      // ── 階段二效果 ──
+      if (eff.cleanse) { const s = stRef[atkSide]; s.poison = 0; s.burn = 0; s.stun = 0; refreshSt(); showEff('🧻 清除自身異常'); }
+      if (eff.invuln) { stRef[atkSide].invuln = 2; refreshSt(); showEff('📦 躲貓貓待命'); }
+      if (eff.thorns) { stRef[atkSide].thorns = 2; refreshSt(); showEff('🪞 擺出反傷架勢'); }
+      if (eff.slow) { stRef[defSide].slow = 2; refreshSt(); showEff('🐌 對手被減速'); }
+      if (eff.debuffAtk) { stRef[defSide].atkStage = Math.max(-3, stRef[defSide].atkStage - eff.debuffAtk); refreshSt(); showEff('⬇️ 對手攻擊下降'); }
+      if (eff.stealRage) {
+        const amt = Math.min(rageRef[defSide], eff.stealRage);
+        rageRef[defSide] -= amt;
+        if (defSide === 'me') setMyRage(rageRef.me); else setFoeRage(rageRef.foe);
+        fillRage(atkSide, amt); showEff('🪙 偷走怒氣！');
+      }
+      if (eff.control && Math.random() < eff.control.chance) {
+        stRef[defSide].stun = Math.max(stRef[defSide].stun, eff.control.turns); refreshSt();
+        pushLog(`${defender.name} 分心了，下回合跳過！`); showEff('😵 對手分心');
+      }
+      if (eff.random === 'nip') {
+        if (Math.random() < 0.5) { stRef[atkSide].atkStage = Math.min(3, stRef[atkSide].atkStage + 2); refreshSt(); showEff('🌿 嗨到攻擊爆棚！'); }
+        else { setHp(atkSide, hpRef[atkSide] - Math.max(1, Math.round(maxHpOf(atkSide) * 0.08))); showEff('🌿 嗨過頭撞牆…'); }
+      }
+      if (eff.random === 'trash') {
+        const r = Math.random();
+        if (r < 0.34) { setHp(atkSide, hpRef[atkSide] + Math.round(maxHpOf(atkSide) * 0.25)); showEff('🗑️ 撿到罐罐！回血'); }
+        else if (r < 0.67) { stRef[atkSide].shield = Math.min(Math.round(maxHpOf(atkSide) * 0.4), stRef[atkSide].shield + Math.round(maxHpOf(atkSide) * 0.3)); refreshSt(); showEff('🗑️ 撿到護盾！'); }
+        else { stRef[atkSide].atkStage = Math.min(3, stRef[atkSide].atkStage + 1); refreshSt(); showEff('🗑️ 撿到士氣！'); }
       }
     }
 
@@ -460,11 +541,12 @@ export default function BattleScreen() {
     if (!isUlt && !meStun) spendMp('me', myMove.cost);
     if (!foeUlt && !foeStun) spendMp('foe', foeMove.cost);
 
-    // 出手順序：過動先攻 > 必殺 > 速度
-    const pri = (f: Fighter, u: boolean) => (f.type === 'hyper' ? 2 : 0) + (u ? 1 : 0);
-    const meFirst = pri(mine!, isUlt) !== pri(foe!, foeUlt)
-      ? pri(mine!, isUlt) > pri(foe!, foeUlt)
-      : mine!.spd >= foe!.spd;
+    // 出手順序：先制招 > 過動先攻 > 必殺 > 速度（減速者退到最後）
+    const pri = (f: Fighter, u: boolean, mv: Move, side: 'me' | 'foe') =>
+      (mv.effect?.priority ? 4 : 0) + (f.type === 'hyper' ? 2 : 0) + (u ? 1 : 0) - (stRef[side].slow > 0 ? 5 : 0);
+    const pMe = pri(mine!, isUlt, myMove, 'me');
+    const pFoe = pri(foe!, foeUlt, foeMove, 'foe');
+    const meFirst = pMe !== pFoe ? pMe > pFoe : mine!.spd >= foe!.spd;
 
     const acts = [
       { side: 'me' as const, move: myMove, stun: meStun },
@@ -502,6 +584,10 @@ export default function BattleScreen() {
       if (st.poison > 0) { setHp(side, hpRef[side] - Math.max(1, Math.round(max * 0.06))); st.poison -= 1; showEff('☠️ 中毒'); await wait(430); }
       if (st.burn > 0 && hpRef[side] > 0) { setHp(side, hpRef[side] - Math.max(1, Math.round(max * 0.07))); st.burn -= 1; showEff('🔥 灼傷'); await wait(430); }
       if (f.type === 'clingy' && hpRef[side] > 0 && hpRef[side] / max < 0.4) { setHp(side, hpRef[side] + Math.round(max * 0.06)); showEff('💧 黏人回復'); await wait(360); }
+      // 計時狀態遞減（減速/無敵/反傷）
+      if (st.slow > 0) st.slow -= 1;
+      if (st.invuln > 0) st.invuln -= 1;
+      if (st.thorns > 0) st.thorns -= 1;
     }
     refreshSt();
   }
@@ -766,6 +852,11 @@ function HpCard({ fighter, hpAnim, mpAnim, mp, meta, rage, status }: { fighter: 
   if (status.stun > 0) chips.push(STATUS_ICON.stun);
   if (status.shield > 0) chips.push(STATUS_ICON.shield);
   if (status.atkStage > 0) chips.push(`${STATUS_ICON.buff}${status.atkStage}`);
+  if (status.atkStage < 0) chips.push(`⬇️${-status.atkStage}`);
+  if (status.slow > 0) chips.push('🐌');
+  if (status.invuln > 0) chips.push('📦');
+  if (status.thorns > 0) chips.push('🪞');
+  if (status.charge > 0) chips.push('🗿');
   return (
     <View style={styles.hpCard}>
       <View style={styles.hpRow1}>
