@@ -1,0 +1,266 @@
+import type { PetAvatar } from '../avatar/sprite';
+import type { Comment, MediaType, Pet, PetKind, Post, StrayStatus, Visibility } from '../types';
+import { supabase } from './supabase';
+
+// DB(snake_case) ↔ App(camelCase) 對應
+function mapPet(r: any): Pet {
+  return {
+    id: r.id,
+    kind: r.kind,
+    name: r.name,
+    petType: r.pet_type,
+    avatarUri: r.avatar_url,
+    thumbUri: r.thumb_url ?? r.avatar_url,
+    bio: r.bio ?? '',
+    visibility: r.visibility,
+    followers: r.followers ?? 0,
+    following: false,
+    createdAt: Date.parse(r.created_at),
+    ownerId: r.owner_id ?? undefined,
+    reporterId: r.reporter_id ?? undefined,
+    caretakerIds: r.caretaker_ids ?? [],
+    status: r.status ?? undefined,
+    area: r.area ?? undefined,
+    battleType: r.battle_type ?? undefined,
+    ptsHp: r.pts_hp ?? 0,
+    ptsAtk: r.pts_atk ?? 0,
+    ptsDef: r.pts_def ?? 0,
+    ptsSpd: r.pts_spd ?? 0,
+    level: r.level ?? 1,
+    avatar: r.pet_avatar ?? undefined,
+    moveset: r.moveset ?? undefined,
+    wildcard: r.wildcard ?? undefined,
+  };
+}
+
+function mapPost(r: any): Post {
+  return {
+    id: r.id,
+    petId: r.pet_id,
+    authorId: r.author_id ?? '',
+    authorName: r.author_name ?? '訓練家',
+    mediaUri: r.media_url,
+    thumbUri: r.thumb_url ?? r.media_url,
+    mediaType: (r.media_type ?? 'photo') as MediaType,
+    caption: r.caption ?? '',
+    createdAt: Date.parse(r.created_at),
+    likes: r.likes ?? 0,
+    liked: false,
+    hidden: r.hidden ?? false,
+    reportCount: r.report_count ?? 0,
+  };
+}
+
+function mapComment(r: any): Comment {
+  return {
+    id: r.id,
+    postId: r.post_id,
+    authorId: r.author_id ?? '',
+    authorName: r.author_name ?? '訓練家',
+    text: r.text,
+    createdAt: Date.parse(r.created_at),
+  };
+}
+
+export interface SocialData {
+  pets: Pet[];
+  posts: Post[];
+  comments: Comment[];
+  reportedPosts: Record<string, true>;
+}
+
+/** 從雲端抓所有社群資料，並套上目前使用者的 讚/追蹤/檢舉 狀態 */
+export async function fetchSocial(userId: string | null): Promise<SocialData> {
+  const [pets, posts, comments] = await Promise.all([
+    supabase.from('pets').select('*').order('created_at', { ascending: false }),
+    supabase.from('posts').select('*').order('created_at', { ascending: false }),
+    supabase.from('comments').select('*').order('created_at', { ascending: true }),
+  ]);
+  if (pets.error) throw pets.error;
+  if (posts.error) throw posts.error;
+  if (comments.error) throw comments.error;
+
+  let likeSet = new Set<string>();
+  let followSet = new Set<string>();
+  const reportedPosts: Record<string, true> = {};
+  if (userId) {
+    const [likes, follows, reports] = await Promise.all([
+      supabase.from('post_likes').select('post_id').eq('user_id', userId),
+      supabase.from('pet_follows').select('pet_id').eq('user_id', userId),
+      supabase.from('post_reports').select('post_id').eq('user_id', userId),
+    ]);
+    likeSet = new Set((likes.data ?? []).map((x: any) => x.post_id));
+    followSet = new Set((follows.data ?? []).map((x: any) => x.pet_id));
+    (reports.data ?? []).forEach((x: any) => (reportedPosts[x.post_id] = true));
+  }
+
+  return {
+    pets: (pets.data ?? []).map((r) => ({ ...mapPet(r), following: followSet.has(r.id) })),
+    posts: (posts.data ?? [])
+      .map((r) => ({ ...mapPost(r), liked: likeSet.has(r.id) }))
+      .filter((p) => !p.hidden),
+    comments: (comments.data ?? []).map(mapComment),
+    reportedPosts,
+  };
+}
+
+export interface CreatePetRemote {
+  kind: PetKind;
+  name: string;
+  petType: string;
+  avatarUri: string;
+  thumbUri?: string;
+  bio: string;
+  visibility?: Visibility;
+  area?: string;
+  status?: StrayStatus;
+  // 對戰數值
+  battleType?: string;
+  ptsHp?: number;
+  ptsAtk?: number;
+  ptsDef?: number;
+  ptsSpd?: number;
+  avatar?: PetAvatar;
+}
+
+export async function createPetRemote(input: CreatePetRemote, userId: string): Promise<string> {
+  const isStray = input.kind === 'stray';
+  const row = {
+    kind: input.kind,
+    name: input.name.trim() || (isStray ? '無名浪浪' : '無名寵物'),
+    pet_type: input.petType,
+    avatar_url: input.avatarUri,
+    thumb_url: input.thumbUri ?? input.avatarUri,
+    battle_type: input.battleType ?? 'derp',
+    pts_hp: input.ptsHp ?? 0,
+    pts_atk: input.ptsAtk ?? 0,
+    pts_def: input.ptsDef ?? 0,
+    pts_spd: input.ptsSpd ?? 0,
+    bio: input.bio.trim(),
+    visibility: input.visibility ?? 'public',
+    owner_id: isStray ? null : userId,
+    reporter_id: isStray ? userId : null,
+    caretaker_ids: isStray ? [userId] : [],
+    status: isStray ? input.status ?? 'adoptable' : null,
+    area: isStray ? input.area?.trim() ?? '' : null,
+    pet_avatar: input.avatar ?? null,
+  };
+  let { data, error } = await supabase.from('pets').insert(row).select('id').single();
+  // 資料庫尚未新增 pet_avatar 欄位（42703）→ 先不帶造型也能建立，避免整個建立失敗
+  if (error && (error.code === '42703' || /pet_avatar/.test(error.message ?? ''))) {
+    const { pet_avatar, ...rest } = row;
+    ({ data, error } = await supabase.from('pets').insert(rest).select('id').single());
+  }
+  if (error) throw error;
+  return data!.id as string;
+}
+
+/** 更新寵物配招（moveset + wildcard）；欄位不存在時給清楚提示 */
+export async function updatePetMovesetRemote(petId: string, moveset: string[], wildcard: string | null): Promise<void> {
+  const { error } = await supabase.from('pets').update({ moveset, wildcard }).eq('id', petId);
+  if (error) {
+    if (error.code === '42703' || /moveset|wildcard/.test(error.message ?? '')) {
+      throw new Error('資料庫還沒有配招欄位，請先在 Supabase 執行：alter table pets add column if not exists moveset jsonb; alter table pets add column if not exists wildcard text;');
+    }
+    throw error;
+  }
+}
+
+/** 更新既有寵物的像素造型 */
+export async function updatePetAvatarRemote(petId: string, avatar: PetAvatar): Promise<void> {
+  const { error } = await supabase.from('pets').update({ pet_avatar: avatar }).eq('id', petId);
+  if (error) {
+    if (error.code === '42703' || /pet_avatar/.test(error.message ?? '')) {
+      throw new Error('資料庫還沒有像素造型欄位，請先在 Supabase 執行：alter table pets add column if not exists pet_avatar jsonb;');
+    }
+    throw error;
+  }
+}
+
+export async function addPostRemote(
+  petId: string,
+  userId: string,
+  authorName: string,
+  mediaUri: string,
+  thumbUri: string,
+  mediaType: MediaType,
+  caption: string,
+): Promise<void> {
+  const { error } = await supabase.from('posts').insert({
+    pet_id: petId,
+    author_id: userId,
+    author_name: authorName,
+    media_url: mediaUri,
+    thumb_url: thumbUri,
+    media_type: mediaType,
+    caption: caption.trim(),
+  });
+  if (error) throw error;
+}
+
+export async function deletePostRemote(postId: string): Promise<void> {
+  const { error } = await supabase.from('posts').delete().eq('id', postId);
+  if (error) throw error;
+}
+
+/** 審核佇列：被隱藏或被檢舉過的貼文（RLS 會自動限制為管理員=全站 / 照顧者=自己檔案） */
+export async function fetchModeration(petId?: string): Promise<Post[]> {
+  let q = supabase
+    .from('posts')
+    .select('*')
+    .or('hidden.eq.true,report_count.gt.0')
+    .order('report_count', { ascending: false });
+  if (petId) q = q.eq('pet_id', petId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map(mapPost);
+}
+
+/** 核可（還原）：取消隱藏並標記已核可，之後不再自動隱藏 */
+export async function approvePostRemote(postId: string): Promise<void> {
+  const { error } = await supabase
+    .from('posts')
+    .update({ hidden: false, approved: true })
+    .eq('id', postId);
+  if (error) throw error;
+}
+
+export async function addCommentRemote(
+  postId: string,
+  userId: string,
+  authorName: string,
+  text: string,
+): Promise<void> {
+  const { error } = await supabase.from('comments').insert({
+    post_id: postId,
+    author_id: userId,
+    author_name: authorName,
+    text: text.trim(),
+  });
+  if (error) throw error;
+}
+
+export async function deleteCommentRemote(commentId: string): Promise<void> {
+  const { error } = await supabase.from('comments').delete().eq('id', commentId);
+  if (error) throw error;
+}
+
+export async function setLikeRemote(postId: string, userId: string, like: boolean): Promise<void> {
+  if (like) {
+    await supabase.from('post_likes').insert({ post_id: postId, user_id: userId });
+  } else {
+    await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
+  }
+}
+
+export async function setFollowRemote(petId: string, userId: string, follow: boolean): Promise<void> {
+  if (follow) {
+    await supabase.from('pet_follows').insert({ pet_id: petId, user_id: userId });
+  } else {
+    await supabase.from('pet_follows').delete().eq('pet_id', petId).eq('user_id', userId);
+  }
+}
+
+export async function reportPostRemote(postId: string, userId: string): Promise<void> {
+  await supabase.from('post_reports').insert({ post_id: postId, user_id: userId });
+}

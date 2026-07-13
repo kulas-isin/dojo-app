@@ -1,0 +1,530 @@
+<title>PawDojo · 像素風 RPG 地圖 Mockup</title>
+<style>
+  :root {
+    --grass: #6fa57c; --grass2: #5e9b7e; --grass3: #7cb489;
+    --path: #e7d3a8; --path2: #d8c091;
+    --water: #6fb3c9; --water2: #8fcadd;
+    --coral: #e8805c; --coral-dk: #c9613f;
+    --cream: #fbf6ee; --sand: #c9b48f;
+    --ink: #241f1b; --ink2: #3a332c;
+    --gold: #f6c453;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #17130f;
+    color: var(--cream);
+    font-family: "DejaVu Sans Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100%; padding: 14px;
+    -webkit-font-smoothing: none;
+  }
+  .phone {
+    width: 100%; max-width: 420px;
+    aspect-ratio: 9 / 16;
+    max-height: calc(100vh - 28px);
+    position: relative;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #0d0b09;
+    border: 3px solid var(--ink2);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6), inset 0 0 0 2px #000;
+    display: flex; flex-direction: column;
+  }
+
+  /* ---- pixel text helper ---- */
+  .px { text-shadow: 2px 2px 0 rgba(0,0,0,.45); letter-spacing: .5px; }
+
+  /* ---- top HUD ---- */
+  .hud {
+    position: absolute; inset: 0 0 auto 0; z-index: 6;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 12px 10px;
+    background: linear-gradient(180deg, rgba(20,16,12,.72), rgba(20,16,12,0));
+    pointer-events: none;
+  }
+  .logo { display: flex; align-items: center; gap: 7px; }
+  .logo .mark {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--coral); border: 2px solid var(--ink);
+    display: grid; place-items: center; font-size: 15px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+  }
+  .logo b { font-size: 16px; color: var(--cream); }
+  .logo b i { font-style: normal; color: var(--gold); }
+  .coins {
+    display: flex; gap: 6px; align-items: center;
+    background: var(--ink); border: 2px solid #000; border-radius: 8px;
+    padding: 5px 9px; font-size: 12px; font-weight: 700;
+    box-shadow: 2px 2px 0 rgba(0,0,0,.45);
+  }
+  .coins .dot { color: var(--gold); }
+
+  /* ---- world canvas ---- */
+  .stage { position: relative; flex: 1; overflow: hidden; background: var(--grass2); }
+  #world {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    touch-action: none; display: block;
+  }
+
+  /* ---- RPG dialog box ---- */
+  .dialog {
+    position: absolute; left: 10px; right: 10px; bottom: 96px; z-index: 6;
+    background: var(--cream); color: var(--ink);
+    border: 3px solid var(--ink);
+    border-radius: 4px;
+    padding: 11px 13px 12px;
+    box-shadow: 0 0 0 3px var(--cream), 0 0 0 6px var(--ink), 5px 7px 0 rgba(0,0,0,.4);
+  }
+  .dialog::after { /* corner blink cursor */
+    content: "▼"; position: absolute; right: 10px; bottom: 6px;
+    font-size: 11px; color: var(--coral); animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .d-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .d-badge {
+    font-size: 15px; width: 26px; height: 26px; border-radius: 5px;
+    background: var(--coral); border: 2px solid var(--ink);
+    display: grid; place-items: center; flex: none;
+  }
+  .d-badge.stray { background: var(--gold); }
+  .d-name { font-size: 15px; font-weight: 800; }
+  .d-tag {
+    margin-left: auto; font-size: 10px; font-weight: 800; letter-spacing: .5px;
+    padding: 3px 7px; border-radius: 4px; border: 2px solid var(--ink);
+    background: var(--coral); color: var(--cream);
+  }
+  .d-tag.stray { background: var(--gold); color: var(--ink); }
+  .d-body { font-size: 12.5px; line-height: 1.55; color: var(--ink2); font-weight: 600; }
+  .d-body b { color: var(--coral-dk); }
+  .d-hint { margin-top: 7px; font-size: 11px; color: #8a7d68; font-weight: 700; }
+
+  /* ---- touch controls ---- */
+  .pad {
+    position: absolute; left: 12px; bottom: 14px; z-index: 7;
+    width: 118px; height: 118px;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .pad button {
+    border: 2px solid #000; background: var(--ink2); color: var(--cream);
+    border-radius: 8px; font-size: 17px; font-weight: 800;
+    box-shadow: 2px 2px 0 rgba(0,0,0,.5); cursor: pointer;
+    display: grid; place-items: center; user-select: none; -webkit-user-select: none;
+    transition: transform .05s, background .05s;
+  }
+  .pad button:active { transform: translate(1px,1px); background: var(--coral); }
+  .pad .up { grid-area: 1 / 2; } .pad .lf { grid-area: 2 / 1; }
+  .pad .rt { grid-area: 2 / 3; } .pad .dn { grid-area: 3 / 2; }
+  .pad .mid { grid-area: 2 / 2; background: transparent; border: none; box-shadow: none; }
+
+  .abtn {
+    position: absolute; right: 16px; bottom: 26px; z-index: 7;
+    width: 74px; height: 74px; border-radius: 50%;
+    border: 3px solid #000; background: var(--coral); color: var(--cream);
+    font-size: 15px; font-weight: 900; letter-spacing: .5px;
+    box-shadow: 3px 4px 0 rgba(0,0,0,.5); cursor: pointer;
+    display: grid; place-items: center; line-height: 1.05;
+    transition: transform .05s;
+  }
+  .abtn:active { transform: translate(2px,2px); }
+  .abtn small { font-size: 9px; opacity: .85; font-weight: 700; }
+  .abtn.disabled { background: #7a6f5e; box-shadow: 3px 4px 0 rgba(0,0,0,.4); }
+
+  /* toast when challenging */
+  .toast {
+    position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%) scale(.8);
+    z-index: 9; background: var(--ink); color: var(--cream);
+    border: 3px solid #000; border-radius: 6px; padding: 14px 20px;
+    font-size: 14px; font-weight: 800; text-align: center; line-height: 1.5;
+    box-shadow: 5px 6px 0 rgba(0,0,0,.5); opacity: 0; pointer-events: none;
+  }
+  .toast b { color: var(--gold); }
+  .toast.show { animation: pop 1.8s ease forwards; }
+  @keyframes pop {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.8); }
+    12% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    82% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-52%) scale(1); }
+  }
+
+  .cap {
+    position: absolute; left: 0; right: 0; bottom: 2px; z-index: 5;
+    text-align: center; font-size: 9px; color: rgba(255,255,255,.4);
+    pointer-events: none;
+  }
+</style>
+
+<div class="phone">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="logo px"><span class="mark">🐾</span><b>Paw<i>Dojo</i></b></div>
+    <div class="coins px"><span class="dot">◆</span> Lv.7 · <span class="dot">★</span> 320</div>
+  </div>
+
+  <!-- pixel world -->
+  <div class="stage">
+    <canvas id="world" width="256" height="288"></canvas>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- RPG dialog -->
+  <div class="dialog" id="dialog">
+    <div class="d-head">
+      <span class="d-badge" id="dBadge">🏯</span>
+      <span class="d-name px" id="dName">走向道館…</span>
+      <span class="d-tag" id="dTag">道館</span>
+    </div>
+    <div class="d-body" id="dBody">用方向鍵 / D-pad 走近任一道館，就能發起挑戰。</div>
+    <div class="d-hint" id="dHint">▶ 也可以直接點地圖上的建築</div>
+  </div>
+
+  <!-- touch controls -->
+  <div class="pad" id="pad">
+    <button class="up" data-dir="up">▲</button>
+    <button class="lf" data-dir="left">◀</button>
+    <span class="mid"></span>
+    <button class="rt" data-dir="right">▶</button>
+    <button class="dn" data-dir="down">▼</button>
+  </div>
+  <button class="abtn disabled" id="abtn">A<small>挑戰</small></button>
+
+  <div class="cap">像素風 RPG 地圖 · 概念 mockup</div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('world');
+  const ctx = cv.getContext('2d');
+  const T = 16, COLS = 16, ROWS = 18;           // 256 x 288 internal
+  ctx.imageSmoothingEnabled = false;
+
+  // ---------- map ----------
+  // codes: 0 grass, 1 grass-dark, 2 path, 3 water, 4 tree
+  const map = [];
+  const hash = (x,y) => ((x*73856093) ^ (y*19349663)) >>> 0;
+  for (let y=0;y<ROWS;y++){ const row=[]; for(let x=0;x<COLS;x++){
+    let c = (hash(x,y)%5===0) ? 1 : 0;
+    row.push(c);
+  } map.push(row); }
+  // river down the right two columns with a wiggle
+  for (let y=0;y<ROWS;y++){ map[y][15]=3; map[y][14]=3; if((y%3)===0) map[y][13]=3; }
+  // dirt paths: a cross
+  for (let x=0;x<14;x++) map[9][x]=2;
+  for (let y=0;y<ROWS;y++) if(map[y][6]!==3) map[y][6]=2;
+  // little plaza around the crossing
+  map[8][6]=2; map[10][6]=2; map[9][5]=2; map[9][7]=2;
+  // tree clusters (x,y) — placed on grass, away from paths, river & buildings
+  const TREES = [[1,1],[2,1],[1,2],[9,1],[10,1],[9,2],[1,7],[1,8],
+                 [12,2],[13,2],[1,15],[2,16],[8,16],[12,10],[12,11],[7,3]];
+  TREES.forEach(([x,y]) => { if(map[y] && (map[y][x]===0 || map[y][x]===1)) map[y][x]=4; });
+
+  // ---------- entities ----------
+  // gyms: tile x,y is the base (2x2 footprint drawn upward)
+  const gyms = [
+    { x:3,  y:4,  name:'榕樹下道館', badge:'🏯', stray:false,
+      body:'衛冕者 <b>橘座</b>　Lv.9 傲嬌型<br>人氣 240 · 連勝 5', tag:'道館' },
+    { x:11, y:5,  name:'河岸道館',   badge:'⛩️', stray:false,
+      body:'衛冕者 <b>小白</b>　Lv.6 憨厚型<br>人氣 132 · 連勝 2', tag:'道館' },
+    { x:9,  y:13, name:'公園道館',   badge:'🏯', stray:false,
+      body:'衛冕者 <b>Momo</b>　Lv.11 過動型<br>人氣 388 · 連勝 9', tag:'道館' },
+    { x:3,  y:12, name:'浪浪出沒點', badge:'🐈', stray:true,
+      body:'橘貓「小可」在這附近出沒<br>可以幫牠打卡、留紀錄 🧡', tag:'浪浪' },
+  ];
+  // mark building footprints solid
+  const solidBuild = new Set();
+  gyms.forEach(g => { for(let dx=0;dx<2;dx++) for(let dy=0;dy<2;dy++) solidBuild.add((g.x+dx)+','+(g.y+dy)); });
+
+  const player = { x:6, y:9, px:6*T, py:9*T, dir:'down', moving:false, frame:0, walkT:0 };
+  let active = null;
+
+  function solid(tx,ty){
+    if (tx<0||ty<0||tx>=COLS||ty>=ROWS) return true;
+    const c = map[ty][tx];
+    if (c===3||c===4) return true;
+    if (solidBuild.has(tx+','+ty)) return true;
+    return false;
+  }
+
+  // ---------- drawing ----------
+  function px(v){ return Math.round(v); }
+  function rect(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(px(x),px(y),w,h); }
+
+  function drawGrass(x,y,v){
+    rect(x,y,T,T, v? '#5e9b7e':'#6fa57c');
+    // dither texture
+    const h = hash(x/T|0, y/T|0);
+    ctx.fillStyle = v? '#68a583':'#7cb489';
+    if(h%3===0) ctx.fillRect(px(x)+3, px(y)+9, 2,2);
+    if(h%4===0) ctx.fillRect(px(x)+10, px(y)+4, 2,2);
+    ctx.fillStyle = 'rgba(60,110,80,.35)';
+    if(h%5===0) ctx.fillRect(px(x)+7, px(y)+11, 3,1);
+  }
+  function drawPath(x,y){
+    rect(x,y,T,T,'#e7d3a8');
+    ctx.fillStyle='#d8c091';
+    const h=hash(x/T|0,y/T|0);
+    if(h%2===0) ctx.fillRect(px(x)+4,px(y)+6,2,2);
+    if(h%3===0) ctx.fillRect(px(x)+10,px(y)+11,2,2);
+    ctx.fillStyle='#cbb079';
+    ctx.fillRect(px(x),px(y),T,1);
+  }
+  function drawWater(x,y,t){
+    rect(x,y,T,T,'#6fb3c9');
+    ctx.fillStyle='#8fcadd';
+    const o = Math.sin(t/380 + (y/T))*3;
+    ctx.fillRect(px(x)+2+o, px(y)+5, 6,1);
+    ctx.fillRect(px(x)+8-o, px(y)+11, 5,1);
+    ctx.fillStyle='rgba(255,255,255,.35)';
+    if((hash(x/T|0,y/T|0)+Math.floor(t/500))%4===0) ctx.fillRect(px(x)+6,px(y)+3,3,1);
+  }
+  function drawTree(x,y){
+    // trunk
+    rect(x+6,y+9,4,6,'#7a5233');
+    // canopy
+    ctx.fillStyle='#3f7d55';
+    ctx.fillRect(px(x)+2,px(y)+2,12,9);
+    ctx.fillRect(px(x)+4,px(y),8,4);
+    ctx.fillStyle='#4f9166';
+    ctx.fillRect(px(x)+4,px(y)+3,7,4);
+    ctx.fillStyle='#2f5f40';
+    ctx.fillRect(px(x)+2,px(y)+9,12,2);
+  }
+
+  function drawDojo(g,t){
+    const bx = g.x*T, by = g.y*T;
+    const w = 2*T;                     // 32 wide
+    const roofTop = by - 12;
+    if (g.stray){ drawStray(g,t); return; }
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.18)';
+    ctx.fillRect(px(bx)+2, px(by)+2*T-3, w-2, 4);
+    // wall
+    ctx.fillStyle='#fbf6ee';
+    ctx.fillRect(px(bx)+2, px(by)-2, w-4, 2*T-2);
+    ctx.fillStyle='#c9b48f';
+    ctx.fillRect(px(bx)+2, px(by)+2*T-6, w-4, 4);      // base trim
+    // door
+    ctx.fillStyle='#7a5233';
+    ctx.fillRect(px(bx)+w/2-4, px(by)+2*T-12, 8, 10);
+    ctx.fillStyle='#5a3a22';
+    ctx.fillRect(px(bx)+w/2-1, px(by)+2*T-12, 2, 10);
+    // windows
+    ctx.fillStyle='#8fcadd';
+    ctx.fillRect(px(bx)+6, px(by)+3, 5,5);
+    ctx.fillRect(px(bx)+w-11, px(by)+3, 5,5);
+    ctx.fillStyle='#2e2a26';
+    ctx.strokeStyle='#2e2a26';
+    // pagoda roof (coral), stepped
+    ctx.fillStyle='#e8805c';
+    ctx.fillRect(px(bx)-2, px(by)-2, w+4, 4);          // eave
+    ctx.fillStyle='#c9613f';
+    ctx.fillRect(px(bx)-2, px(by)+1, w+4, 1);
+    ctx.fillStyle='#e8805c';
+    ctx.fillRect(px(bx)+2, roofTop+4, w-4, 6);
+    ctx.fillRect(px(bx)+5, roofTop, w-10, 5);
+    ctx.fillStyle='#f2a084';
+    ctx.fillRect(px(bx)+5, roofTop, w-10, 2);           // roof highlight
+    // finial + flag
+    ctx.fillStyle='#f6c453';
+    ctx.fillRect(px(bx)+w/2-1, roofTop-5, 2,5);
+    const wave = Math.sin(t/220 + g.x)*2;
+    ctx.fillStyle='#5e9b7e';
+    ctx.fillRect(px(bx)+w/2+1, roofTop-5+ (wave>0?0:0), 6, 4);
+    ctx.fillRect(px(bx)+w/2+1+Math.round(wave), roofTop-4, 6, 2);
+
+    // active marker: bouncing "!" bubble
+    if (active===g){
+      const b = Math.abs(Math.sin(t/180))*3;
+      const mx = px(bx)+w/2-6, my = roofTop-20-b;
+      ctx.fillStyle='#fff'; ctx.fillRect(mx, my, 12, 12);
+      ctx.fillStyle='#241f1b'; ctx.fillRect(mx-1, my-1, 14, 2); ctx.fillRect(mx-1, my+11, 14,2);
+      ctx.fillRect(mx-1,my,2,12); ctx.fillRect(mx+11,my,2,12);
+      ctx.fillStyle='#e8805c'; ctx.fillRect(mx+5, my+2, 2, 5); ctx.fillRect(mx+5, my+8, 2, 2);
+      ctx.fillStyle='#fff'; ctx.fillRect(mx+3, my+12, 3,2);   // bubble tail
+    }
+  }
+
+  function drawStray(g,t){
+    const bx=g.x*T, by=g.y*T;
+    const bob = Math.round(Math.sin(t/300)*1.5);
+    // little bush
+    ctx.fillStyle='#3f7d55'; ctx.fillRect(px(bx)+1, px(by)+10, 30, 8);
+    ctx.fillStyle='#4f9166'; ctx.fillRect(px(bx)+3, px(by)+8, 24, 5);
+    // orange cat
+    const cx = px(bx)+11, cy = px(by)+4+bob;
+    ctx.fillStyle='#e8975c';
+    ctx.fillRect(cx, cy+4, 12, 7);       // body
+    ctx.fillRect(cx+8, cy, 6, 6);        // head
+    ctx.fillRect(cx+13, cy+5, 3, 6);     // tail
+    ctx.fillStyle='#d47a3e';
+    ctx.fillRect(cx+8, cy-2, 2, 3); ctx.fillRect(cx+12, cy-2, 2, 3);  // ears
+    ctx.fillStyle='#241f1b';
+    ctx.fillRect(cx+10, cy+2, 1,1); ctx.fillRect(cx+12, cy+2, 1,1);   // eyes
+    if (active===g){
+      const b = Math.abs(Math.sin(t/180))*3;
+      ctx.fillStyle='#f6c453';
+      ctx.font='10px monospace';
+      ctx.fillText('🐾', cx-2, cy-6-b);
+    }
+  }
+
+  function drawPlayer(t){
+    const x = px(player.px), y = px(player.py);
+    const step = player.moving ? (Math.floor(player.walkT/6)%2) : 0;
+    const legL = step===0?0:1;
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.2)'; ctx.fillRect(x+3, y+14, 10, 2);
+    // legs
+    ctx.fillStyle='#3a5f7a';
+    ctx.fillRect(x+4, y+11, 3, 4+ (legL?0:0));
+    ctx.fillRect(x+9, y+11, 3, 4);
+    ctx.fillStyle='#241f1b';
+    ctx.fillRect(x+4, y+15-legL, 3, 1); ctx.fillRect(x+9, y+14+legL, 3, 1);
+    // body
+    ctx.fillStyle='#5e9b7e'; ctx.fillRect(x+3, y+6, 10, 6);
+    ctx.fillStyle='#4f866a'; ctx.fillRect(x+3, y+6, 10, 1);
+    // head
+    ctx.fillStyle='#f1c9a5'; ctx.fillRect(x+4, y+1, 8, 6);
+    // face by dir
+    ctx.fillStyle='#241f1b';
+    if(player.dir==='down'){ ctx.fillRect(x+5,y+4,1,1); ctx.fillRect(x+10,y+4,1,1); }
+    else if(player.dir==='up'){ /* back of head */ ctx.fillStyle='#6e4a2e'; ctx.fillRect(x+4,y+2,8,3); }
+    else if(player.dir==='left'){ ctx.fillRect(x+5,y+4,1,1); }
+    else { ctx.fillRect(x+10,y+4,1,1); }
+    // cap (coral)
+    ctx.fillStyle='#e8805c'; ctx.fillRect(x+3, y, 10, 3);
+    ctx.fillStyle='#c9613f'; ctx.fillRect(x+3, y+2, 10, 1);
+    if(player.dir==='down'||player.dir==='left') ctx.fillRect(x+1, y+2, 3, 1);   // brim
+    if(player.dir==='down'||player.dir==='right') ctx.fillRect(x+12, y+2, 3, 1);
+  }
+
+  // ---------- main loop ----------
+  function render(t){
+    // tiles
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      const c=map[y][x], sx=x*T, sy=y*T;
+      if(c===2) drawPath(sx,sy);
+      else if(c===3) drawWater(sx,sy,t);
+      else drawGrass(sx,sy, c===1);
+    }
+    // trees drawn after grass (already grass under them = code4 -> draw grass then tree)
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(map[y][x]===4){ drawGrass(x*T,y*T,false); drawTree(x*T,y*T); }
+    // buildings sorted by y for depth
+    const order = [...gyms].sort((a,b)=>a.y-b.y);
+    // player depth-mixed
+    let drew=false;
+    for(const g of order){
+      if(!drew && player.y < g.y){ drawPlayer(t); drew=true; }
+      drawDojo(g,t);
+    }
+    if(!drew) drawPlayer(t);
+  }
+
+  let last=0;
+  function loop(t){
+    if(player.moving){
+      player.walkT += 1;
+      const tx=player.tx*T, ty=player.ty*T;
+      const spd=2;
+      player.px += Math.sign(tx-player.px)*Math.min(spd,Math.abs(tx-player.px));
+      player.py += Math.sign(ty-player.py)*Math.min(spd,Math.abs(ty-player.py));
+      if(player.px===tx && player.py===ty){ player.moving=false; player.x=player.tx; player.y=player.ty; checkNear(); }
+    }
+    ctx.clearRect(0,0,cv.width,cv.height);
+    render(t);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- movement ----------
+  const D = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
+  function move(dir){
+    player.dir=dir;
+    if(player.moving) return;
+    const [dx,dy]=D[dir];
+    const nx=player.x+dx, ny=player.y+dy;
+    if(solid(nx,ny)){ // face a gym you bumped into → select it
+      const g=gymAt(nx,ny); if(g) select(g);
+      return;
+    }
+    player.tx=nx; player.ty=ny; player.moving=true; player.walkT=0;
+  }
+  function gymAt(tx,ty){
+    return gyms.find(g => tx>=g.x && tx<g.x+2 && ty>=g.y && ty<g.y+2) || null;
+  }
+  function checkNear(){
+    // nearest gym within 1 tile of the player (4-neighbour of footprint)
+    let found=null, best=99;
+    for(const g of gyms){
+      const cx=g.x+0.5, cy=g.y+0.5;
+      const d=Math.abs(cx-player.x)+Math.abs(cy-player.y);
+      if(d<best){best=d; found=g;}
+    }
+    if(found && best<=2.2) select(found); else clearSel();
+  }
+
+  // ---------- dialog ----------
+  const dEl=document.getElementById('dialog'), dName=document.getElementById('dName'),
+        dBody=document.getElementById('dBody'), dBadge=document.getElementById('dBadge'),
+        dTag=document.getElementById('dTag'), dHint=document.getElementById('dHint'),
+        abtn=document.getElementById('abtn');
+  function select(g){
+    active=g;
+    dBadge.textContent=g.badge; dBadge.className='d-badge'+(g.stray?' stray':'');
+    dName.textContent=g.name;
+    dTag.textContent=g.tag; dTag.className='d-tag'+(g.stray?' stray':'');
+    dBody.innerHTML=g.body;
+    dHint.textContent = g.stray ? '▶ 按 A 幫浪浪打卡留紀錄' : '▶ 按 A 發起道館挑戰';
+    abtn.classList.remove('disabled');
+    abtn.querySelector('small').textContent = g.stray?'打卡':'挑戰';
+  }
+  function clearSel(){
+    active=null;
+    dBadge.textContent='🏯'; dBadge.className='d-badge';
+    dName.textContent='走向道館…'; dTag.textContent='道館'; dTag.className='d-tag';
+    dBody.innerHTML='用方向鍵 / D-pad 走近任一道館，就能發起挑戰。';
+    dHint.textContent='▶ 也可以直接點地圖上的建築';
+    abtn.classList.add('disabled'); abtn.querySelector('small').textContent='挑戰';
+  }
+
+  const toast=document.getElementById('toast');
+  function doA(){
+    if(!active) return;
+    toast.innerHTML = active.stray
+      ? `已幫 <b>${active.name.replace('點','')}</b> 打卡！<br>紀錄 +1 🧡`
+      : `進入 <b>${active.name}</b><br>準備對戰！⚔️`;
+    toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show');
+  }
+
+  // ---------- input ----------
+  document.querySelectorAll('.pad button').forEach(b=>{
+    const dir=b.dataset.dir;
+    let iv=null;
+    const go=e=>{ e.preventDefault(); move(dir); iv=setInterval(()=>move(dir),140); };
+    const stop=()=>{ clearInterval(iv); };
+    b.addEventListener('touchstart',go,{passive:false});
+    b.addEventListener('mousedown',go);
+    b.addEventListener('touchend',stop); b.addEventListener('mouseup',stop);
+    b.addEventListener('mouseleave',stop);
+  });
+  abtn.addEventListener('click',doA);
+  window.addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase();
+    const m={arrowup:'up',w:'up',arrowdown:'down',s:'down',arrowleft:'left',a:'left',arrowright:'right',d:'right'};
+    if(m[k]){ e.preventDefault(); move(m[k]); }
+    if(k===' '||k==='enter'){ e.preventDefault(); doA(); }
+  });
+  // tap map to select a gym
+  cv.addEventListener('click',e=>{
+    const r=cv.getBoundingClientRect();
+    const tx=Math.floor((e.clientX-r.left)/r.width*COLS);
+    const ty=Math.floor((e.clientY-r.top)/r.height*ROWS);
+    const g=gymAt(tx,ty) || gymAt(tx,ty+1); // roof extends up a bit
+    if(g) select(g);
+  });
+
+  checkNear();
+})();
+</script>
