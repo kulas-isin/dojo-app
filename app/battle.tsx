@@ -76,7 +76,11 @@ export default function BattleScreen() {
   const [busy, setBusy] = useState(true);
   const [started, setStarted] = useState(false);
   const [result, setResult] = useState<null | 'win' | 'lose'>(null);
-  const [logText, setLogText] = useState('準備對戰！');
+  // 戰鬥旁白：logLines 為可讀的歷史（保留最近幾條，避免一閃即逝）；prompt 為當前提示
+  const [logLines, setLogLines] = useState<string[]>([]);
+  const [prompt, setPrompt] = useState('準備對戰！');
+  const pushLog = (msg: string) =>
+    setLogLines((cur) => (cur[cur.length - 1] === msg ? cur : [...cur, msg]).slice(-3));
   const [effText, setEffText] = useState('');
   const [muted, setMuted] = useState(false);
   const [combo, setCombo] = useState(0);
@@ -312,7 +316,7 @@ export default function BattleScreen() {
     const aAnim = atkSide === 'me' ? myA : foeA;
     const dAnim = defSide === 'me' ? myA : foeA;
 
-    setLogText(`${attacker.name} 使出 ${move.name}！${move.flavor ? `\n${move.flavor}` : ''}`);
+    pushLog(`${attacker.name} 使出 ${move.name}！${move.flavor ? `\n${move.flavor}` : ''}`);
     if (move.power >= 90 || move.kind === 'ultimate') { sfx.chargeSfx(); chargeGlow(atkSide); }
     // 前衝
     Animated.sequence([
@@ -329,14 +333,14 @@ export default function BattleScreen() {
     // 天然呆閃避
     if (res.eff !== 'miss' && defender.type === 'derp' && Math.random() < 0.15) {
       showEff('閃避了！');
-      setLogText(`${defender.name} 輕巧地閃過了！`);
+      pushLog(`${defender.name} 輕巧地閃過了！`);
       if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
       await wait(600);
       return;
     }
     if (res.eff === 'miss') {
       showEff('沒有命中！');
-      setLogText(`${attacker.name} 的攻擊沒有命中…`);
+      pushLog(`${attacker.name} 的攻擊沒有命中…`);
       if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
       await wait(650);
       return;
@@ -392,7 +396,7 @@ export default function BattleScreen() {
         const k = eff.status.kind;
         stRef[defSide][k] = Math.max(stRef[defSide][k], eff.status.turns);
         refreshSt();
-        setLogText(`${defender.name} ${k === 'stun' ? '被電暈了！' : k === 'burn' ? '被灼傷了！' : '中毒了！'}`);
+        pushLog(`${defender.name} ${k === 'stun' ? '被電暈了！' : k === 'burn' ? '被灼傷了！' : '中毒了！'}`);
       }
     }
 
@@ -422,7 +426,7 @@ export default function BattleScreen() {
   function playerTurn(i: number) {
     if (busy || result) return;
     const myMove = mine!.moves[i];
-    if (myMove.cost > mpRef.me) { setLogText('MP 不足，換一招吧！'); return; }
+    if (myMove.cost > mpRef.me) { setPrompt('MP 不足，換一招吧！'); return; }
     runRound(myMove, false);
   }
 
@@ -434,7 +438,7 @@ export default function BattleScreen() {
 
   function playerWildcard() {
     if (busy || result || !mine!.wildcard) return;
-    if (mine!.wildcard.cost > mpRef.me) { setLogText('MP 不足，換一招吧！'); return; }
+    if (mine!.wildcard.cost > mpRef.me) { setPrompt('MP 不足，換一招吧！'); return; }
     runRound(mine!.wildcard, false);
   }
 
@@ -470,13 +474,13 @@ export default function BattleScreen() {
 
     for (const a of order) {
       if (a.stun) {
-        setLogText(`${a.side === 'me' ? mine!.name : foe!.name} 被麻痺，動彈不得！`);
+        pushLog(`${a.side === 'me' ? mine!.name : foe!.name} 被麻痺，動彈不得！`);
         showEff('💫 麻痺中');
         await wait(700);
         continue;
       }
       let mult = 1;
-      if (a.side === 'me') { setLogText('抓準時機點一下！'); mult = await runTiming(); }
+      if (a.side === 'me') { setPrompt('抓準時機點一下！'); mult = await runTiming(); }
       await strike(a.side === 'me' ? mine! : foe!, a.side, a.move, mult);
       if (hpRef.foe <= 0) return endBattle('win');
       if (hpRef.me <= 0) return endBattle('lose');
@@ -487,7 +491,7 @@ export default function BattleScreen() {
     if (hpRef.me <= 0) return endBattle('lose');
 
     setBusy(false);
-    setLogText('要出哪一招？');
+    setPrompt('要出哪一招？');
   }
 
   // 回合結束：中毒/灼傷持續傷害、黏人回復
@@ -521,7 +525,7 @@ export default function BattleScreen() {
     await wait(600);
     // 勝利 → 寫回雲端（登頂 + 升級）
     if (kind === 'win' && gymId && myPetId) {
-      setLogText('結算中…登頂並升級');
+      setPrompt('結算中…登頂並升級');
       try { await winGymBattle(String(gymId), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
     }
     setResult(kind);
@@ -532,7 +536,7 @@ export default function BattleScreen() {
     setBusy(false);
     sfx.unlock();
     sfx.startSting();
-    setLogText('要出哪一招？');
+    setPrompt('要出哪一招？');
   };
 
   const myMeta = typeMeta(mine.type);
@@ -630,7 +634,12 @@ export default function BattleScreen() {
 
       {/* 面板 */}
       <View style={styles.panel}>
-        <View style={styles.log}><Text style={styles.logText}>{logText}</Text></View>
+        <View style={styles.log}>
+          {logLines.map((l, i) => (
+            <Text key={i} style={[styles.logText, i < logLines.length - 1 && styles.logDim]}>{l}</Text>
+          ))}
+          <Text style={styles.logPrompt}>{prompt}</Text>
+        </View>
         <Pressable
           disabled={busy || !!result || !started || myRage < RAGE_MAX}
           onPress={useUltimate}
@@ -903,8 +912,10 @@ const styles = StyleSheet.create({
   comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
   comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
   panel: { marginTop: 'auto', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: spacing.xl },
-  log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, padding: spacing.md, minHeight: 50, borderWidth: 1, borderColor: colors.border },
-  logText: { color: colors.text, fontSize: font.size.md },
+  log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, padding: spacing.md, minHeight: 96, justifyContent: 'flex-end', borderWidth: 1, borderColor: colors.border },
+  logText: { color: colors.text, fontSize: font.size.md, lineHeight: font.size.md * 1.35 },
+  logDim: { opacity: 0.4, fontSize: font.size.sm },
+  logPrompt: { color: colors.primary, fontSize: font.size.sm, fontWeight: font.weight.bold, marginTop: 4 },
   moves: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
   move: { width: '48%', backgroundColor: colors.card, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
   ultBtn: { marginTop: spacing.md, backgroundColor: '#2E2A26', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 2, borderColor: colors.gold },
