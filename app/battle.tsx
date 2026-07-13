@@ -7,11 +7,13 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'r
 import { Button } from '@/components/Button';
 import * as sfx from '@/battle/audio';
 import {
+  PASSIVES,
   aiChooseMove,
   attack,
   effLabel,
   makeFighter,
   makeFighterFromEntry,
+  ultimateFor,
   type Fighter,
   type Move,
 } from '@/battle/engine';
@@ -27,6 +29,12 @@ function hpColors(pct: number): [string, string] {
   if (pct > 22) return ['#EBBE5C', '#D19A2E'];
   return ['#EE9270', '#D2643F'];
 }
+
+/** 戰鬥中的即時狀態 */
+interface St { poison: number; burn: number; stun: number; shield: number; atkStage: number }
+const blankSt = (): St => ({ poison: 0, burn: 0, stun: 0, shield: 0, atkStage: 0 });
+const STATUS_ICON: Record<string, string> = { poison: '☠️', burn: '🔥', stun: '💫', shield: '🛡️', buff: '⬆️' };
+const RAGE_MAX = 100;
 
 function haptic(kind: 'light' | 'heavy') {
   if (Platform.OS === 'web') {
@@ -71,6 +79,15 @@ export default function BattleScreen() {
   const [effText, setEffText] = useState('');
   const [muted, setMuted] = useState(false);
   const [combo, setCombo] = useState(0);
+  const [myRage, setMyRage] = useState(0);
+  const [foeRage, setFoeRage] = useState(0);
+  const rageRef = useRef({ me: 0, foe: 0 }).current;
+  const [, setStTick] = useState(0);
+  const stRef = useRef({ me: blankSt(), foe: blankSt() }).current;
+  const [timingOn, setTimingOn] = useState(false);
+  const timeA = useRef(new Animated.Value(0)).current;
+  const timeV = useRef(0);
+  const timeResolve = useRef<((m: number) => void) | null>(null);
 
   // 動畫值
   const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0) }).current;
@@ -98,6 +115,10 @@ export default function BattleScreen() {
   const hpRef = useRef({ me: mine?.maxHp ?? 1, foe: foe?.maxHp ?? 1 }).current;
 
   useEffect(() => () => sfx.stopBgm(), []);
+  useEffect(() => {
+    const id = timeA.addListener(({ value }) => (timeV.current = value));
+    return () => timeA.removeListener(id);
+  }, [timeA]);
 
   if (!mine || !foe) {
     return (
@@ -225,7 +246,50 @@ export default function BattleScreen() {
     }
   };
 
-  async function strike(attacker: Fighter, atkSide: 'me' | 'foe', move: Move) {
+  const maxHpOf = (side: 'me' | 'foe') => (side === 'me' ? mine!.maxHp : foe!.maxHp);
+  const setHp = (side: 'me' | 'foe', val: number) => {
+    hpRef[side] = Math.max(0, Math.min(maxHpOf(side), val));
+    if (side === 'me') setMyHp(hpRef.me); else setFoeHp(hpRef.foe);
+    Animated.timing(side === 'me' ? hpMyA : hpFoeA, {
+      toValue: hpRef[side] / maxHpOf(side), duration: 420, useNativeDriver: false,
+    }).start();
+  };
+  const fillRage = (side: 'me' | 'foe', amt: number) => {
+    rageRef[side] = Math.max(0, Math.min(RAGE_MAX, rageRef[side] + amt));
+    if (side === 'me') setMyRage(rageRef.me); else setFoeRage(rageRef.foe);
+  };
+  const refreshSt = () => setStTick((x) => x + 1);
+
+  // 節奏小遊戲：出招時抓時機 → 回傳威力倍率 0.8~1.3
+  const runTiming = () =>
+    new Promise<number>((resolve) => {
+      timeResolve.current = resolve;
+      timeA.setValue(0);
+      setTimingOn(true);
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(timeA, { toValue: 1, duration: 620, useNativeDriver: true }),
+          Animated.timing(timeA, { toValue: 0, duration: 620, useNativeDriver: true }),
+        ]),
+      ).start();
+      // 沒點就 1.4 秒後普通威力
+      setTimeout(() => finishTiming(), 1400);
+    });
+  const finishTiming = (tapped = false) => {
+    if (!timeResolve.current) return;
+    timeA.stopAnimation();
+    setTimingOn(false);
+    const d = Math.abs(timeV.current - 0.5); // 0(正中)~0.5(邊緣)
+    let mult = 1.0;
+    if (tapped) {
+      mult = d < 0.08 ? 1.35 : d < 0.2 ? 1.15 : 0.95;
+      if (d < 0.08) { showEff('完美命中！'); sfx.superSfx(); }
+    }
+    const r = timeResolve.current; timeResolve.current = null;
+    r(mult);
+  };
+
+  async function strike(attacker: Fighter, atkSide: 'me' | 'foe', move: Move, powerMult = 1) {
     const defSide = atkSide === 'me' ? 'foe' : 'me';
     const defender = atkSide === 'me' ? foe! : mine!;
     const aAnim = atkSide === 'me' ? myA : foeA;
@@ -240,10 +304,19 @@ export default function BattleScreen() {
     ]).start();
     await wait(320);
 
-    const res = attack(attacker, defender, move);
-    const tier = move.power >= 90 ? 3 : move.power >= 65 ? 2 : 1;
     const meta = typeMeta(attacker.type);
+    const isUlt = move.kind === 'ultimate';
+    const tier = isUlt || move.power >= 90 ? 3 : move.power >= 65 ? 2 : 1;
+    const res = attack(attacker, defender, move);
 
+    // 天然呆閃避
+    if (res.eff !== 'miss' && defender.type === 'derp' && Math.random() < 0.15) {
+      showEff('閃避了！');
+      setLogText(`${defender.name} 輕巧地閃過了！`);
+      if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
+      await wait(600);
+      return;
+    }
     if (res.eff === 'miss') {
       showEff('沒有命中！');
       setLogText(`${attacker.name} 的攻擊沒有命中…`);
@@ -252,23 +325,25 @@ export default function BattleScreen() {
       return;
     }
 
-    // 命中（同步更新 ref，再反映到 state 與動畫）
-    hpRef[defSide] = Math.max(0, hpRef[defSide] - res.dmg);
-    if (defSide === 'me') setMyHp(hpRef.me);
-    else setFoeHp(hpRef.foe);
-    const newFrac = hpRef[defSide] / (defSide === 'me' ? mine!.maxHp : foe!.maxHp);
-    Animated.timing(defSide === 'me' ? hpMyA : hpFoeA, {
-      toValue: newFrac,
-      duration: 480,
-      useNativeDriver: false,
-    }).start();
+    // 傷害修正：攻擊強化 × 節奏倍率 × 好運暴擊 × 肉身裝甲 − 護盾
+    const atkMult = 1 + 0.25 * stRef[atkSide].atkStage;
+    const lucky = (attacker.type === 'derp' && Math.random() < 0.18) || (!!move.effect?.lucky && Math.random() < 0.35);
+    const sturdyMult = defender.type === 'sturdy' ? 0.85 : 1;
+    let dmg = Math.max(1, Math.round(res.dmg * atkMult * powerMult * (lucky ? 1.5 : 1) * sturdyMult));
+    if (stRef[defSide].shield > 0) {
+      const absorbed = Math.min(stRef[defSide].shield, dmg);
+      stRef[defSide].shield -= absorbed; dmg -= absorbed; refreshSt();
+      if (absorbed > 0) showEff('🛡️ 擋下部分傷害');
+    }
+    setHp(defSide, hpRef[defSide] - dmg);
 
-    // 特效 + 音效（分屬性 + 威力分級多段）
+    // 特效 + 音效
+    if (isUlt) { flash(); sfx.chargeSfx(); }
     sfx.moveSfx(meta.fx as any, tier);
     sfx.hitSfx();
     haptic(tier >= 3 ? 'heavy' : 'light');
-    typeFx(meta.fx, defSide, meta.color, move.power);
-    if (res.eff === 'super') flash();
+    typeFx(meta.fx, defSide, meta.color, isUlt ? 130 : move.power);
+    if (isUlt) setTimeout(() => typeFx(meta.fx, defSide, meta.color, 130), 220);
     // 被打震動
     Animated.sequence([
       Animated.timing(dAnim.tx, { toValue: -6, duration: 40, useNativeDriver: true }),
@@ -280,11 +355,38 @@ export default function BattleScreen() {
       Animated.timing(dAnim.hit, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start();
 
-    if (res.eff === 'super') { showEff('效果絕佳！'); sfx.superSfx(); }
+    if (lucky) { showEff('好運暴擊！'); flash(); sfx.superSfx(); }
+    else if (res.eff === 'super') { showEff('效果絕佳！'); flash(); sfx.superSfx(); }
     else if (res.eff === 'weak') showEff('效果不佳…');
 
+    // 怒氣累積（出手 + 挨打）
+    fillRage(atkSide, isUlt ? 6 : 12);
+    fillRage(defSide, 16);
+
+    // 招式附加效果
+    const eff = move.effect;
+    if (eff) {
+      const aMax = maxHpOf(atkSide);
+      if (eff.heal) { setHp(atkSide, hpRef[atkSide] + Math.round(aMax * eff.heal)); showEff('💚 回復體力'); }
+      if (eff.shield) { stRef[atkSide].shield += Math.round(aMax * eff.shield); refreshSt(); showEff('🛡️ 展開護盾'); }
+      if (eff.buffAtk) { stRef[atkSide].atkStage = Math.min(3, stRef[atkSide].atkStage + eff.buffAtk); refreshSt(); showEff('⬆️ 攻擊提升'); }
+      if (eff.status && dmg > 0 && Math.random() < eff.status.chance) {
+        const k = eff.status.kind;
+        stRef[defSide][k] = Math.max(stRef[defSide][k], eff.status.turns);
+        refreshSt();
+        setLogText(`${defender.name} ${k === 'stun' ? '被電暈了！' : k === 'burn' ? '被灼傷了！' : '中毒了！'}`);
+      }
+    }
+
+    // 傲嬌反擊
+    if (defender.type === 'proud' && hpRef[defSide] > 0 && dmg > 0 && Math.random() < 0.3) {
+      setHp(atkSide, hpRef[atkSide] - Math.max(1, Math.round(dmg * 0.3)));
+      fillRage(defSide, 8);
+      showEff('傲嬌反擊！');
+    }
+
     if (defSide === 'foe') updateRed();
-    if (atkSide === 'me') { comboRef.current += 1; if (comboRef.current >= 2) showCombo(comboRef.current); }
+    if (atkSide === 'me' && !isUlt) { comboRef.current += 1; if (comboRef.current >= 2) showCombo(comboRef.current); }
 
     await wait(560);
   }
@@ -299,28 +401,80 @@ export default function BattleScreen() {
     }).start();
   };
 
-  async function playerTurn(i: number) {
+  function playerTurn(i: number) {
     if (busy || result) return;
     const myMove = mine!.moves[i];
     if (myMove.cost > mpRef.me) { setLogText('MP 不足，換一招吧！'); return; }
+    runRound(myMove, false);
+  }
+
+  function useUltimate() {
+    if (busy || result || rageRef.me < RAGE_MAX) return;
+    rageRef.me = 0; setMyRage(0);
+    runRound(ultimateFor(mine!.type), true);
+  }
+
+  async function runRound(myMove: Move, isUlt: boolean) {
+    if (busy || result) return;
     setBusy(true);
-    spendMp('me', myMove.cost);
-    const foeMove = foe!.moves[aiChooseMove(foe!, mine!, mpRef.foe)];
-    spendMp('foe', foeMove.cost);
 
-    const meFirst = mine!.spd >= foe!.spd;
-    const order: ['me' | 'foe', Move][] = meFirst
-      ? [['me', myMove], ['foe', foeMove]]
-      : [['foe', foeMove], ['me', myMove]];
+    // 敵方招式：怒氣滿放必殺
+    let foeUlt = false;
+    let foeMove: Move;
+    if (rageRef.foe >= RAGE_MAX) { foeMove = ultimateFor(foe!.type); rageRef.foe = 0; setFoeRage(0); foeUlt = true; }
+    else foeMove = foe!.moves[aiChooseMove(foe!, mine!, mpRef.foe)];
 
-    for (const [side, move] of order) {
-      const atk = side === 'me' ? mine! : foe!;
-      await strike(atk, side, move);
+    // 麻痺：暈眩則該方略過行動（消耗一層，且不耗 MP）
+    const meStun = stRef.me.stun > 0; if (meStun) { stRef.me.stun -= 1; refreshSt(); }
+    const foeStun = stRef.foe.stun > 0; if (foeStun) { stRef.foe.stun -= 1; refreshSt(); }
+
+    if (!isUlt && !meStun) spendMp('me', myMove.cost);
+    if (!foeUlt && !foeStun) spendMp('foe', foeMove.cost);
+
+    // 出手順序：過動先攻 > 必殺 > 速度
+    const pri = (f: Fighter, u: boolean) => (f.type === 'hyper' ? 2 : 0) + (u ? 1 : 0);
+    const meFirst = pri(mine!, isUlt) !== pri(foe!, foeUlt)
+      ? pri(mine!, isUlt) > pri(foe!, foeUlt)
+      : mine!.spd >= foe!.spd;
+
+    const acts = [
+      { side: 'me' as const, move: myMove, stun: meStun },
+      { side: 'foe' as const, move: foeMove, stun: foeStun },
+    ];
+    const order = meFirst ? acts : [acts[1], acts[0]];
+
+    for (const a of order) {
+      if (a.stun) {
+        setLogText(`${a.side === 'me' ? mine!.name : foe!.name} 被麻痺，動彈不得！`);
+        showEff('💫 麻痺中');
+        await wait(700);
+        continue;
+      }
+      let mult = 1;
+      if (a.side === 'me') { setLogText('抓準時機點一下！'); mult = await runTiming(); }
+      await strike(a.side === 'me' ? mine! : foe!, a.side, a.move, mult);
       if (hpRef.foe <= 0) return endBattle('win');
       if (hpRef.me <= 0) return endBattle('lose');
     }
+
+    await endOfRound();
+    if (hpRef.foe <= 0) return endBattle('win');
+    if (hpRef.me <= 0) return endBattle('lose');
+
     setBusy(false);
     setLogText('要出哪一招？');
+  }
+
+  // 回合結束：中毒/灼傷持續傷害、黏人回復
+  async function endOfRound() {
+    for (const side of ['me', 'foe'] as const) {
+      if (hpRef[side] <= 0) continue;
+      const st = stRef[side], max = maxHpOf(side), f = side === 'me' ? mine! : foe!;
+      if (st.poison > 0) { setHp(side, hpRef[side] - Math.max(1, Math.round(max * 0.06))); st.poison -= 1; showEff('☠️ 中毒'); await wait(430); }
+      if (st.burn > 0 && hpRef[side] > 0) { setHp(side, hpRef[side] - Math.max(1, Math.round(max * 0.07))); st.burn -= 1; showEff('🔥 灼傷'); await wait(430); }
+      if (f.type === 'clingy' && hpRef[side] > 0 && hpRef[side] / max < 0.4) { setHp(side, hpRef[side] + Math.round(max * 0.06)); showEff('💧 黏人回復'); await wait(360); }
+    }
+    refreshSt();
   }
 
   async function endBattle(kind: 'win' | 'lose') {
@@ -388,7 +542,7 @@ export default function BattleScreen() {
 
       {/* 對手（上） */}
       <View style={styles.rowTop}>
-        <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} />
+        <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} rage={foeRage} status={stRef.foe} />
         <FighterAvatar
           pet={champEntry}
           avatarCfg={champPet?.avatar}
@@ -407,7 +561,7 @@ export default function BattleScreen() {
           anim={myA}
           color={myMeta.color}
         />
-        <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} />
+        <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} rage={myRage} status={stRef.me} />
       </View>
 
       {/* 特效層 */}
@@ -417,9 +571,37 @@ export default function BattleScreen() {
         <Particle key={p.id} side={p.side} color={p.color} dx={p.dx} dy={p.dy} size={p.size} spin={p.spin} ox={p.ox} oy={p.oy} />
       ))}
 
+      {/* 節奏小遊戲 */}
+      {timingOn ? (
+        <Pressable style={styles.timingOverlay} onPress={() => finishTiming(true)}>
+          <View style={styles.timingCard}>
+            <Text style={styles.timingLabel}>抓準中央，威力更強！</Text>
+            <View style={styles.timingBar}>
+              <View style={styles.timingSweet} />
+              <Animated.View
+                style={[
+                  styles.timingMarker,
+                  { transform: [{ translateX: timeA.interpolate({ inputRange: [0, 1], outputRange: [2, 236] }) }] },
+                ]}
+              />
+            </View>
+            <Text style={styles.timingHint}>點任意處出手</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {/* 面板 */}
       <View style={styles.panel}>
         <View style={styles.log}><Text style={styles.logText}>{logText}</Text></View>
+        <Pressable
+          disabled={busy || !!result || !started || myRage < RAGE_MAX}
+          onPress={useUltimate}
+          style={[styles.ultBtn, (busy || !!result || !started || myRage < RAGE_MAX) && { opacity: 0.4 }]}
+        >
+          <Text style={styles.ultText}>
+            {myRage >= RAGE_MAX ? `💥 必殺技　${ultimateFor(mine.type).name}` : `怒氣 ${Math.round(myRage)}%　滿了可放必殺`}
+          </Text>
+        </Pressable>
         <View style={styles.moves}>
           {mine.moves.map((m, i) => {
             const noMp = m.cost > myMp;
@@ -431,7 +613,7 @@ export default function BattleScreen() {
                 onPress={() => playerTurn(i)}
                 style={[styles.move, disabled && { opacity: 0.45 }]}
               >
-                <Text style={styles.moveName}>{myMeta.emoji} {m.name}</Text>
+                <Text style={styles.moveName}>{myMeta.emoji} {m.name}{m.tag ? ` ・${m.tag}` : ''}</Text>
                 <Text style={styles.moveMeta}>
                   威力 {m.power} · 命中 {Math.round(m.acc * 100)}% · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}
                 </Text>
@@ -510,7 +692,7 @@ function FighterAvatar({
   );
 }
 
-function HpCard({ fighter, hpAnim, mpAnim, mp, meta }: { fighter: Fighter; hpAnim: Animated.Value; mpAnim: Animated.Value; mp: number; meta: any }) {
+function HpCard({ fighter, hpAnim, mpAnim, mp, meta, rage, status }: { fighter: Fighter; hpAnim: Animated.Value; mpAnim: Animated.Value; mp: number; meta: any; rage: number; status: St }) {
   const [pctState, setPctState] = useState(100);
   useEffect(() => {
     const id = hpAnim.addListener(({ value }) => setPctState(Math.round(value * 100)));
@@ -519,6 +701,12 @@ function HpCard({ fighter, hpAnim, mpAnim, mp, meta }: { fighter: Fighter; hpAni
   const [ca, cb] = hpColors(pctState);
   const w = hpAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
   const mw = mpAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+  const chips: string[] = [];
+  if (status.poison > 0) chips.push(`${STATUS_ICON.poison}${status.poison}`);
+  if (status.burn > 0) chips.push(`${STATUS_ICON.burn}${status.burn}`);
+  if (status.stun > 0) chips.push(STATUS_ICON.stun);
+  if (status.shield > 0) chips.push(STATUS_ICON.shield);
+  if (status.atkStage > 0) chips.push(`${STATUS_ICON.buff}${status.atkStage}`);
   return (
     <View style={styles.hpCard}>
       <View style={styles.hpRow1}>
@@ -528,6 +716,7 @@ function HpCard({ fighter, hpAnim, mpAnim, mp, meta }: { fighter: Fighter; hpAni
         </View>
         <Text style={styles.lv}>Lv.{fighter.level}</Text>
       </View>
+      <Text style={styles.passive}>特性：{PASSIVES[fighter.type as keyof typeof PASSIVES].label}</Text>
       <View style={styles.track}>
         <Animated.View style={{ width: w, height: '100%' }}>
           <LinearGradient colors={[ca, cb]} style={{ flex: 1 }} />
@@ -539,7 +728,10 @@ function HpCard({ fighter, hpAnim, mpAnim, mp, meta }: { fighter: Fighter; hpAni
           <LinearGradient colors={['#6EA8E6', '#3F6FBF']} style={{ flex: 1 }} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
         </Animated.View>
       </View>
-      <Text style={styles.mpNum}>MP {mp} / {fighter.maxMp}</Text>
+      <View style={styles.rageTrack}>
+        <View style={[styles.rageFill, { width: `${Math.round(rage)}%` }]} />
+      </View>
+      <Text style={styles.mpNum}>怒氣 {Math.round(rage)}%{chips.length ? `　${chips.join(' ')}` : ''}</Text>
     </View>
   );
 }
@@ -660,6 +852,9 @@ const styles = StyleSheet.create({
   hpNum: { fontSize: font.size.xs, color: colors.textDim, textAlign: 'right', marginTop: 3, fontVariant: ['tabular-nums'] },
   mpTrack: { height: 7, backgroundColor: colors.cardAlt, borderRadius: 4, overflow: 'hidden', marginTop: 4 },
   mpNum: { fontSize: 10, color: '#3F6FBF', textAlign: 'right', marginTop: 2, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  passive: { fontSize: 10, color: colors.textMuted, fontWeight: '700', marginTop: 2 },
+  rageTrack: { height: 6, backgroundColor: colors.cardAlt, borderRadius: 4, overflow: 'hidden', marginTop: 5 },
+  rageFill: { height: '100%', backgroundColor: colors.gold },
   redTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#E23B3B', zIndex: 14 },
   comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
   comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
@@ -668,6 +863,15 @@ const styles = StyleSheet.create({
   logText: { color: colors.text, fontSize: font.size.md },
   moves: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
   move: { width: '48%', backgroundColor: colors.card, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
+  ultBtn: { marginTop: spacing.md, backgroundColor: '#2E2A26', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 2, borderColor: colors.gold },
+  ultText: { color: colors.gold, fontWeight: '900', fontSize: font.size.md },
+  timingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
+  timingCard: { backgroundColor: 'rgba(46,42,38,0.95)', borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', width: 280 },
+  timingLabel: { color: '#fff', fontWeight: '800', fontSize: font.size.md, marginBottom: spacing.md },
+  timingBar: { width: 252, height: 26, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 13, justifyContent: 'center', overflow: 'hidden' },
+  timingSweet: { position: 'absolute', left: '50%', marginLeft: -22, width: 44, height: '100%', backgroundColor: 'rgba(246,196,83,0.5)' },
+  timingMarker: { width: 8, height: 26, borderRadius: 4, backgroundColor: '#fff' },
+  timingHint: { color: 'rgba(255,255,255,0.7)', fontSize: font.size.xs, marginTop: spacing.sm, fontWeight: '700' },
   moveName: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.md },
   moveMeta: { color: colors.textDim, fontSize: font.size.xs, marginTop: 3, fontVariant: ['tabular-nums'] },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(30,25,20,0.55)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl, zIndex: 40 },
