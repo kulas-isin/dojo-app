@@ -39,6 +39,15 @@ const RAGE_MAX = 100;
 /** 這些特效打在自己身上（增益/防禦/充能），其餘打在對手 */
 const SELF_FX = new Set(['heal', 'shield', 'buff', 'charge', 'rage', 'box', 'sparkle', 'trash', 'cleanse']);
 
+/** 個性專屬打法（攻擊方）：預備長短、連衝、定格、擊退、甩頭… */
+const PERF: Record<string, { antic: number; doubleDash: boolean; wobble: boolean; stick: boolean; spin: boolean; hitstopMul: number; kb: number; quake: boolean }> = {
+  hyper: { antic: 0.8, doubleDash: true, wobble: false, stick: false, spin: false, hitstopMul: 0.9, kb: 1.0, quake: false },
+  sturdy: { antic: 1.7, doubleDash: false, wobble: false, stick: false, spin: false, hitstopMul: 1.5, kb: 0.35, quake: true },
+  proud: { antic: 0.75, doubleDash: false, wobble: false, stick: false, spin: true, hitstopMul: 0.9, kb: 1.15, quake: false },
+  derp: { antic: 1.0, doubleDash: false, wobble: true, stick: false, spin: false, hitstopMul: 1.0, kb: 1.0, quake: false },
+  clingy: { antic: 1.0, doubleDash: false, wobble: false, stick: true, spin: false, hitstopMul: 1.0, kb: 0.0, quake: false },
+};
+
 function haptic(kind: 'light' | 'heavy') {
   if (Platform.OS === 'web') {
     // Android Chrome 支援；iOS Safari 不支援網頁震動（原生 App 才有）
@@ -443,17 +452,40 @@ export default function BattleScreen() {
     if (move.power >= 90 || isUlt) { sfx.chargeSfx(); chargeGlow(atkSide); }
 
     // ── 分鏡 intro ──
+    const perf = PERF[attacker.type] ?? PERF.derp;
     if (choreo === 'dash') {
-      // 預備：後縮壓扁蓄力（中/大招才有）
-      if (tier >= 2) { poseTo(aAnim, 1.14, 0.86, 0, 90).start(); await wait(tier === 3 ? 150 : 100); }
+      // 預備：後縮壓扁蓄力（憨厚最久；中/大招或憨厚才明顯）
+      if (tier >= 2 || perf.antic > 1.3) {
+        poseTo(aAnim, 1.14, 0.86, 0, Math.round(90 * perf.antic)).start();
+        await wait(Math.round((tier === 3 ? 150 : 100) * perf.antic));
+      }
       // 衝刺：拉長 + 撲向對手 + 集中速度線
-      spawnRays(atkSide, meta.color, 8, { mode: 'in', len: 30, width: 3, dist: 62 });
-      Animated.parallel([
-        Animated.timing(aAnim.ty, { toValue: dir * 34, duration: 130, useNativeDriver: true }),
-        Animated.timing(aAnim.sx, { toValue: 0.9, duration: 130, useNativeDriver: true }),
-        Animated.timing(aAnim.sy, { toValue: 1.12, duration: 130, useNativeDriver: true }),
-      ]).start();
-      await wait(150);
+      spawnRays(atkSide, meta.color, perf.doubleDash ? 12 : 8, { mode: 'in', len: 30, width: 3, dist: 62 });
+      const lunge = (d: number) => Animated.parallel([
+        Animated.timing(aAnim.ty, { toValue: dir * 34, duration: d, useNativeDriver: true }),
+        Animated.timing(aAnim.sx, { toValue: 0.9, duration: d, useNativeDriver: true }),
+        Animated.timing(aAnim.sy, { toValue: 1.12, duration: d, useNativeDriver: true }),
+      ]);
+      if (perf.doubleDash) {
+        // 過動：連兩下衝刺
+        lunge(110).start(); await wait(95);
+        Animated.timing(aAnim.ty, { toValue: dir * 12, duration: 60, useNativeDriver: true }).start(); await wait(70);
+        lunge(100).start(); await wait(120);
+      } else if (perf.wobble) {
+        // 天然呆：歪歪晃晃地衝
+        Animated.parallel([
+          lunge(160),
+          Animated.sequence([
+            Animated.timing(aAnim.tx, { toValue: 11, duration: 55, useNativeDriver: true }),
+            Animated.timing(aAnim.tx, { toValue: -9, duration: 55, useNativeDriver: true }),
+            Animated.timing(aAnim.tx, { toValue: 0, duration: 55, useNativeDriver: true }),
+          ]),
+        ]).start();
+        await wait(170);
+      } else {
+        lunge(130).start();
+        await wait(150);
+      }
     } else if (choreo === 'stream') {
       // 持續噴射：擺好姿勢（翹起來）
       poseTo(aAnim, 1.06, 0.92, dir * 0.16, 220).start();
@@ -541,17 +573,46 @@ export default function BattleScreen() {
     emitFx(fxKind, fxSide, meta.color, tier, emit, dur);
     if (isUlt) setTimeout(() => typeFx(meta.fx, defSide, meta.color, 130), 220);
 
-    // ── 命中反應（依分鏡）──
+    // ── 命中反應（依分鏡 + 個性）──
     if (choreo === 'dash') {
-      // 命中定格 hitstop：對手瞬間擠扁定住
+      // 命中定格 hitstop：對手瞬間擠扁定住（憨厚定格更久＋地震）
       poseTo(dAnim, 1.22, 0.8, 0, 40).start();
       Animated.timing(dAnim.hit, { toValue: 1, duration: 40, useNativeDriver: true }).start();
-      await wait(tier === 3 ? 150 : tier === 2 ? 90 : 50);
-      // 擊飛 + 傾斜，然後 Q 彈回原位
-      Animated.timing(dAnim.ty, { toValue: dir * 26, duration: 90, useNativeDriver: true }).start();
-      Animated.timing(dAnim.rot, { toValue: dir * 0.14, duration: 90, useNativeDriver: true }).start();
-      Animated.timing(dAnim.hit, { toValue: 0, duration: 220, useNativeDriver: true }).start();
-      setTimeout(() => { springHome(dAnim).start(); springHome(aAnim).start(); }, 120);
+      if (perf.quake) { doShake(16); setTimeout(() => doShake(10), 120); }
+      await wait(Math.round((tier === 3 ? 150 : tier === 2 ? 90 : 50) * perf.hitstopMul));
+      if (perf.stick) {
+        // 黏人精：不打飛，貼著→延遲「啵」一下彈開
+        Animated.timing(dAnim.hit, { toValue: 0, duration: 240, useNativeDriver: true }).start();
+        setTimeout(() => {
+          Animated.sequence([
+            Animated.timing(dAnim.ty, { toValue: -dir * 12, duration: 90, useNativeDriver: true }),
+            Animated.timing(dAnim.ty, { toValue: 0, duration: 160, useNativeDriver: true }),
+          ]).start();
+          springHome(dAnim).start();
+        }, 220);
+        setTimeout(() => springHome(aAnim).start(), 120);
+      } else {
+        // 擊飛 + 傾斜（憨厚 kb 小＝對手被壓住不太飛）
+        Animated.timing(dAnim.ty, { toValue: dir * 26 * perf.kb, duration: 90, useNativeDriver: true }).start();
+        Animated.timing(dAnim.rot, { toValue: dir * 0.14 * (perf.kb || 0.4), duration: 90, useNativeDriver: true }).start();
+        Animated.timing(dAnim.hit, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+        setTimeout(() => springHome(dAnim).start(), 120);
+        if (perf.spin) {
+          // 傲嬌：命中後甩頭轉身（背對一下再回來）
+          Animated.parallel([
+            Animated.spring(aAnim.tx, { toValue: 0, useNativeDriver: true, friction: 5 }),
+            Animated.spring(aAnim.ty, { toValue: 0, useNativeDriver: true, friction: 5 }),
+            Animated.spring(aAnim.sx, { toValue: 1, useNativeDriver: true, friction: 5 }),
+            Animated.spring(aAnim.sy, { toValue: 1, useNativeDriver: true, friction: 5 }),
+          ]).start();
+          Animated.sequence([
+            Animated.timing(aAnim.rot, { toValue: dir * 0.9, duration: 150, useNativeDriver: true }),
+            Animated.timing(aAnim.rot, { toValue: 0, duration: 260, useNativeDriver: true }),
+          ]).start();
+        } else {
+          setTimeout(() => springHome(aAnim).start(), 120);
+        }
+      }
     } else if (choreo === 'stream') {
       // 對手嫌惡縮一下、後退半步（不打飛）
       poseTo(dAnim, 0.94, 1.06, -dir * 0.05, 120).start();
