@@ -495,11 +495,10 @@ function FighterAvatar({
           transform: [{ scale: anim.glow.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.18] }) }],
         }}
       />
-      <View style={styles.avatar}>
+      {/* 有像素造型 → 無框、直接站進場景；沒有 → fallback 真實照片（保留框）*/}
+      <View style={avatarCfg ? styles.avatarBare : styles.avatar}>
         {avatarCfg ? (
-          <View style={[styles.avatarImg, styles.avatarPixel]}>
-            <AvatarView size={104} pet={avatarCfg} petType={petType ?? 'cat'} />
-          </View>
+          <AvatarView size={124} pet={avatarCfg} petType={petType ?? 'cat'} />
         ) : pet?.avatarUri || pet?.mediaUri ? (
           <Image source={pet.thumbUri ?? pet.avatarUri ?? pet.mediaUri} style={styles.avatarImg} contentFit="cover" />
         ) : (
@@ -648,7 +647,8 @@ const styles = StyleSheet.create({
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },
   avatarImg: { width: '100%', height: '100%' },
-  avatarPixel: { backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  // 像素造型：無底色/邊框，讓角色像真的站在場景裡；仍保留命中白閃（圓角裁切）
+  avatarBare: { width: 124, height: 124, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   avatarFlash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff' },
   hpCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, minWidth: 190, borderWidth: 1, borderColor: colors.border, ...shadow.card },
   hpRow1: { flexDirection: 'row', alignItems: 'center', gap: 6 },
