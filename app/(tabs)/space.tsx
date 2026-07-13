@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET } from '@/avatar/sprite';
 import { Button } from '@/components/Button';
@@ -44,6 +44,34 @@ export default function SpaceScreen() {
   const [welcome, setWelcome] = useState<number | null>(null);
   const [levelUpMsg, setLevelUpMsg] = useState<string | null>(null);
   const [dailyMsg, setDailyMsg] = useState<string | null>(null);
+  const [fbs, setFbs] = useState<{ id: number; petId: string; emoji: string; text: string; color: string }[]>([]);
+  const fbId = useRef(0);
+  const bounces = useRef<Record<string, Animated.Value>>({}).current;
+  const getBounce = (id: string) => (bounces[id] ??= new Animated.Value(0));
+
+  const bounce = (id: string) => {
+    const b = getBounce(id);
+    Animated.sequence([
+      Animated.spring(b, { toValue: 1, useNativeDriver: true, friction: 4, tension: 160 }),
+      Animated.spring(b, { toValue: 0, useNativeDriver: true, friction: 5 }),
+    ]).start();
+  };
+  const spawnFb = (petId: string, emoji: string, text: string, color: string) => {
+    const id = fbId.current++;
+    setFbs((f) => [...f, { id, petId, emoji, text, color }]);
+    setTimeout(() => setFbs((f) => f.filter((x) => x.id !== id)), 950);
+  };
+  const onPat = (petId: string) => {
+    petPet(petId);
+    bounce(petId);
+    spawnFb(petId, '❤️', '+2 好感', colors.primary);
+  };
+  const onFeed = (petId: string) => {
+    if (feedPet(petId)) {
+      bounce(petId);
+      spawnFb(petId, '🍖', '+15 好感', colors.gold);
+    }
+  };
 
   useEffect(() => {
     const gained = collectIdle();
@@ -150,9 +178,12 @@ export default function SpaceScreen() {
                 const mood = MOOD_META[moodFor(Date.now(), fedAt[p.id], playedAt[p.id])];
                 return (
                   <View key={p.id} style={styles.petRow}>
-                    <View style={styles.petMini}>
+                    <Animated.View style={[styles.petMini, { transform: [{ scale: getBounce(p.id).interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) }] }]}>
                       <AvatarView size={44} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
-                    </View>
+                    </Animated.View>
+                    {fbs.filter((f) => f.petId === p.id).map((f) => (
+                      <FloatFb key={f.id} emoji={f.emoji} text={f.text} color={f.color} />
+                    ))}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.petName}>
                         {p.name} <Text style={styles.bondTitle}>{info.emoji} {info.title}</Text>
@@ -166,12 +197,12 @@ export default function SpaceScreen() {
                       <Text style={styles.moodText}>{mood.emoji} {mood.label}{mood.hint ? `・${mood.hint}` : ''}</Text>
                     </View>
                     <View style={{ gap: 6 }}>
-                      <Pressable style={styles.smallBtn} onPress={() => petPet(p.id)}>
+                      <Pressable style={styles.smallBtn} onPress={() => onPat(p.id)}>
                         <Text style={styles.smallBtnText}>摸摸</Text>
                       </Pressable>
                       <Pressable
                         style={[styles.smallBtn, styles.feedBtn, cans < 20 && styles.disabled]}
-                        onPress={() => feedPet(p.id)}
+                        onPress={() => onFeed(p.id)}
                       >
                         <Text style={styles.smallBtnText}>餵食 20🥫</Text>
                       </Pressable>
@@ -219,6 +250,22 @@ export default function SpaceScreen() {
         style={{ marginTop: spacing.lg }}
       />
     </ScrollView>
+  );
+}
+
+function FloatFb({ emoji, text, color }: { emoji: string; text: string; color: string }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [a]);
+  const translateY = a.interpolate({ inputRange: [0, 1], outputRange: [0, -48] });
+  const opacity = a.interpolate({ inputRange: [0, 0.15, 0.7, 1], outputRange: [0, 1, 1, 0] });
+  const scale = a.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.5, 1.2, 1] });
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 14, top: 8, flexDirection: 'row', alignItems: 'center', gap: 3, zIndex: 5, opacity, transform: [{ translateY }, { scale }] }}>
+      <Text style={{ fontSize: 15 }}>{emoji}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '900', color }}>{text}</Text>
+    </Animated.View>
   );
 }
 
