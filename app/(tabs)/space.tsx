@@ -6,6 +6,7 @@ import { DEFAULT_PET } from '@/avatar/sprite';
 import { Button } from '@/components/Button';
 import { Plus } from '@/components/icons';
 import { EmptyState } from '@/illustrations';
+import { bondInfo } from '@/space/bond';
 import { CATALOG, useSpaceStore } from '@/space/spaceStore';
 import { SpaceYard } from '@/space/SpaceYard';
 import { useStore } from '@/store/useStore';
@@ -29,10 +30,13 @@ export default function SpaceScreen() {
   const removeDecoration = useSpaceStore((s) => s.removeDecoration);
   const petPet = useSpaceStore((s) => s.petPet);
   const feedPet = useSpaceStore((s) => s.feedPet);
+  const lastLevelUp = useSpaceStore((s) => s.lastLevelUp);
+  const clearLevelUp = useSpaceStore((s) => s.clearLevelUp);
 
   const [tab, setTab] = useState<'raise' | 'shop'>('raise');
   const [edit, setEdit] = useState(false);
   const [welcome, setWelcome] = useState<number | null>(null);
+  const [levelUpMsg, setLevelUpMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const gained = collectIdle();
@@ -40,6 +44,15 @@ export default function SpaceScreen() {
     const t = setTimeout(() => setWelcome(null), 3200);
     return () => clearTimeout(t);
   }, [collectIdle]);
+
+  useEffect(() => {
+    if (!lastLevelUp) return;
+    const pet = pets.find((p) => p.id === lastLevelUp.petId);
+    setLevelUpMsg(`${pet?.name ?? '毛孩'} 好感升級 → Lv${lastLevelUp.level}「${lastLevelUp.title}」！獎勵 +${lastLevelUp.reward} 🥫`);
+    const t = setTimeout(() => { setLevelUpMsg(null); clearLevelUp(); }, 3600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastLevelUp?.nonce]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -58,6 +71,12 @@ export default function SpaceScreen() {
       {welcome != null ? (
         <View style={styles.welcome}>
           <Text style={styles.welcomeText}>歡迎回來！離線收益 +{welcome} 🥫</Text>
+        </View>
+      ) : null}
+
+      {levelUpMsg ? (
+        <View style={styles.levelUp}>
+          <Text style={styles.levelUpText}>💞 {levelUpMsg}</Text>
         </View>
       ) : null}
 
@@ -102,20 +121,25 @@ export default function SpaceScreen() {
 
           {tab === 'raise' ? (
             <View style={styles.list}>
-              <Text style={styles.hint}>摸摸／餵食提升親密度。（親密度接對戰加成為下一步）</Text>
+              <Text style={styles.hint}>摸摸／餵食提升好感度。升等送罐罐，好感越高掛機產出越多 🥫</Text>
               {myPets.map((p) => {
                 const aff = affection[p.id] ?? 0;
+                const info = bondInfo(aff);
                 return (
                   <View key={p.id} style={styles.petRow}>
                     <View style={styles.petMini}>
                       <AvatarView size={44} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.petName}>{p.name}</Text>
+                      <Text style={styles.petName}>
+                        {p.name} <Text style={styles.bondTitle}>{info.emoji} {info.title}</Text>
+                      </Text>
                       <View style={styles.bar}>
-                        <View style={[styles.barFill, { width: `${aff}%` }]} />
+                        <View style={[styles.barFill, { width: `${info.pct * 100}%` }]} />
                       </View>
-                      <Text style={styles.affText}>親密度 {aff}/100</Text>
+                      <Text style={styles.affText}>
+                        好感 Lv{info.level}{info.atMax ? '・MAX 💞' : ` ・ ${info.cur}/${info.span}`}
+                      </Text>
                     </View>
                     <View style={{ gap: 6 }}>
                       <Pressable style={styles.smallBtn} onPress={() => petPet(p.id)}>
@@ -185,6 +209,9 @@ const styles = StyleSheet.create({
   rate: { color: colors.gold, fontSize: 10, fontWeight: font.weight.bold, marginTop: 1 },
   welcome: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold },
   welcomeText: { color: colors.gold, fontWeight: font.weight.bold, fontSize: font.size.sm, textAlign: 'center' },
+  levelUp: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primary },
+  levelUpText: { color: colors.primary, fontWeight: font.weight.heavy, fontSize: font.size.sm, textAlign: 'center' },
+  bondTitle: { color: colors.primary, fontSize: font.size.xs, fontWeight: font.weight.bold },
   yardWrap: { position: 'relative', borderRadius: radius.lg, overflow: 'hidden', ...shadow.card },
   editBtn: { position: 'absolute', right: 10, bottom: 10, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.text, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
   editBtnOn: { backgroundColor: colors.primary, borderColor: colors.primary },
