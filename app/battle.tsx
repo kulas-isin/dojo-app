@@ -97,8 +97,8 @@ export default function BattleScreen() {
   const timeResolve = useRef<((m: number) => void) | null>(null);
 
   // 動畫值
-  const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0) }).current;
-  const foeA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0) }).current;
+  const myA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0), sx: new Animated.Value(1), sy: new Animated.Value(1), rot: new Animated.Value(0) }).current;
+  const foeA = useRef({ tx: new Animated.Value(0), ty: new Animated.Value(0), hit: new Animated.Value(0), glow: new Animated.Value(0), sx: new Animated.Value(1), sy: new Animated.Value(1), rot: new Animated.Value(0) }).current;
   const hpMyA = useRef(new Animated.Value(1)).current;
   const hpFoeA = useRef(new Animated.Value(1)).current;
   const mpMyA = useRef(new Animated.Value(1)).current;
@@ -354,6 +354,44 @@ export default function BattleScreen() {
     r(mult);
   };
 
+  // 擺姿勢（壓扁/拉長/旋轉）
+  const poseTo = (anim: any, sx: number, sy: number, rot: number, dur: number) =>
+    Animated.parallel([
+      Animated.timing(anim.sx, { toValue: sx, duration: dur, useNativeDriver: true }),
+      Animated.timing(anim.sy, { toValue: sy, duration: dur, useNativeDriver: true }),
+      Animated.timing(anim.rot, { toValue: rot, duration: dur, useNativeDriver: true }),
+    ]);
+  // Q 彈回原位（overshoot 回彈）
+  const springHome = (anim: any) =>
+    Animated.parallel([
+      Animated.spring(anim.tx, { toValue: 0, useNativeDriver: true, friction: 5, tension: 90 }),
+      Animated.spring(anim.ty, { toValue: 0, useNativeDriver: true, friction: 5, tension: 90 }),
+      Animated.spring(anim.sx, { toValue: 1, useNativeDriver: true, friction: 4.5, tension: 130 }),
+      Animated.spring(anim.sy, { toValue: 1, useNativeDriver: true, friction: 4.5, tension: 130 }),
+      Animated.spring(anim.rot, { toValue: 0, useNativeDriver: true, friction: 5 }),
+    ]);
+  // 依節奏噴發粒子：burst 大爆 / stream 持續不等速 / stutter 卡頓不規則
+  const emitFx = (fx: string, side: 'me' | 'foe', color: string, tier: number, emit: string, dur: number) => {
+    if (emit === 'stream') {
+      let t = 0;
+      while (t < dur) {
+        const delay = t;
+        setTimeout(() => burst(fx, side, color, 1, (Math.random() - 0.5) * 44, (Math.random() - 0.5) * 48), delay);
+        t += 70 + Math.random() * 140; // 間隔不等速
+      }
+      screenFlash(color, 0.2);
+      return;
+    }
+    if (emit === 'stutter') {
+      [0, 70, 95, 340, 410, 700, 770, 840].forEach((d) =>
+        setTimeout(() => burst(fx, side, color, Math.random() < 0.4 ? 2 : 1, (Math.random() - 0.5) * 64, (Math.random() - 0.5) * 64), d));
+      screenFlash(color, 0.3);
+      doShake(6);
+      return;
+    }
+    typeFx(fx, side, color, tier === 3 ? 130 : tier === 2 ? 80 : 45);
+  };
+
   async function strike(attacker: Fighter, atkSide: 'me' | 'foe', move: Move, powerMult = 1) {
     const defSide = atkSide === 'me' ? 'foe' : 'me';
     const defender = atkSide === 'me' ? foe! : mine!;
@@ -361,17 +399,15 @@ export default function BattleScreen() {
     const dAnim = defSide === 'me' ? myA : foeA;
 
     pushLog(`${attacker.name} 使出 ${move.name}！${move.flavor ? `\n${move.flavor}` : ''}`);
-    if (move.power >= 90 || move.kind === 'ultimate') { sfx.chargeSfx(); chargeGlow(atkSide); }
-    // 前衝
-    Animated.sequence([
-      Animated.timing(aAnim.ty, { toValue: atkSide === 'me' ? -14 : 14, duration: 150, useNativeDriver: true }),
-      Animated.timing(aAnim.ty, { toValue: 0, duration: 170, useNativeDriver: true }),
-    ]).start();
-    await wait(320);
 
     const meta = typeMeta(attacker.type);
     const isUlt = move.kind === 'ultimate';
     const eff = move.effect;
+    const dir = atkSide === 'me' ? -1 : 1; // 朝對手前進的方向
+    const tier = isUlt || move.power >= 90 ? 3 : move.power >= 65 ? 2 : 1;
+    const choreo = move.anim?.choreo ?? (move.power > 0 ? 'dash' : 'cast');
+    const emit = move.anim?.emit ?? 'burst';
+    const dur = move.anim?.duration ?? 700;
 
     // 蓄力招：本回合不攻擊，替下一擊充能
     if (eff?.charge) {
@@ -383,7 +419,33 @@ export default function BattleScreen() {
       return;
     }
 
-    const tier = isUlt || move.power >= 90 ? 3 : move.power >= 65 ? 2 : 1;
+    if (move.power >= 90 || isUlt) { sfx.chargeSfx(); chargeGlow(atkSide); }
+
+    // ── 分鏡 intro ──
+    if (choreo === 'dash') {
+      // 預備：後縮壓扁蓄力（中/大招才有）
+      if (tier >= 2) { poseTo(aAnim, 1.14, 0.86, 0, 90).start(); await wait(tier === 3 ? 150 : 100); }
+      // 衝刺：拉長 + 撲向對手
+      Animated.parallel([
+        Animated.timing(aAnim.ty, { toValue: dir * 34, duration: 130, useNativeDriver: true }),
+        Animated.timing(aAnim.sx, { toValue: 0.9, duration: 130, useNativeDriver: true }),
+        Animated.timing(aAnim.sy, { toValue: 1.12, duration: 130, useNativeDriver: true }),
+      ]).start();
+      await wait(150);
+    } else if (choreo === 'stream') {
+      // 持續噴射：擺好姿勢（翹起來）
+      poseTo(aAnim, 1.06, 0.92, dir * 0.16, 220).start();
+      await wait(280);
+    } else {
+      // 原地施放：小晃 + 自身光暈
+      Animated.sequence([
+        Animated.timing(aAnim.ty, { toValue: dir * 8, duration: 130, useNativeDriver: true }),
+        Animated.timing(aAnim.ty, { toValue: 0, duration: 150, useNativeDriver: true }),
+      ]).start();
+      chargeGlow(atkSide);
+      await wait(220);
+    }
+
     const res = attack(attacker, defender, move);
 
     // 躲貓貓無敵：下一次被攻擊必定閃過
@@ -391,6 +453,7 @@ export default function BattleScreen() {
       stRef[defSide].invuln = 0; refreshSt();
       showEff('📦 躲進紙箱！'); pushLog(`${defender.name} 鑽進紙箱，完全躲過！`);
       if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
+      springHome(aAnim).start();
       await wait(600);
       return;
     }
@@ -400,6 +463,12 @@ export default function BattleScreen() {
       showEff('閃避了！');
       pushLog(`${defender.name} 輕巧地閃過了！`);
       if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
+      // 對手側身一閃
+      Animated.sequence([
+        Animated.timing(dAnim.tx, { toValue: dir * 22, duration: 120, useNativeDriver: true }),
+        Animated.timing(dAnim.tx, { toValue: 0, duration: 220, useNativeDriver: true }),
+      ]).start();
+      springHome(aAnim).start();
       await wait(600);
       return;
     }
@@ -407,6 +476,7 @@ export default function BattleScreen() {
       showEff('沒有命中！');
       pushLog(`${attacker.name} 的攻擊沒有命中…`);
       if (atkSide === 'me') { comboRef.current = 0; setCombo(0); }
+      springHome(aAnim).start();
       await wait(650);
       return;
     }
@@ -439,25 +509,47 @@ export default function BattleScreen() {
       setHp(atkSide, hpRef[atkSide] - Math.max(1, Math.round(dmg * 0.3))); showEff('🪞 反傷！');
     }
 
-    // 特效 + 音效
+    // 特效 + 音效（依節奏 profile 噴發）
     if (isUlt) { flash(); sfx.chargeSfx(); }
     sfx.moveSfx(meta.fx as any, tier);
     sfx.hitSfx();
     haptic(tier >= 3 ? 'heavy' : 'light');
     const fxKind = move.fx ?? meta.fx;
     const fxSide = SELF_FX.has(fxKind) ? atkSide : defSide;
-    typeFx(fxKind, fxSide, meta.color, isUlt ? 130 : move.power);
+    emitFx(fxKind, fxSide, meta.color, tier, emit, dur);
     if (isUlt) setTimeout(() => typeFx(meta.fx, defSide, meta.color, 130), 220);
-    // 被打震動
-    Animated.sequence([
-      Animated.timing(dAnim.tx, { toValue: -6, duration: 40, useNativeDriver: true }),
-      Animated.timing(dAnim.tx, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(dAnim.tx, { toValue: 0, duration: 60, useNativeDriver: true }),
-    ]).start();
-    Animated.sequence([
-      Animated.timing(dAnim.hit, { toValue: 1, duration: 40, useNativeDriver: true }),
-      Animated.timing(dAnim.hit, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
+
+    // ── 命中反應（依分鏡）──
+    if (choreo === 'dash') {
+      // 命中定格 hitstop：對手瞬間擠扁定住
+      poseTo(dAnim, 1.22, 0.8, 0, 40).start();
+      Animated.timing(dAnim.hit, { toValue: 1, duration: 40, useNativeDriver: true }).start();
+      await wait(tier === 3 ? 150 : tier === 2 ? 90 : 50);
+      // 擊飛 + 傾斜，然後 Q 彈回原位
+      Animated.timing(dAnim.ty, { toValue: dir * 26, duration: 90, useNativeDriver: true }).start();
+      Animated.timing(dAnim.rot, { toValue: dir * 0.14, duration: 90, useNativeDriver: true }).start();
+      Animated.timing(dAnim.hit, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+      setTimeout(() => { springHome(dAnim).start(); springHome(aAnim).start(); }, 120);
+    } else if (choreo === 'stream') {
+      // 對手嫌惡縮一下、後退半步（不打飛）
+      poseTo(dAnim, 0.94, 1.06, -dir * 0.05, 120).start();
+      Animated.timing(dAnim.ty, { toValue: -dir * 10, duration: 160, useNativeDriver: true }).start();
+      Animated.sequence([
+        Animated.timing(dAnim.hit, { toValue: 0.5, duration: 60, useNativeDriver: true }),
+        Animated.timing(dAnim.hit, { toValue: 0, duration: 260, useNativeDriver: true }),
+      ]).start();
+    } else {
+      // 原地施放：對手輕微 flinch
+      Animated.sequence([
+        Animated.timing(dAnim.tx, { toValue: -5, duration: 40, useNativeDriver: true }),
+        Animated.timing(dAnim.tx, { toValue: 5, duration: 60, useNativeDriver: true }),
+        Animated.timing(dAnim.tx, { toValue: 0, duration: 60, useNativeDriver: true }),
+      ]).start();
+      Animated.sequence([
+        Animated.timing(dAnim.hit, { toValue: 0.7, duration: 40, useNativeDriver: true }),
+        Animated.timing(dAnim.hit, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
 
     if (lucky) { showEff('好運暴擊！'); flash(); sfx.superSfx(); }
     else if (res.eff === 'super') { showEff('效果絕佳！'); flash(); sfx.superSfx(); }
@@ -517,7 +609,17 @@ export default function BattleScreen() {
     if (defSide === 'foe') updateRed();
     if (atkSide === 'me' && !isUlt) { comboRef.current += 1; if (comboRef.current >= 2) showCombo(comboRef.current); }
 
-    await wait(560);
+    // 收尾：讓持續/卡頓噴發完整播完再進下一手（尿尿尿久一點、鬼吼音波、貓薄荷亂噴）
+    if (choreo === 'stream') {
+      setTimeout(() => { springHome(aAnim).start(); springHome(dAnim).start(); }, dur);
+      await wait(dur + 260);
+    } else if (emit === 'stream') {
+      await wait(dur + 200);
+    } else if (emit === 'stutter') {
+      await wait(880);
+    } else {
+      await wait(520);
+    }
   }
 
   const spendMp = (side: 'me' | 'foe', cost: number) => {
@@ -834,11 +936,17 @@ function FighterAvatar({
   pet: any;
   avatarCfg?: PetAvatar;
   petType?: PetType;
-  anim: { tx: Animated.Value; ty: Animated.Value; hit: Animated.Value; glow: Animated.Value };
+  anim: { tx: Animated.Value; ty: Animated.Value; hit: Animated.Value; glow: Animated.Value; sx: Animated.Value; sy: Animated.Value; rot: Animated.Value };
   color: string;
 }) {
   return (
-    <Animated.View style={{ transform: [{ translateX: anim.tx }, { translateY: anim.ty }] }}>
+    <Animated.View style={{ transform: [
+      { translateX: anim.tx },
+      { translateY: anim.ty },
+      { scaleX: anim.sx },
+      { scaleY: anim.sy },
+      { rotate: anim.rot.interpolate({ inputRange: [-1, 1], outputRange: ['-30deg', '30deg'] }) },
+    ] }}>
       {/* 蓄力光暈 */}
       <Animated.View
         pointerEvents="none"

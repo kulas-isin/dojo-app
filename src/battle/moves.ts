@@ -24,6 +24,8 @@ export interface MoveDef {
   flavor: string;
   /** 專屬動畫特效鍵 */
   fx?: string;
+  /** 演出腳本：分鏡類型 + 粒子噴發節奏 + 持續時間(ms) */
+  anim?: { choreo?: 'dash' | 'cast' | 'stream'; emit?: 'burst' | 'stream' | 'stutter'; duration?: number };
   /** 必殺不進池，這裡標記給 UI */
   kind?: 'basic' | 'signature' | 'ultimate';
 }
@@ -79,13 +81,13 @@ export const POOL: Record<BattleType, MoveDef[]> = {
 /** 共用奇招池（wildcard・出奇不意，經典貓狗梗全收） */
 export const WILDCARDS: MoveDef[] = [
   { id: 'wc_can', name: '開罐器聲效', type: 'derp', power: 0, acc: 1, cost: 3, category: 'status', unlockLevel: 1, effect: { control: { chance: 0.75, turns: 1 } }, tag: '跳過對手', fx: 'sparkle', flavor: '發出開罐頭的聲音，對手瞬間轉頭找罐罐。' },
-  { id: 'wc_pee', name: '報復性尿尿', type: 'clingy', power: 40, acc: 1, cost: 5, category: 'status', unlockLevel: 1, effect: { status: { kind: 'poison', chance: 0.9, turns: 3 }, debuffAtk: 1 }, tag: '中毒+攻↓', fx: 'pee', flavor: '在你最愛的鞋上做記號，噁到你每回合扣血。' },
-  { id: 'wc_nip', name: '貓薄荷嗨了', type: 'derp', power: 78, acc: 0.85, cost: 5, category: 'damage', unlockLevel: 1, effect: { random: 'nip' }, tag: '隨機🎲', fx: 'sparkle', flavor: '嗨到不知道在幹嘛：可能攻擊爆棚，也可能自己撞牆。' },
+  { id: 'wc_pee', name: '報復性尿尿', type: 'clingy', power: 40, acc: 1, cost: 5, category: 'status', unlockLevel: 1, effect: { status: { kind: 'poison', chance: 0.9, turns: 3 }, debuffAtk: 1 }, tag: '中毒+攻↓', fx: 'pee', anim: { choreo: 'stream', emit: 'stream', duration: 1500 }, flavor: '在你最愛的鞋上做記號，一直尿一直尿，噁到你每回合扣血。' },
+  { id: 'wc_nip', name: '貓薄荷嗨了', type: 'derp', power: 78, acc: 0.85, cost: 5, category: 'damage', unlockLevel: 1, effect: { random: 'nip' }, tag: '隨機🎲', fx: 'sparkle', anim: { emit: 'stutter' }, flavor: '嗨到不知道在幹嘛：可能攻擊爆棚，也可能自己撞牆。' },
   { id: 'wc_deadeye', name: '死魚眼凝視', type: 'sturdy', power: 0, acc: 1, cost: 4, category: 'status', unlockLevel: 1, effect: { debuffAtk: 2 }, tag: '對手攻大降', fx: 'sparkle', flavor: '用空洞的眼神看著你，你於心不忍，攻擊大降。' },
   { id: 'wc_box', name: '鑽進紙箱躲貓貓', type: 'sturdy', power: 0, acc: 1, cost: 4, category: 'support', unlockLevel: 1, effect: { invuln: true }, tag: '無敵一回合', fx: 'box', flavor: '鑽進箱子消失，這回合不會被打中。' },
   { id: 'wc_bento', name: '偷吃你的便當', type: 'clingy', power: 55, acc: 0.95, cost: 5, category: 'damage', unlockLevel: 1, effect: { lifesteal: 0.8 }, tag: '超吸血', fx: 'chomp', flavor: '趁亂吃掉你的便當，回復大量體力。' },
   { id: 'wc_charge', name: '突然定格 Bug 了', type: 'hyper', power: 0, acc: 1, cost: 3, category: 'support', unlockLevel: 1, effect: { charge: true }, tag: '蓄力翻倍', fx: 'charge', flavor: '像當機一樣定住…下一擊威力翻倍。' },
-  { id: 'wc_yell', name: '半夜無預警鬼吼', type: 'derp', power: 45, acc: 1, cost: 5, category: 'status', unlockLevel: 1, effect: { control: { chance: 0.7, turns: 1 } }, tag: '嚇到麻痺', fx: 'yell', flavor: '凌晨三點鬼叫，對手嚇到動彈不得。' },
+  { id: 'wc_yell', name: '半夜無預警鬼吼', type: 'derp', power: 45, acc: 1, cost: 5, category: 'status', unlockLevel: 1, effect: { control: { chance: 0.7, turns: 1 } }, tag: '嚇到麻痺', fx: 'yell', anim: { choreo: 'cast', emit: 'stream', duration: 900 }, flavor: '凌晨三點鬼叫，音波一圈圈擴散，對手嚇到動彈不得。' },
   { id: 'wc_cup', name: '推杯子下桌', type: 'proud', power: 30, acc: 1, cost: 4, category: 'status', unlockLevel: 1, effect: { stealRage: 30 }, tag: '偷怒氣', fx: 'claw', flavor: '把杯子推下桌，打斷對手蓄力，順走一點怒氣。' },
   { id: 'wc_trash', name: '翻垃圾桶找裝備', type: 'sturdy', power: 0, acc: 1, cost: 4, category: 'support', unlockLevel: 1, effect: { random: 'trash' }, tag: '隨機 buff🎲', fx: 'trash', flavor: '翻垃圾桶，隨機撿到一個好處（回血/護盾/士氣）。' },
   { id: 'wc_laser', name: '衝去追雷射點', type: 'hyper', power: 60, acc: 0.9, cost: 5, category: 'damage', unlockLevel: 1, effect: { random: 'laser' }, tag: '高變異🎲', fx: 'laser', flavor: '隨機亂打全場，運氣好一擊超痛，運氣差撞牆。' },
@@ -103,7 +105,7 @@ export function getMoveDef(id: string): MoveDef | undefined {
   return BY_ID[id];
 }
 export function toMove(def: MoveDef): Move {
-  return { name: def.name, power: def.power, type: def.type, acc: def.acc, cost: def.cost, kind: def.kind === 'signature' ? 'signature' : 'basic', effect: def.effect, tag: def.tag, flavor: def.flavor, fx: def.fx };
+  return { name: def.name, power: def.power, type: def.type, acc: def.acc, cost: def.cost, kind: def.kind === 'signature' ? 'signature' : 'basic', effect: def.effect, tag: def.tag, flavor: def.flavor, fx: def.fx, anim: def.anim };
 }
 export function unlockedPersonalityMoves(type: BattleType, level: number): MoveDef[] {
   return POOL[type].filter((m) => m.unlockLevel <= level);

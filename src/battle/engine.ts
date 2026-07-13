@@ -58,6 +58,8 @@ export interface Move {
   flavor?: string;
   /** 專屬動畫特效鍵（無則用元素預設） */
   fx?: string;
+  /** 演出腳本：分鏡類型 + 粒子噴發節奏 + 持續時間(ms) */
+  anim?: { choreo?: 'dash' | 'cast' | 'stream'; emit?: 'burst' | 'stream' | 'stutter'; duration?: number };
 }
 
 export interface Fighter {
