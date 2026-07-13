@@ -25,6 +25,11 @@ export default function ProfileScreen() {
 
   const myEntries = entries.filter((e) => e.ownerId === currentUserId);
   const myPets = pets.filter((p) => p.ownerId === currentUserId);
+  const myStrays = pets.filter(
+    (p) =>
+      p.kind === 'stray' &&
+      (p.reporterId === currentUserId || (p.caretakerIds?.includes(currentUserId) ?? false)),
+  );
   const totalVotes = myEntries.reduce((sum, e) => sum + e.votes, 0);
 
   return (
@@ -110,6 +115,28 @@ export default function ProfileScreen() {
           onPress={() => router.push({ pathname: '/pet/create', params: { kind: 'owned' } })}
         />
       </View>
+
+      {/* 我回報/照顧的浪浪 */}
+      <SectionTitle icon={<PawPrint size={20} color={colors.accent} strokeWidth={2.4} />} text="我回報/照顧的浪浪" />
+      {myStrays.length === 0 ? (
+        <Text style={styles.empty}>還沒回報浪浪。在「探索」分頁可以幫街貓浪狗建檔。</Text>
+      ) : (
+        <View style={styles.pets}>
+          {myStrays.map((p) => (
+            <Pressable key={p.id} style={styles.petRow} onPress={() => router.push(`/pet/${p.id}`)}>
+              <Image
+                source={p.thumbUri ?? p.avatarUri}
+                style={styles.petAvatar}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="memory-disk"
+              />
+              <Text style={styles.petName}>{p.name}</Text>
+              {p.area ? <Text style={styles.petTag} numberOfLines={1}>{p.area}</Text> : null}
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       {/* 我的參賽作品 */}
       <SectionTitle icon={<Crown size={20} color={colors.gold} strokeWidth={2.4} />} text="我的參賽毛孩" />

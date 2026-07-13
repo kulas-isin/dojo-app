@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge } from '@/components/Badge';
-import { Heart, MessageCircle, PetIcon, Plus } from '@/components/icons';
+import { Heart, MapPin, MessageCircle, PetIcon, Plus } from '@/components/icons';
 import { Blob, Doodle, EmptyState } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { strayStatusMeta } from '@/strayMeta';
@@ -44,18 +44,27 @@ export default function DiscoverScreen() {
       .filter((post) => {
         const pet = petsById[post.petId];
         if (!pet || post.hidden || pet.visibility !== 'public') return false;
-        if (filter === 'stray') return pet.kind === 'stray';
         if (filter === 'following') return pet.following;
         return true;
       })
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [posts, petsById, filter]);
 
+  // 「浪浪」分頁：直接列出浪浪檔案（名冊），不用等牠發文
+  const strayList = useMemo(
+    () =>
+      pets
+        .filter((p) => p.kind === 'stray' && p.visibility === 'public')
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [pets],
+  );
+  const isStrayDir = filter === 'stray';
+
   return (
     <View style={styles.container}>
       <FlatList
         contentContainerStyle={styles.content}
-        data={feed}
+        data={(isStrayDir ? strayList : feed) as (Post | Pet)[]}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerBox}>
@@ -88,18 +97,22 @@ export default function DiscoverScreen() {
         ListEmptyComponent={
           <EmptyState
             doodle="heart"
-            title="這裡還沒有貼文"
-            subtitle="換個篩選，或去幫寵物/浪浪新增第一則紀錄。"
+            title={isStrayDir ? '還沒有浪浪檔案' : '這裡還沒有貼文'}
+            subtitle={isStrayDir ? '按下方「建立浪浪檔案」，幫街貓浪狗建個檔。' : '換個篩選，或去幫寵物/浪浪新增第一則紀錄。'}
           />
         }
-        renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            pet={petsById[item.petId]}
-            comments={commentCount[item.id] ?? 0}
-            onLike={() => likePost(item.id)}
-          />
-        )}
+        renderItem={({ item }) =>
+          isStrayDir ? (
+            <StrayCard pet={item as Pet} />
+          ) : (
+            <PostCard
+              post={item as Post}
+              pet={petsById[(item as Post).petId]}
+              comments={commentCount[item.id] ?? 0}
+              onLike={() => likePost(item.id)}
+            />
+          )
+        }
       />
 
       <Pressable
@@ -187,8 +200,52 @@ function PostCard({
   );
 }
 
+function StrayCard({ pet }: { pet: Pet }) {
+  const meta = pet.status ? strayStatusMeta(pet.status) : null;
+  return (
+    <Pressable style={styles.strayCard} onPress={() => router.push(`/pet/${pet.id}`)}>
+      <Image
+        source={pet.thumbUri ?? pet.avatarUri}
+        style={styles.strayImg}
+        contentFit="cover"
+        transition={150}
+        cachePolicy="memory-disk"
+      />
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={styles.cardNameRow}>
+          <PetIcon type={pet.petType} size={15} color={colors.textDim} />
+          <Text style={styles.cardName}>{pet.name}</Text>
+          {meta ? <Badge label={meta.label} color={meta.color} bg={meta.bg} /> : null}
+        </View>
+        {pet.area ? (
+          <View style={styles.strayAreaRow}>
+            <MapPin size={13} color={colors.textMuted} strokeWidth={2.2} />
+            <Text style={styles.strayArea} numberOfLines={1}>{pet.area}</Text>
+          </View>
+        ) : null}
+        <Text style={styles.strayMeta}>{pet.followers} 人關注 · 點進看紀錄</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  strayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    ...shadow.card,
+  },
+  strayImg: { width: 64, height: 64, borderRadius: 16, backgroundColor: colors.cardAlt },
+  strayAreaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  strayArea: { color: colors.textDim, fontSize: font.size.sm, flex: 1 },
+  strayMeta: { color: colors.textMuted, fontSize: font.size.xs, fontWeight: font.weight.semibold },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 96 },
   headerBox: { position: 'relative', marginBottom: spacing.xs },
   headerDeco: { position: 'absolute', top: -22, right: -16, width: 120, height: 120 },
