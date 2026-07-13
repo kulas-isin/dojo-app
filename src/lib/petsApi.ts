@@ -143,15 +143,25 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
     area: isStray ? input.area?.trim() ?? '' : null,
     pet_avatar: input.avatar ?? null,
   };
-  const { data, error } = await supabase.from('pets').insert(row).select('id').single();
+  let { data, error } = await supabase.from('pets').insert(row).select('id').single();
+  // 資料庫尚未新增 pet_avatar 欄位（42703）→ 先不帶造型也能建立，避免整個建立失敗
+  if (error && (error.code === '42703' || /pet_avatar/.test(error.message ?? ''))) {
+    const { pet_avatar, ...rest } = row;
+    ({ data, error } = await supabase.from('pets').insert(rest).select('id').single());
+  }
   if (error) throw error;
-  return data.id as string;
+  return data!.id as string;
 }
 
 /** 更新既有寵物的像素造型 */
 export async function updatePetAvatarRemote(petId: string, avatar: PetAvatar): Promise<void> {
   const { error } = await supabase.from('pets').update({ pet_avatar: avatar }).eq('id', petId);
-  if (error) throw error;
+  if (error) {
+    if (error.code === '42703' || /pet_avatar/.test(error.message ?? '')) {
+      throw new Error('資料庫還沒有像素造型欄位，請先在 Supabase 執行：alter table pets add column if not exists pet_avatar jsonb;');
+    }
+    throw error;
+  }
 }
 
 export async function addPostRemote(
