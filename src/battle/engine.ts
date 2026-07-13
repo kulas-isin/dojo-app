@@ -1,4 +1,5 @@
 import type { Entry, Pet } from '../types';
+import { resolveMoves, resolveWildcard } from './moves';
 import { deriveStats, typeMeta, typeMultiplier, type BattleType } from './stats';
 
 export type StatusKind = 'poison' | 'burn' | 'stun';
@@ -27,6 +28,8 @@ export interface Move {
   effect?: MoveEffect;
   /** UI 說明（招牌效果） */
   tag?: string;
+  /** 惡搞描述（出招時 log 顯示） */
+  flavor?: string;
 }
 
 export interface Fighter {
@@ -40,34 +43,8 @@ export interface Fighter {
   def: number;
   spd: number;
   moves: Move[];
-}
-
-/** 招式：寵物行為 × 元素/個性（惡趣味）。中間一招為「招牌技」帶特殊效果。 */
-const MOVE_SETS: Record<BattleType, [string, string, string]> = {
-  proud: ['不理你尾巴甩', '傲嬌正義拳', '爆氣兔子蹬'],
-  derp: ['放空盯空氣', '呆萌翻肚肚', '亂入螃蟹步'],
-  hyper: ['半夜暴衝', '風火輪衝刺', '電流連環蹬'],
-  clingy: ['淚眼汪汪', '療癒舔舔', '纏人水牢'],
-  sturdy: ['憨憨坐好', '龜殼鐵壁', '泰山壓頂'],
-};
-
-/** 每個個性的招牌技（中招）：帶狀態/回血/護盾/強化 */
-function signatureMove(type: BattleType, name: string): Move {
-  const base = { name, type, kind: 'signature' as const, cost: 4 };
-  switch (type) {
-    case 'proud':
-      return { ...base, power: 68, acc: 0.95, effect: { status: { kind: 'burn', chance: 0.6, turns: 3 } }, tag: '灼傷' };
-    case 'hyper':
-      return { ...base, power: 60, acc: 0.95, effect: { status: { kind: 'stun', chance: 0.4, turns: 1 } }, tag: '麻痺' };
-    case 'derp':
-      return { ...base, power: 58, acc: 1.0, effect: { lucky: true }, tag: '隨機好運' };
-    case 'clingy':
-      return { ...base, power: 18, acc: 1.0, effect: { heal: 0.3 }, tag: '回血' };
-    case 'sturdy':
-      return { ...base, power: 22, acc: 1.0, effect: { shield: 0.35, buffAtk: 1 }, tag: '護盾+強化' };
-    default:
-      return { ...base, power: 60, acc: 0.95 };
-  }
+  /** 奇招（wildcard，可無） */
+  wildcard?: Move;
 }
 
 /** 必殺技（怒氣滿放）：大威力 + 保證招牌效果 */
@@ -82,15 +59,6 @@ export function ultimateFor(type: BattleType): Move {
   else if (type === 'clingy') ult.effect = { heal: 0.35 };
   else if (type === 'sturdy') ult.effect = { shield: 0.4, buffAtk: 1 };
   return ult;
-}
-
-function movesFor(type: BattleType): Move[] {
-  const [a, , c] = MOVE_SETS[type];
-  return [
-    { name: a, power: 45, type, acc: 1.0, cost: 0, kind: 'basic' },
-    signatureMove(type, MOVE_SETS[type][1]),
-    { name: c, power: 95, type, acc: 0.72, cost: 8, kind: 'basic' },
-  ];
 }
 
 /** 個性被動特性 */
@@ -120,7 +88,8 @@ export function makeFighter(pet: Pet): Fighter {
     atk: s.atk,
     def: s.def,
     spd: s.spd,
-    moves: movesFor(s.type),
+    moves: resolveMoves(pet.moveset, s.type, s.level),
+    wildcard: resolveWildcard(pet.wildcard, s.level),
   };
 }
 

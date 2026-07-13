@@ -45,6 +45,21 @@ create table if not exists pets (
 
 -- 既有資料庫升級用（新增像素造型欄位；已存在則略過）
 alter table pets add column if not exists pet_avatar jsonb;
+-- 配招系統（階段一）：自選招式與奇招
+alter table pets add column if not exists moveset jsonb;
+alter table pets add column if not exists wildcard text;
+
+-- 對戰平衡數據（登入者可寫入；分析用）
+create table if not exists battle_logs (
+  id uuid primary key default gen_random_uuid(),
+  winner_type text,
+  loser_type text,
+  winner_moves jsonb,
+  loser_moves jsonb,
+  created_at timestamptz not null default now()
+);
+alter table battle_logs enable row level security;
+create policy "battle_logs insert" on battle_logs for insert with check (auth.uid() is not null);
 
 -- ========== 貼文 ==========
 create table if not exists posts (

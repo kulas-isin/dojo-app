@@ -14,7 +14,7 @@ import { AvatarView } from '@/avatar/AvatarView';
 import { StatCard } from '@/battle/StatCard';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
-import { Heart, ImagePlus, MapPin, Palette, PawPrint, PetIcon, Shield } from '@/components/icons';
+import { Heart, ImagePlus, MapPin, Palette, PawPrint, PetIcon, Shield, Swords } from '@/components/icons';
 import { EmptyState } from '@/illustrations';
 import { canAddRecord, canEditProfile, canViewProfile } from '@/permissions';
 import { useStore } from '@/store/useStore';
@@ -154,6 +154,16 @@ export default function PetProfileScreen() {
           variant="ghost"
           onPress={() => router.push({ pathname: '/avatar', params: { petId } })}
           style={{ marginTop: spacing.md }}
+        />
+      ) : null}
+
+      {!isStray && canEditProfile(me, pet) ? (
+        <Button
+          label="⚔️ 配招"
+          icon={Swords}
+          variant="ghost"
+          onPress={() => router.push({ pathname: '/pet/moveset', params: { id: petId } })}
+          style={{ marginTop: spacing.sm }}
         />
       ) : null}
 

@@ -41,6 +41,7 @@ export default function RootLayout() {
           options={{ title: '發起挑戰', presentation: 'modal' }}
         />
         <Stack.Screen name="pet/[id]" options={{ title: '寵物檔案' }} />
+        <Stack.Screen name="pet/moveset" options={{ title: '配招' }} />
         <Stack.Screen name="pet/post" options={{ title: '', presentation: 'modal' }} />
         <Stack.Screen name="pet/comments" options={{ title: '留言', presentation: 'modal' }} />
         <Stack.Screen

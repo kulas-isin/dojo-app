@@ -28,6 +28,8 @@ function mapPet(r: any): Pet {
     ptsSpd: r.pts_spd ?? 0,
     level: r.level ?? 1,
     avatar: r.pet_avatar ?? undefined,
+    moveset: r.moveset ?? undefined,
+    wildcard: r.wildcard ?? undefined,
   };
 }
 
@@ -151,6 +153,17 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
   }
   if (error) throw error;
   return data!.id as string;
+}
+
+/** 更新寵物配招（moveset + wildcard）；欄位不存在時給清楚提示 */
+export async function updatePetMovesetRemote(petId: string, moveset: string[], wildcard: string | null): Promise<void> {
+  const { error } = await supabase.from('pets').update({ moveset, wildcard }).eq('id', petId);
+  if (error) {
+    if (error.code === '42703' || /moveset|wildcard/.test(error.message ?? '')) {
+      throw new Error('資料庫還沒有配招欄位，請先在 Supabase 執行：alter table pets add column if not exists moveset jsonb; alter table pets add column if not exists wildcard text;');
+    }
+    throw error;
+  }
 }
 
 /** 更新既有寵物的像素造型 */

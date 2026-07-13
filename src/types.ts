@@ -85,6 +85,10 @@ export interface Pet {
   level?: number;
   /** 像素捏臉造型（無則對戰畫面 fallback 用真實照片）*/
   avatar?: PetAvatar;
+  /** 自選配招（招式 id 陣列，最多 4）；空則用預設 */
+  moveset?: string[];
+  /** 奇招 id（wildcard，可無） */
+  wildcard?: string;
 }
 
 /** 貼文留言 */

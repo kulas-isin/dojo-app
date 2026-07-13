@@ -20,6 +20,7 @@ import {
 import { typeMeta } from '@/battle/stats';
 import { AvatarView } from '@/avatar/AvatarView';
 import type { PetAvatar } from '@/avatar/sprite';
+import { logBattleRemote } from '@/lib/logsApi';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { PetType } from '@/types';
@@ -311,8 +312,8 @@ export default function BattleScreen() {
     const aAnim = atkSide === 'me' ? myA : foeA;
     const dAnim = defSide === 'me' ? myA : foeA;
 
-    setLogText(`${attacker.name} 使出 ${move.name}！`);
-    if (move.power >= 90) { sfx.chargeSfx(); chargeGlow(atkSide); }
+    setLogText(`${attacker.name} 使出 ${move.name}！${move.flavor ? `\n${move.flavor}` : ''}`);
+    if (move.power >= 90 || move.kind === 'ultimate') { sfx.chargeSfx(); chargeGlow(atkSide); }
     // 前衝
     Animated.sequence([
       Animated.timing(aAnim.ty, { toValue: atkSide === 'me' ? -14 : 14, duration: 150, useNativeDriver: true }),
@@ -431,6 +432,12 @@ export default function BattleScreen() {
     runRound(ultimateFor(mine!.type), true);
   }
 
+  function playerWildcard() {
+    if (busy || result || !mine!.wildcard) return;
+    if (mine!.wildcard.cost > mpRef.me) { setLogText('MP 不足，換一招吧！'); return; }
+    runRound(mine!.wildcard, false);
+  }
+
   async function runRound(myMove: Move, isUlt: boolean) {
     if (busy || result) return;
     setBusy(true);
@@ -439,6 +446,7 @@ export default function BattleScreen() {
     let foeUlt = false;
     let foeMove: Move;
     if (rageRef.foe >= RAGE_MAX) { foeMove = ultimateFor(foe!.type); rageRef.foe = 0; setFoeRage(0); foeUlt = true; }
+    else if (foe!.wildcard && foe!.wildcard.cost <= mpRef.foe && Math.random() < 0.25) foeMove = foe!.wildcard;
     else foeMove = foe!.moves[aiChooseMove(foe!, mine!, mpRef.foe)];
 
     // 麻痺：暈眩則該方略過行動（消耗一層，且不耗 MP）
@@ -498,6 +506,15 @@ export default function BattleScreen() {
     await wait(300);
     if (kind === 'win') sfx.winJingle();
     else sfx.loseJingle();
+    // 平衡數據（best-effort）
+    const meMoves = myPet?.moveset ?? null;
+    const foeMoves = champPet?.moveset ?? null;
+    logBattleRemote(
+      kind === 'win' ? mine!.type : foe!.type,
+      kind === 'win' ? foe!.type : mine!.type,
+      kind === 'win' ? meMoves : foeMoves,
+      kind === 'win' ? foeMoves : meMoves,
+    ).catch(() => {});
     // 倒下
     const dAnim = kind === 'win' ? foeA : myA;
     Animated.timing(dAnim.ty, { toValue: 30, duration: 500, useNativeDriver: true }).start();
@@ -636,12 +653,24 @@ export default function BattleScreen() {
               >
                 <Text style={styles.moveName}>{myMeta.emoji} {m.name}{m.tag ? ` ・${m.tag}` : ''}</Text>
                 <Text style={styles.moveMeta}>
-                  威力 {m.power} · 命中 {Math.round(m.acc * 100)}% · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}
+                  {m.power > 0 ? `威力 ${m.power} · 命中 ${Math.round(m.acc * 100)}%` : '輔助'} · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}
                 </Text>
               </Pressable>
             );
           })}
         </View>
+        {mine.wildcard ? (
+          <Pressable
+            disabled={busy || !!result || !started || mine.wildcard.cost > myMp}
+            onPress={playerWildcard}
+            style={[styles.wildBtn, (busy || !!result || !started || mine.wildcard.cost > myMp) && { opacity: 0.45 }]}
+          >
+            <Text style={styles.wildName}>🎲 {mine.wildcard.name}{mine.wildcard.tag ? ` ・${mine.wildcard.tag}` : ''}</Text>
+            <Text style={styles.wildMeta}>
+              {mine.wildcard.power > 0 ? `威力 ${mine.wildcard.power}` : '奇招'} · {mine.wildcard.cost === 0 ? '免 MP' : `MP ${mine.wildcard.cost}`}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* 開始遮罩 */}
@@ -880,6 +909,9 @@ const styles = StyleSheet.create({
   move: { width: '48%', backgroundColor: colors.card, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
   ultBtn: { marginTop: spacing.md, backgroundColor: '#2E2A26', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 2, borderColor: colors.gold },
   ultText: { color: colors.gold, fontWeight: '900', fontSize: font.size.md },
+  wildBtn: { marginTop: spacing.sm, backgroundColor: '#EADFF0', borderRadius: radius.md, padding: spacing.md, borderWidth: 2, borderColor: '#9b6bd6' },
+  wildName: { color: '#6a3fa0', fontWeight: '800', fontSize: font.size.md },
+  wildMeta: { color: '#8a6cc0', fontSize: font.size.xs, marginTop: 2, fontWeight: '600' },
   timingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
   timingCard: { backgroundColor: 'rgba(46,42,38,0.95)', borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', width: 280 },
   timingLabel: { color: '#fff', fontWeight: '800', fontSize: font.size.md, marginBottom: spacing.md },
