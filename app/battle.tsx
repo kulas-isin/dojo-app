@@ -116,6 +116,11 @@ export default function BattleScreen() {
   const tintA = useRef(new Animated.Value(0)).current;
   const [tintColor, setTintColor] = useState('#ffffff');
   const zoomA = useRef(new Animated.Value(0)).current;
+  // 大招電影感：漫畫集中線 + 「必殺!」大字
+  const [mangaOn, setMangaOn] = useState(false);
+  const mangaA = useRef(new Animated.Value(0)).current;
+  const bannerA = useRef(new Animated.Value(0)).current;
+  const [ultName, setUltName] = useState('');
   const effA = useRef(new Animated.Value(0)).current;
   const comboA = useRef(new Animated.Value(0)).current;
   const redA = useRef(new Animated.Value(0)).current;
@@ -309,6 +314,25 @@ export default function BattleScreen() {
       Animated.timing(zoomA, { toValue: 0, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
   };
+  // 大招開場：全螢幕漫畫集中線 + 「必殺!」大字彈出
+  const playUltCinematic = (name: string) => {
+    setUltName(name);
+    setMangaOn(true);
+    mangaA.setValue(0);
+    Animated.sequence([
+      Animated.timing(mangaA, { toValue: 1, duration: 170, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.delay(300),
+      Animated.timing(mangaA, { toValue: 0, duration: 240, useNativeDriver: true }),
+    ]).start(() => setMangaOn(false));
+    bannerA.setValue(0);
+    Animated.sequence([
+      Animated.spring(bannerA, { toValue: 1, useNativeDriver: true, friction: 5, tension: 130 }),
+      Animated.delay(360),
+      Animated.timing(bannerA, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+    sfx.superSfx();
+    doShake(6);
+  };
   const chargeGlow = (side: 'me' | 'foe') => {
     const anim = side === 'me' ? myA : foeA;
     Animated.sequence([
@@ -450,6 +474,13 @@ export default function BattleScreen() {
     }
 
     if (move.power >= 90 || isUlt) { sfx.chargeSfx(); chargeGlow(atkSide); }
+
+    // 必殺開場：漫畫集中線 + 大字，戲劇性停頓再出手
+    if (isUlt) {
+      playUltCinematic(move.name);
+      poseTo(aAnim, 1.16, 0.84, 0, 160).start();
+      await wait(720);
+    }
 
     // ── 分鏡 intro ──
     const perf = PERF[attacker.type] ?? PERF.derp;
@@ -853,7 +884,21 @@ export default function BattleScreen() {
       </Animated.View>
 
       <Animated.View pointerEvents="none" style={[styles.flash, { backgroundColor: tintColor, opacity: tintA }]} />
+      {mangaOn ? <MangaLines progress={mangaA} /> : null}
       <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flashA }]} />
+      {ultName ? (
+        <Animated.View pointerEvents="none" style={[styles.ultBannerWrap, { opacity: bannerA }]}>
+          <Animated.Text
+            style={[styles.ultBannerBig, { transform: [
+              { scale: bannerA.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+              { rotate: '-7deg' },
+            ] }]}
+          >
+            必殺!
+          </Animated.Text>
+          <Text style={styles.ultBannerName}>{ultName}</Text>
+        </Animated.View>
+      ) : null}
 
       <Pressable
         style={styles.mute}
@@ -1219,6 +1264,24 @@ function Ray({ cx, cy, color, angle, len, width, dist, mode }: { cx: number; cy:
   );
 }
 
+const MANGA_LINES = Array.from({ length: 30 }, (_, i) => ({ angle: (i / 30) * 180, w: 2 + (i % 3) * 4, dark: i % 5 !== 0 }));
+function MangaLines({ progress }: { progress: Animated.Value }) {
+  const opacity = progress.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.7, 0.7, 0] });
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.1] });
+  return (
+    <Animated.View pointerEvents="none" style={[styles.mangaWrap, { opacity }]}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {MANGA_LINES.map((l, i) => (
+          <View
+            key={i}
+            style={{ position: 'absolute', width: 1000, height: l.w, left: -500, top: -l.w / 2, backgroundColor: l.dark ? '#1c1a17' : '#ffffff', transform: [{ rotate: `${l.angle}deg` }] }}
+          />
+        ))}
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bgElevated, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.xl },
@@ -1229,6 +1292,10 @@ const styles = StyleSheet.create({
     fontSize: font.size.lg, paddingHorizontal: spacing.lg, paddingVertical: 6, borderRadius: radius.pill, overflow: 'hidden',
   },
   flash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff', zIndex: 16 },
+  mangaWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 17 },
+  ultBannerWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 30 },
+  ultBannerBig: { fontSize: 84, fontWeight: '900', color: '#FFE45C', letterSpacing: 4, textShadowColor: '#1c1a17', textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 0 },
+  ultBannerName: { marginTop: 6, fontSize: font.size.lg, fontWeight: '900', color: '#fff', textShadowColor: '#1c1a17', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 },
   mute: { position: 'absolute', top: 14, right: 14, zIndex: 40, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: 38, paddingBottom: spacing.sm },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
