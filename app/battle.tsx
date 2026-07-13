@@ -116,9 +116,11 @@ export default function BattleScreen() {
   type Part = { id: number; side: 'me' | 'foe'; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number };
   type Ring = { id: number; side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number };
   type Bolt = { id: number; side: 'me' | 'foe'; ox: number };
+  type RayItem = { id: number; side: 'me' | 'foe'; color: string; angle: number; len: number; width: number; dist: number; mode: 'in' | 'out' };
   const [parts, setParts] = useState<Part[]>([]);
   const [rings, setRings] = useState<Ring[]>([]);
   const [bolts, setBolts] = useState<Bolt[]>([]);
+  const [rays, setRays] = useState<RayItem[]>([]);
   const fxId = useRef(0);
   const shakeA = useRef(new Animated.Value(0)).current;
   // 即時 HP（state 更新非同步，用 ref 當戰鬥即時真相）
@@ -191,6 +193,22 @@ export default function BattleScreen() {
     setBolts((b) => [...b, ...ids]);
     setTimeout(() => setBolts((b) => b.filter((x) => !ids.find((it) => it.id === x.id))), 340);
   };
+  // 放射線/速度線：out＝命中往外炸開、in＝衝刺往攻擊方集中
+  const spawnRays = (
+    side: 'me' | 'foe',
+    color: string,
+    n: number,
+    opt: { mode?: 'in' | 'out'; len?: number; width?: number; dist?: number } = {},
+  ) => {
+    const mode = opt.mode ?? 'out';
+    const len = opt.len ?? 40, width = opt.width ?? 4, dist = opt.dist ?? 44;
+    const items: RayItem[] = Array.from({ length: n }, (_, i) => ({
+      id: fxId.current++, side, color, mode, len, width, dist,
+      angle: (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.35,
+    }));
+    setRays((r) => [...r, ...items]);
+    setTimeout(() => setRays((r) => r.filter((x) => !items.find((it) => it.id === x.id))), mode === 'in' ? 340 : 500);
+  };
   const doShake = (px: number) => {
     Animated.sequence([
       Animated.timing(shakeA, { toValue: -px, duration: 40, useNativeDriver: true }),
@@ -234,6 +252,9 @@ export default function BattleScreen() {
     const waves = tier + 1;
     screenFlash(color, tier === 3 ? 0.7 : tier === 2 ? 0.46 : 0.26);
     zoomPunch(tier === 3 ? 1 : tier === 2 ? 0.7 : 0.45);
+    // 命中放射線（柔和彩色）；大招再疊一圈白色集中線（漫畫味）
+    spawnRays(side, color, tier === 3 ? 16 : tier === 2 ? 11 : 8, { len: 28 + tier * 14, width: tier >= 3 ? 5 : 4, dist: 44 + tier * 30, mode: 'out' });
+    if (tier === 3) spawnRays(side, '#FFFFFF', 12, { len: 46, width: 3, dist: 112, mode: 'out' });
     for (let w = 0; w < waves; w++) {
       setTimeout(() => {
         const spread = tier === 3 ? 62 : tier === 2 ? 36 : 20;
@@ -425,7 +446,8 @@ export default function BattleScreen() {
     if (choreo === 'dash') {
       // 預備：後縮壓扁蓄力（中/大招才有）
       if (tier >= 2) { poseTo(aAnim, 1.14, 0.86, 0, 90).start(); await wait(tier === 3 ? 150 : 100); }
-      // 衝刺：拉長 + 撲向對手
+      // 衝刺：拉長 + 撲向對手 + 集中速度線
+      spawnRays(atkSide, meta.color, 8, { mode: 'in', len: 30, width: 3, dist: 62 });
       Animated.parallel([
         Animated.timing(aAnim.ty, { toValue: dir * 34, duration: 130, useNativeDriver: true }),
         Animated.timing(aAnim.sx, { toValue: 0.9, duration: 130, useNativeDriver: true }),
@@ -822,6 +844,7 @@ export default function BattleScreen() {
       </View>
 
       {/* 特效層（打在量測到的寵物中心） */}
+      {rays.map((r) => <Ray key={r.id} cx={fxPos[r.side].x} cy={fxPos[r.side].y} color={r.color} angle={r.angle} len={r.len} width={r.width} dist={r.dist} mode={r.mode} />)}
       {bolts.map((b) => <Bolt key={b.id} cx={fxPos[b.side].x} cy={fxPos[b.side].y} ox={b.ox} />)}
       {rings.map((r) => <Ring key={r.id} cx={fxPos[r.side].x} cy={fxPos[r.side].y} color={r.color} size={r.size} ox={r.ox} oy={r.oy} />)}
       {parts.map((p) => (
@@ -1098,6 +1121,38 @@ function Bolt({ cx, cy, ox }: { cx: number; cy: number; ox: number }) {
         borderRadius: 2,
         zIndex: 25,
         opacity: a,
+      }}
+    />
+  );
+}
+
+function Ray({ cx, cy, color, angle, len, width, dist, mode }: { cx: number; cy: number; color: string; angle: number; len: number; width: number; dist: number; mode: 'in' | 'out' }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: mode === 'in' ? 260 : 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [a, mode]);
+  const translateX = mode === 'in'
+    ? a.interpolate({ inputRange: [0, 1], outputRange: [dist + len * 0.3, len * 0.3] })
+    : a.interpolate({ inputRange: [0, 1], outputRange: [len * 0.3, len * 0.3 + dist] });
+  const opacity = mode === 'in'
+    ? a.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, 0.85, 0] })
+    : a.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.9, 0.95, 0] });
+  const scaleX = a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.15] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: cx,
+        top: cy,
+        width: len,
+        height: width,
+        marginTop: -width / 2,
+        borderRadius: width / 2,
+        backgroundColor: color,
+        zIndex: 19,
+        opacity,
+        transform: [{ rotate: `${angle}rad` }, { translateX }, { scaleX }],
       }}
     />
   );
