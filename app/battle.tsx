@@ -104,6 +104,9 @@ export default function BattleScreen() {
   const mpMyA = useRef(new Animated.Value(1)).current;
   const mpFoeA = useRef(new Animated.Value(1)).current;
   const flashA = useRef(new Animated.Value(0)).current;
+  const tintA = useRef(new Animated.Value(0)).current;
+  const [tintColor, setTintColor] = useState('#ffffff');
+  const zoomA = useRef(new Animated.Value(0)).current;
   const effA = useRef(new Animated.Value(0)).current;
   const comboA = useRef(new Animated.Value(0)).current;
   const redA = useRef(new Animated.Value(0)).current;
@@ -166,14 +169,14 @@ export default function BattleScreen() {
       if (opt.rise) ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.4;
       else if (opt.fall) ang = Math.PI / 2 + (Math.random() - 0.5) * 1.6;
       else ang = Math.random() * Math.PI * 2;
-      const d = (24 + Math.random() * 40) * dist;
+      const d = (42 + Math.random() * 78) * dist;
       return {
         id: fxId.current++, side, color, size: opt.size ?? 9, spin: !!opt.spin,
         ox: opt.ox ?? 0, oy: opt.oy ?? 0, dx: Math.cos(ang) * d, dy: Math.sin(ang) * d,
       };
     });
     setParts((p) => [...p, ...items]);
-    setTimeout(() => setParts((p) => p.filter((x) => !items.find((it) => it.id === x.id))), 560);
+    setTimeout(() => setParts((p) => p.filter((x) => !items.find((it) => it.id === x.id))), 640);
   };
   const spawnRing = (side: 'me' | 'foe', color: string, size: number, ox = 0, oy = 0) => {
     const it: Ring = { id: fxId.current++, side, color, size, ox, oy };
@@ -199,43 +202,49 @@ export default function BattleScreen() {
 
   // 單段元素爆發（tier 影響量/範圍/光圈大小）
   const burst = (fx: string, side: 'me' | 'foe', color: string, tier: number, ox: number, oy: number) => {
-    const n = 5 + tier * 4, dist = 1 + (tier - 1) * 0.45, size = 48 + tier * 22;
-    if (fx === 'fire') { spawnBurst(side, color, n, { rise: true, size: 10, dist, ox, oy }); spawnRing(side, '#F0642F', size, ox, oy); flash(); }
-    else if (fx === 'leaf') { spawnBurst(side, color, n, { spin: true, size: 11, dist, ox, oy }); spawnRing(side, '#7FB88F', size, ox, oy); }
-    else if (fx === 'bolt') { spawnBolt(side, ox); spawnBurst(side, color, n, { size: 7, dist, ox, oy }); flash(); doShake(4); }
-    else if (fx === 'water') { spawnRing(side, '#49A9C7', size, ox, oy); setTimeout(() => spawnRing(side, '#8FD0E6', size + 16, ox, oy), 110); spawnBurst(side, color, n, { size: 9, dist, ox, oy }); }
-    else if (fx === 'rock') { spawnBurst(side, color, n, { fall: true, size: 12, dist, ox, oy }); spawnRing(side, '#9A7B4A', size, ox, oy); doShake(9); }
-    // ── 階段二：招式專屬特效 ──
-    else if (fx === 'poison') { spawnBurst(side, '#9B6BD6', n, { rise: true, spin: true, size: 9, dist, ox, oy }); spawnRing(side, '#7E4FB0', size, ox, oy); }
-    else if (fx === 'claw') { spawnBurst(side, '#F5ECDA', n, { size: 7, dist: dist * 1.35, ox, oy }); spawnRing(side, '#D9C7A0', size, ox, oy); flash(); }
-    else if (fx === 'chomp') { spawnBurst(side, color, n, { size: 12, dist, ox, oy }); spawnRing(side, '#E0A96D', size, ox, oy); doShake(6); }
-    else if (fx === 'love') { spawnBurst(side, '#EF9BB6', n, { rise: true, spin: true, size: 11, dist, ox, oy }); spawnRing(side, '#F2B8CC', size, ox, oy); }
-    else if (fx === 'laser') { spawnBurst(side, '#FF4D4D', n, { size: 6, dist: dist * 1.6, ox, oy }); spawnRing(side, '#FF4D4D', size, ox, oy); }
-    else if (fx === 'pee') { spawnBurst(side, '#E8D24B', n, { fall: true, size: 8, dist, ox, oy }); spawnRing(side, '#CBB43A', size, ox, oy); }
-    else if (fx === 'yell') { spawnRing(side, '#6E5A8A', size, ox, oy); setTimeout(() => spawnRing(side, '#9784B8', size + 18, ox, oy), 90); doShake(6); }
-    else if (fx === 'heal') { spawnBurst(side, '#78C088', n, { rise: true, size: 10, dist, ox, oy }); spawnRing(side, '#78C088', size, ox, oy); }
-    else if (fx === 'shield') { spawnRing(side, '#6EA8E6', size, ox, oy); setTimeout(() => spawnRing(side, '#9BC4F0', size + 14, ox, oy), 90); }
-    else if (fx === 'buff') { spawnBurst(side, '#F0C24B', n, { rise: true, size: 9, dist, ox, oy }); }
-    else if (fx === 'charge') { spawnRing(side, '#F0642F', size, ox, oy); spawnBurst(side, '#FFD9A0', n, { rise: true, size: 8, dist, ox, oy }); }
-    else if (fx === 'rage') { spawnBurst(side, '#F0C24B', n, { spin: true, size: 9, dist, ox, oy }); spawnRing(side, '#E0A93A', size, ox, oy); }
-    else if (fx === 'box') { spawnBurst(side, '#C79A5B', n, { size: 10, dist, ox, oy }); spawnRing(side, '#C79A5B', size, ox, oy); }
-    else if (fx === 'sparkle') { spawnBurst(side, '#FFE45C', n, { rise: true, spin: true, size: 8, dist, ox, oy }); }
-    else if (fx === 'trash') { spawnBurst(side, '#8A9A5B', n, { size: 9, dist, ox, oy }); spawnRing(side, '#6E7A47', size, ox, oy); }
+    const n = 12 + tier * 10, dist = 1.3 + (tier - 1) * 0.6, size = 72 + tier * 36;
+    if (fx === 'fire') { spawnBurst(side, color, n, { rise: true, size: 12, dist, ox, oy }); spawnRing(side, '#F0642F', size, ox, oy); spawnRing(side, '#FFD08A', size * 0.6, ox, oy); flash(); }
+    else if (fx === 'leaf') { spawnBurst(side, color, n, { spin: true, size: 13, dist, ox, oy }); spawnRing(side, '#7FB88F', size, ox, oy); spawnRing(side, '#C7E6CE', size * 0.6, ox, oy); }
+    else if (fx === 'bolt') { spawnBolt(side, ox); spawnBolt(side, ox); spawnBurst(side, color, n, { size: 8, dist, ox, oy }); flash(); doShake(8); }
+    else if (fx === 'water') { spawnRing(side, '#49A9C7', size, ox, oy); setTimeout(() => spawnRing(side, '#8FD0E6', size + 24, ox, oy), 100); setTimeout(() => spawnRing(side, '#B9E6F2', size + 48, ox, oy), 200); spawnBurst(side, color, n, { size: 11, dist, ox, oy }); }
+    else if (fx === 'rock') { spawnBurst(side, color, n, { fall: true, size: 15, dist, ox, oy }); spawnRing(side, '#9A7B4A', size, ox, oy); doShake(13); }
+    // ── 招式專屬特效 ──
+    else if (fx === 'poison') { spawnBurst(side, '#9B6BD6', n, { rise: true, spin: true, size: 12, dist, ox, oy }); spawnRing(side, '#7E4FB0', size, ox, oy); spawnRing(side, '#C79BEA', size * 0.6, ox, oy); }
+    else if (fx === 'claw') { spawnBurst(side, '#F5ECDA', n, { size: 8, dist: dist * 1.45, ox, oy }); spawnRing(side, '#D9C7A0', size, ox, oy); flash(); }
+    else if (fx === 'chomp') { spawnBurst(side, color, n, { size: 15, dist, ox, oy }); spawnRing(side, '#E0A96D', size, ox, oy); doShake(9); }
+    else if (fx === 'love') { spawnBurst(side, '#EF9BB6', n, { rise: true, spin: true, size: 14, dist, ox, oy }); spawnRing(side, '#F2B8CC', size, ox, oy); spawnRing(side, '#FBD3E1', size * 0.6, ox, oy); }
+    else if (fx === 'laser') { spawnBurst(side, '#FF4D4D', n, { size: 7, dist: dist * 1.8, ox, oy }); spawnRing(side, '#FF4D4D', size, ox, oy); spawnBolt(side, ox); flash(); }
+    else if (fx === 'pee') { spawnBurst(side, '#E8D24B', n, { fall: true, size: 10, dist, ox, oy }); spawnRing(side, '#CBB43A', size, ox, oy); }
+    else if (fx === 'yell') { spawnRing(side, '#6E5A8A', size, ox, oy); setTimeout(() => spawnRing(side, '#9784B8', size + 24, ox, oy), 90); setTimeout(() => spawnRing(side, '#B7A8D0', size + 48, ox, oy), 180); doShake(10); }
+    else if (fx === 'heal') { spawnBurst(side, '#78C088', n, { rise: true, size: 12, dist, ox, oy }); spawnRing(side, '#78C088', size, ox, oy); spawnRing(side, '#B6E0BF', size * 0.6, ox, oy); }
+    else if (fx === 'shield') { spawnRing(side, '#6EA8E6', size, ox, oy); setTimeout(() => spawnRing(side, '#9BC4F0', size + 20, ox, oy), 90); spawnBurst(side, '#BBD9F5', Math.round(n * 0.6), { spin: true, size: 9, dist: dist * 0.7, ox, oy }); }
+    else if (fx === 'buff') { spawnBurst(side, '#F0C24B', n, { rise: true, size: 12, dist, ox, oy }); spawnRing(side, '#F0C24B', size * 0.7, ox, oy); }
+    else if (fx === 'charge') { spawnRing(side, '#F0642F', size, ox, oy); spawnRing(side, '#FFB870', size * 0.6, ox, oy); spawnBurst(side, '#FFD9A0', n, { rise: true, size: 10, dist, ox, oy }); }
+    else if (fx === 'rage') { spawnBurst(side, '#F0C24B', n, { spin: true, size: 12, dist, ox, oy }); spawnRing(side, '#E0A93A', size, ox, oy); }
+    else if (fx === 'box') { spawnBurst(side, '#C79A5B', n, { size: 13, dist, ox, oy }); spawnRing(side, '#C79A5B', size, ox, oy); }
+    else if (fx === 'sparkle') { spawnBurst(side, '#FFE45C', n, { rise: true, spin: true, size: 11, dist, ox, oy }); spawnRing(side, '#FFF0A0', size * 0.7, ox, oy); }
+    else if (fx === 'trash') { spawnBurst(side, '#8A9A5B', n, { size: 12, dist, ox, oy }); spawnRing(side, '#6E7A47', size, ox, oy); }
     else spawnBurst(side, color, n, { ox, oy });
+    // 通用加碼：亮白星火點綴，越大招越多
+    spawnBurst(side, '#FFFFFF', 4 + tier * 4, { size: 5, dist: dist * 1.25, ox, oy });
   };
-  // 威力分級：小招1段、中招2段、大招3段連爆＋大範圍
+  // 威力分級：小招 2 段、中招 3 段、大招 4 段連爆＋大範圍＋色閃＋鏡頭猛推
   const typeFx = (fx: string, side: 'me' | 'foe', color: string, power: number) => {
     const tier = power >= 90 ? 3 : power >= 65 ? 2 : 1;
-    for (let w = 0; w < tier; w++) {
+    const waves = tier + 1;
+    screenFlash(color, tier === 3 ? 0.7 : tier === 2 ? 0.46 : 0.26);
+    zoomPunch(tier === 3 ? 1 : tier === 2 ? 0.7 : 0.45);
+    for (let w = 0; w < waves; w++) {
       setTimeout(() => {
-        const spread = tier === 3 ? 46 : 22;
-        const ox = w === 0 ? 0 : (Math.random() - 0.5) * spread;
-        const oy = w === 0 ? 0 : (Math.random() - 0.5) * spread * 0.7;
-        burst(fx, side, color, tier, ox, oy);
-        if (tier === 3 && w > 0) flash();
-      }, w * 150);
+        const spread = tier === 3 ? 62 : tier === 2 ? 36 : 20;
+        const dx = w === 0 ? 0 : (Math.random() - 0.5) * spread;
+        const dy = w === 0 ? 0 : (Math.random() - 0.5) * spread * 0.7;
+        burst(fx, side, color, tier, dx, dy);
+        if (w > 0 && tier >= 2) flash();
+      }, w * 115);
     }
-    if (tier >= 2) setTimeout(() => doShake(tier === 3 ? 8 : 5), (tier - 1) * 150);
+    doShake(tier === 3 ? 15 : tier === 2 ? 9 : 5);
+    if (tier === 3) setTimeout(() => doShake(9), 270);
   };
 
   const showEff = (txt: string) => {
@@ -251,6 +260,23 @@ export default function BattleScreen() {
     Animated.sequence([
       Animated.timing(flashA, { toValue: 0.7, duration: 60, useNativeDriver: true }),
       Animated.timing(flashA, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  };
+  // 螢幕色閃：用招式元素色瞬間染整個畫面
+  const screenFlash = (color: string, strength = 1) => {
+    setTintColor(color);
+    tintA.setValue(0);
+    Animated.sequence([
+      Animated.timing(tintA, { toValue: strength, duration: 70, useNativeDriver: true }),
+      Animated.timing(tintA, { toValue: 0, duration: 320, useNativeDriver: true }),
+    ]).start();
+  };
+  // 命中瞬間的畫面猛 zoom（浮誇一擊感）
+  const zoomPunch = (amt = 1) => {
+    zoomA.setValue(0);
+    Animated.sequence([
+      Animated.timing(zoomA, { toValue: amt, duration: 70, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(zoomA, { toValue: 0, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
   };
   const chargeGlow = (side: 'me' | 'foe') => {
@@ -629,7 +655,7 @@ export default function BattleScreen() {
   const foeMeta = typeMeta(foe.type);
 
   return (
-    <Animated.View ref={rootRef} onLayout={measureAvatars} style={[styles.screen, { transform: [{ translateX: shakeA }] }]}>
+    <Animated.View ref={rootRef} onLayout={measureAvatars} style={[styles.screen, { transform: [{ translateX: shakeA }, { scale: zoomA.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }]}>
       {/* 效果文字（固定最上方） */}
       <Animated.View
         pointerEvents="none"
@@ -641,6 +667,7 @@ export default function BattleScreen() {
         {effText ? <Text style={styles.effText}>{effText}</Text> : null}
       </Animated.View>
 
+      <Animated.View pointerEvents="none" style={[styles.flash, { backgroundColor: tintColor, opacity: tintA }]} />
       <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flashA }]} />
 
       <Pressable
