@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { Plus } from '@/components/icons';
 import { EmptyState } from '@/illustrations';
 import { bondInfo } from '@/space/bond';
+import { MOOD_META, moodFor } from '@/space/mood';
 import { CATALOG, useSpaceStore } from '@/space/spaceStore';
 import { SpaceYard } from '@/space/SpaceYard';
 import { useStore } from '@/store/useStore';
@@ -32,11 +33,17 @@ export default function SpaceScreen() {
   const feedPet = useSpaceStore((s) => s.feedPet);
   const lastLevelUp = useSpaceStore((s) => s.lastLevelUp);
   const clearLevelUp = useSpaceStore((s) => s.clearLevelUp);
+  const fedAt = useSpaceStore((s) => s.fedAt);
+  const playedAt = useSpaceStore((s) => s.playedAt);
+  const careStreak = useSpaceStore((s) => s.careStreak);
+  const lastDaily = useSpaceStore((s) => s.lastDaily);
+  const clearDaily = useSpaceStore((s) => s.clearDaily);
 
   const [tab, setTab] = useState<'raise' | 'shop'>('raise');
   const [edit, setEdit] = useState(false);
   const [welcome, setWelcome] = useState<number | null>(null);
   const [levelUpMsg, setLevelUpMsg] = useState<string | null>(null);
+  const [dailyMsg, setDailyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const gained = collectIdle();
@@ -54,6 +61,14 @@ export default function SpaceScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastLevelUp?.nonce]);
 
+  useEffect(() => {
+    if (!lastDaily) return;
+    setDailyMsg(`每日照顧 🔥 連續 ${lastDaily.streak} 天！獎勵 +${lastDaily.reward} 🥫`);
+    const t = setTimeout(() => { setDailyMsg(null); clearDaily(); }, 3600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastDaily?.nonce]);
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* 頂部：罐罐 */}
@@ -61,6 +76,7 @@ export default function SpaceScreen() {
         <View>
           <Text style={styles.title}>我的空間</Text>
           <Text style={styles.sub}>掛機＋遛狗累積罐罐，養牠、佈置牠的家</Text>
+          {careStreak > 0 ? <Text style={styles.streak}>🔥 連續照顧 {careStreak} 天</Text> : null}
         </View>
         <View style={styles.cans}>
           <Text style={styles.canN}>🥫 {cans}</Text>
@@ -77,6 +93,12 @@ export default function SpaceScreen() {
       {levelUpMsg ? (
         <View style={styles.levelUp}>
           <Text style={styles.levelUpText}>💞 {levelUpMsg}</Text>
+        </View>
+      ) : null}
+
+      {dailyMsg ? (
+        <View style={styles.daily}>
+          <Text style={styles.dailyText}>{dailyMsg}</Text>
         </View>
       ) : null}
 
@@ -121,10 +143,11 @@ export default function SpaceScreen() {
 
           {tab === 'raise' ? (
             <View style={styles.list}>
-              <Text style={styles.hint}>摸摸／餵食提升好感度。升等送罐罐，好感越高掛機產出越多 🥫</Text>
+              <Text style={styles.hint}>摸摸滿足「想玩」、餵食滿足「肚子餓」。心情好產出更多，每天照顧有連續獎勵 🔥</Text>
               {myPets.map((p) => {
                 const aff = affection[p.id] ?? 0;
                 const info = bondInfo(aff);
+                const mood = MOOD_META[moodFor(Date.now(), fedAt[p.id], playedAt[p.id])];
                 return (
                   <View key={p.id} style={styles.petRow}>
                     <View style={styles.petMini}>
@@ -140,6 +163,7 @@ export default function SpaceScreen() {
                       <Text style={styles.affText}>
                         好感 Lv{info.level}{info.atMax ? '・MAX 💞' : ` ・ ${info.cur}/${info.span}`}
                       </Text>
+                      <Text style={styles.moodText}>{mood.emoji} {mood.label}{mood.hint ? `・${mood.hint}` : ''}</Text>
                     </View>
                     <View style={{ gap: 6 }}>
                       <Pressable style={styles.smallBtn} onPress={() => petPet(p.id)}>
@@ -211,7 +235,11 @@ const styles = StyleSheet.create({
   welcomeText: { color: colors.gold, fontWeight: font.weight.bold, fontSize: font.size.sm, textAlign: 'center' },
   levelUp: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primary },
   levelUpText: { color: colors.primary, fontWeight: font.weight.heavy, fontSize: font.size.sm, textAlign: 'center' },
+  daily: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold },
+  dailyText: { color: colors.gold, fontWeight: font.weight.heavy, fontSize: font.size.sm, textAlign: 'center' },
+  streak: { color: colors.gold, fontSize: font.size.xs, fontWeight: font.weight.heavy, marginTop: 3 },
   bondTitle: { color: colors.primary, fontSize: font.size.xs, fontWeight: font.weight.bold },
+  moodText: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2, fontWeight: font.weight.semibold },
   yardWrap: { position: 'relative', borderRadius: radius.lg, overflow: 'hidden', ...shadow.card },
   editBtn: { position: 'absolute', right: 10, bottom: 10, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.text, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
   editBtnOn: { backgroundColor: colors.primary, borderColor: colors.primary },

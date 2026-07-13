@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { BOND_IDLE_BONUS, BOND_REWARD, bondInfo } from './bond';
+import { moodMult } from './mood';
 import {
   CATALOG,
   IDLE_BASE,
@@ -14,6 +15,7 @@ import {
 import type { Decoration } from './types';
 
 export interface LevelUpEvent { petId: string; level: number; title: string; reward: number; nonce: number }
+export interface DailyEvent { streak: number; reward: number; nonce: number }
 
 const HOUR = 1000 * 60 * 60;
 const PET_COST = 0; // 摸摸免費
@@ -25,7 +27,13 @@ interface SpaceState {
   lastCollectedAt: number;
   decorations: Decoration[];
   affection: Record<string, number>; // petId -> 累積親密度
+  fedAt: Record<string, number>; // petId -> 上次餵食時間
+  playedAt: Record<string, number>; // petId -> 上次摸摸/玩耍時間
   lastLevelUp: LevelUpEvent | null; // 供 UI 顯示升階慶祝
+  // 每日照顧
+  careStreak: number;
+  lastCareDay: string;
+  lastDaily: DailyEvent | null;
   // 走路
   walkDay: string;
   walkCansToday: number;
@@ -40,6 +48,7 @@ interface SpaceState {
   petPet: (petId: string) => void;
   feedPet: (petId: string) => boolean;
   clearLevelUp: () => void;
+  clearDaily: () => void;
 }
 
 export const useSpaceStore = create<SpaceState>()(
@@ -62,21 +71,46 @@ export const useSpaceStore = create<SpaceState>()(
           set((s) => ({ affection: { ...s.affection, [petId]: after } }));
         }
       };
+      // 每日照顧簽到：跨日照顧 → 連續天數 + 每日獎勵
+      const registerCare = () => {
+        const now = Date.now();
+        const day = new Date(now).toDateString();
+        if (get().lastCareDay === day) return;
+        const yesterday = new Date(now - 24 * HOUR).toDateString();
+        const streak = get().lastCareDay === yesterday ? get().careStreak + 1 : 1;
+        const reward = 10 + Math.min(streak, 7) * 5;
+        set((s) => ({
+          cans: s.cans + reward,
+          careStreak: streak,
+          lastCareDay: day,
+          lastDaily: { streak, reward, nonce: (s.lastDaily?.nonce ?? 0) + 1 },
+        }));
+      };
       return {
       cans: 120,
       lastCollectedAt: Date.now(),
       decorations: [],
       affection: {},
+      fedAt: {},
+      playedAt: {},
       lastLevelUp: null,
+      careStreak: 0,
+      lastCareDay: '',
+      lastDaily: null,
       walkDay: '',
       walkCansToday: 0,
       walkRemainder: 0,
 
       idleRate: () => {
         const s = get();
+        const now = Date.now();
         const decorBonus = s.decorations.filter((d) => decorDef(d.kind)?.bonus === 'idle').length * IDLE_BONUS;
-        const bondBonus = Object.values(s.affection).reduce((sum, aff) => sum + bondInfo(aff).level * BOND_IDLE_BONUS, 0);
-        return IDLE_BASE + decorBonus + bondBonus;
+        // 好感加成 × 該寵物心情倍率（開心產更多、被冷落產很少）
+        const bondBonus = Object.entries(s.affection).reduce(
+          (sum, [pid, aff]) => sum + bondInfo(aff).level * BOND_IDLE_BONUS * moodMult(now, s.fedAt[pid], s.playedAt[pid]),
+          0,
+        );
+        return Math.round(IDLE_BASE + decorBonus + bondBonus);
       },
 
       collectIdle: () => {
@@ -128,16 +162,22 @@ export const useSpaceStore = create<SpaceState>()(
       removeDecoration: (id) =>
         set((s) => ({ decorations: s.decorations.filter((d) => d.id !== id) })),
 
-      petPet: (petId) => bump(petId, 2),
+      petPet: (petId) => {
+        set((s) => ({ playedAt: { ...s.playedAt, [petId]: Date.now() } }));
+        bump(petId, 2);
+        registerCare();
+      },
 
       feedPet: (petId) => {
         if (get().cans < FEED_COST) return false;
-        set((s) => ({ cans: s.cans - FEED_COST }));
+        set((s) => ({ cans: s.cans - FEED_COST, fedAt: { ...s.fedAt, [petId]: Date.now() } }));
         bump(petId, 15);
+        registerCare();
         return true;
       },
 
       clearLevelUp: () => set({ lastLevelUp: null }),
+      clearDaily: () => set({ lastDaily: null }),
       };
     },
     {
