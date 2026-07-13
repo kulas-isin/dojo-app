@@ -114,6 +114,22 @@ export default function BattleScreen() {
   // 即時 HP（state 更新非同步，用 ref 當戰鬥即時真相）
   const hpRef = useRef({ me: mine?.maxHp ?? 1, foe: foe?.maxHp ?? 1 }).current;
 
+  // 特效定位：量測兩隻寵物在畫面上的中心，讓命中特效打在寵物身上（而非按鈕）
+  const rootRef = useRef<any>(null);
+  const meWrapRef = useRef<any>(null);
+  const foeWrapRef = useRef<any>(null);
+  const [fxPos, setFxPos] = useState({ me: { x: 90, y: 430 }, foe: { x: 300, y: 150 } });
+  const measureAvatars = () => {
+    const root = rootRef.current;
+    if (!root?.measureInWindow) return;
+    root.measureInWindow((rx: number, ry: number) => {
+      meWrapRef.current?.measureInWindow?.((x: number, y: number, w: number, h: number) =>
+        setFxPos((p) => ({ ...p, me: { x: x - rx + w / 2, y: y - ry + h / 2 } })));
+      foeWrapRef.current?.measureInWindow?.((x: number, y: number, w: number, h: number) =>
+        setFxPos((p) => ({ ...p, foe: { x: x - rx + w / 2, y: y - ry + h / 2 } })));
+    });
+  };
+
   useEffect(() => () => sfx.stopBgm(), []);
   useEffect(() => {
     const id = timeA.addListener(({ value }) => (timeV.current = value));
@@ -330,10 +346,11 @@ export default function BattleScreen() {
     const lucky = (attacker.type === 'derp' && Math.random() < 0.18) || (!!move.effect?.lucky && Math.random() < 0.35);
     const sturdyMult = defender.type === 'sturdy' ? 0.85 : 1;
     let dmg = Math.max(1, Math.round(res.dmg * atkMult * powerMult * (lucky ? 1.5 : 1) * sturdyMult));
+    // 護盾只吸收最多 60%，至少 1 點傷害一定會穿透（避免「完全打不動」）
     if (stRef[defSide].shield > 0) {
-      const absorbed = Math.min(stRef[defSide].shield, dmg);
-      stRef[defSide].shield -= absorbed; dmg -= absorbed; refreshSt();
-      if (absorbed > 0) showEff('🛡️ 擋下部分傷害');
+      const absorbed = Math.min(stRef[defSide].shield, Math.floor(dmg * 0.6));
+      stRef[defSide].shield -= absorbed; dmg = Math.max(1, dmg - absorbed); refreshSt();
+      if (absorbed > 0) showEff('🛡️ 護盾擋下部分傷害');
     }
     setHp(defSide, hpRef[defSide] - dmg);
 
@@ -368,7 +385,7 @@ export default function BattleScreen() {
     if (eff) {
       const aMax = maxHpOf(atkSide);
       if (eff.heal) { setHp(atkSide, hpRef[atkSide] + Math.round(aMax * eff.heal)); showEff('💚 回復體力'); }
-      if (eff.shield) { stRef[atkSide].shield += Math.round(aMax * eff.shield); refreshSt(); showEff('🛡️ 展開護盾'); }
+      if (eff.shield) { stRef[atkSide].shield = Math.min(Math.round(aMax * 0.4), stRef[atkSide].shield + Math.round(aMax * eff.shield)); refreshSt(); showEff('🛡️ 展開護盾'); }
       if (eff.buffAtk) { stRef[atkSide].atkStage = Math.min(3, stRef[atkSide].atkStage + eff.buffAtk); refreshSt(); showEff('⬆️ 攻擊提升'); }
       if (eff.status && dmg > 0 && Math.random() < eff.status.chance) {
         const k = eff.status.kind;
@@ -505,7 +522,7 @@ export default function BattleScreen() {
   const foeMeta = typeMeta(foe.type);
 
   return (
-    <Animated.View style={[styles.screen, { transform: [{ translateX: shakeA }] }]}>
+    <Animated.View ref={rootRef} onLayout={measureAvatars} style={[styles.screen, { transform: [{ translateX: shakeA }] }]}>
       {/* 效果文字（固定最上方） */}
       <Animated.View
         pointerEvents="none"
@@ -543,32 +560,36 @@ export default function BattleScreen() {
       {/* 對手（上） */}
       <View style={styles.rowTop}>
         <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} rage={foeRage} status={stRef.foe} />
-        <FighterAvatar
-          pet={champEntry}
-          avatarCfg={champPet?.avatar}
-          petType={champPet?.petType ?? champEntry?.petType}
-          anim={foeA}
-          color={foeMeta.color}
-        />
+        <View ref={foeWrapRef} onLayout={measureAvatars} collapsable={false}>
+          <FighterAvatar
+            pet={champEntry}
+            avatarCfg={champPet?.avatar}
+            petType={champPet?.petType ?? champEntry?.petType}
+            anim={foeA}
+            color={foeMeta.color}
+          />
+        </View>
       </View>
 
       {/* 我方（下） */}
       <View style={styles.rowBottom}>
-        <FighterAvatar
-          pet={myPet}
-          avatarCfg={myPet?.avatar}
-          petType={myPet?.petType}
-          anim={myA}
-          color={myMeta.color}
-        />
+        <View ref={meWrapRef} onLayout={measureAvatars} collapsable={false}>
+          <FighterAvatar
+            pet={myPet}
+            avatarCfg={myPet?.avatar}
+            petType={myPet?.petType}
+            anim={myA}
+            color={myMeta.color}
+          />
+        </View>
         <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} rage={myRage} status={stRef.me} />
       </View>
 
-      {/* 特效層 */}
-      {bolts.map((b) => <Bolt key={b.id} side={b.side} ox={b.ox} />)}
-      {rings.map((r) => <Ring key={r.id} side={r.side} color={r.color} size={r.size} ox={r.ox} oy={r.oy} />)}
+      {/* 特效層（打在量測到的寵物中心） */}
+      {bolts.map((b) => <Bolt key={b.id} cx={fxPos[b.side].x} cy={fxPos[b.side].y} ox={b.ox} />)}
+      {rings.map((r) => <Ring key={r.id} cx={fxPos[r.side].x} cy={fxPos[r.side].y} color={r.color} size={r.size} ox={r.ox} oy={r.oy} />)}
       {parts.map((p) => (
-        <Particle key={p.id} side={p.side} color={p.color} dx={p.dx} dy={p.dy} size={p.size} spin={p.spin} ox={p.ox} oy={p.oy} />
+        <Particle key={p.id} cx={fxPos[p.side].x} cy={fxPos[p.side].y} color={p.color} dx={p.dx} dy={p.dy} size={p.size} spin={p.spin} ox={p.ox} oy={p.oy} />
       ))}
 
       {/* 節奏小遊戲 */}
@@ -736,7 +757,7 @@ function HpCard({ fighter, hpAnim, mpAnim, mp, meta, rage, status }: { fighter: 
   );
 }
 
-function Particle({ side, color, dx, dy, size, spin, ox, oy }: { side: 'me' | 'foe'; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number }) {
+function Particle({ cx, cy, color, dx, dy, size, spin, ox, oy }: { cx: number; cy: number; color: string; dx: number; dy: number; size: number; spin: boolean; ox: number; oy: number }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(a, { toValue: 1, duration: 520, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
@@ -751,10 +772,8 @@ function Particle({ side, color, dx, dy, size, spin, ox, oy }: { side: 'me' | 'f
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: side === 'foe' ? undefined : 74 + ox,
-        right: side === 'foe' ? 74 - ox : undefined,
-        top: side === 'foe' ? 96 + oy : undefined,
-        bottom: side === 'me' ? 96 + oy : undefined,
+        left: cx + ox - size / 2,
+        top: cy + oy - size / 2,
         width: size,
         height: size,
         borderRadius: spin ? 3 : size / 2,
@@ -767,7 +786,7 @@ function Particle({ side, color, dx, dy, size, spin, ox, oy }: { side: 'me' | 'f
   );
 }
 
-function Ring({ side, color, size, ox, oy }: { side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number }) {
+function Ring({ cx, cy, color, size, ox, oy }: { cx: number; cy: number; color: string; size: number; ox: number; oy: number }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(a, { toValue: 1, duration: 560, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
@@ -777,10 +796,8 @@ function Ring({ side, color, size, ox, oy }: { side: 'me' | 'foe'; color: string
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: side === 'foe' ? undefined : 78 + ox - size / 2,
-        right: side === 'foe' ? 78 - ox - size / 2 : undefined,
-        top: side === 'foe' ? 100 + oy - size / 2 : undefined,
-        bottom: side === 'me' ? 100 + oy - size / 2 : undefined,
+        left: cx + ox - size / 2,
+        top: cy + oy - size / 2,
         width: size,
         height: size,
         borderRadius: size / 2,
@@ -794,7 +811,7 @@ function Ring({ side, color, size, ox, oy }: { side: 'me' | 'foe'; color: string
   );
 }
 
-function Bolt({ side, ox }: { side: 'me' | 'foe'; ox: number }) {
+function Bolt({ cx, cy, ox }: { cx: number; cy: number; ox: number }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.sequence([
@@ -809,10 +826,8 @@ function Bolt({ side, ox }: { side: 'me' | 'foe'; ox: number }) {
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: side === 'foe' ? undefined : 76 + ox,
-        right: side === 'foe' ? 76 - ox : undefined,
-        top: side === 'foe' ? -20 : undefined,
-        bottom: side === 'me' ? -20 : undefined,
+        left: cx + ox - 2,
+        top: cy - 80,
         width: 5,
         height: 160,
         backgroundColor: '#FFE45C',

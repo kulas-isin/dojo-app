@@ -157,7 +157,8 @@ export function attack(a: Fighter, d: Fighter, move: Move): AttackResult {
   if (Math.random() > move.acc) return { dmg: 0, eff: 'miss' };
   const mult = typeMultiplier(move.type, d.type);
   const base = ((2 * a.level) / 5 + 2) * (move.power * a.atk) / Math.max(1, d.def) / 50 + 2;
-  const dmg = Math.max(1, Math.floor(base * mult * (0.85 + Math.random() * 0.15)));
+  // 1.25 全域係數：低等級不要打太久（可依 battle_logs 再調）
+  const dmg = Math.max(1, Math.floor(base * mult * (0.85 + Math.random() * 0.15) * 1.25));
   const eff = mult > 1 ? 'super' : mult < 1 ? 'weak' : 'normal';
   return { dmg, eff };
 }
