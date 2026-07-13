@@ -2,6 +2,8 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { DEFAULT_TRAINER, trainerRects, type Px } from '../avatar/sprite';
+import { useStore } from '../store/useStore';
 import { colors } from '../theme';
 import type { Coordinate } from '../types';
 import type { GymMapProps } from './GymMap.types';
@@ -51,23 +53,16 @@ function makeStray() {
   x.fillStyle = '#241f1b'; x.fillRect(18, 3, 1, 1); x.fillRect(21, 3, 1, 1); // 眼
   return cv.toDataURL();
 }
-function makePlayer() {
-  const { cv, x } = makeCanvas(16, 18);
-  x.fillStyle = 'rgba(0,0,0,.2)'; x.fillRect(3, 16, 10, 2);    // 影
-  x.fillStyle = '#3a5f7a'; x.fillRect(4, 11, 3, 4); x.fillRect(9, 11, 3, 4); // 腿
-  x.fillStyle = '#241f1b'; x.fillRect(4, 15, 3, 1); x.fillRect(9, 15, 3, 1); // 鞋
-  x.fillStyle = '#5e9b7e'; x.fillRect(3, 6, 10, 6);            // 身
-  x.fillStyle = '#4f866a'; x.fillRect(3, 6, 10, 1);
-  x.fillStyle = '#f1c9a5'; x.fillRect(4, 1, 8, 6);             // 頭
-  x.fillStyle = '#241f1b'; x.fillRect(5, 4, 1, 1); x.fillRect(10, 4, 1, 1); // 眼
-  x.fillStyle = '#e8805c'; x.fillRect(3, 0, 10, 3);            // 帽
-  x.fillStyle = '#c9613f'; x.fillRect(3, 2, 10, 1);
-  x.fillRect(1, 2, 3, 1); x.fillRect(12, 2, 3, 1);             // 帽簷
+// 由像素方塊清單畫成 dataURL（訓練家造型用，40×40 座標系）
+function rectsToDataUrl(rects: Px[]) {
+  if (typeof document === 'undefined') return '';
+  const { cv, x } = makeCanvas(40, 40);
+  rects.forEach((r) => { x.fillStyle = r.c; x.fillRect(r.x, r.y, r.w, r.h); });
   return cv.toDataURL();
 }
 function buildSprites() {
-  if (typeof document === 'undefined') return { dojo: '', stray: '', player: '' };
-  return { dojo: makeDojo(), stray: makeStray(), player: makePlayer() };
+  if (typeof document === 'undefined') return { dojo: '', stray: '' };
+  return { dojo: makeDojo(), stray: makeStray() };
 }
 
 function distMeters(a: Coordinate, b: Coordinate) {
@@ -163,11 +158,13 @@ function SpriteLayer({
   userLocation,
   onSelectGym,
   sprites,
+  playerUrl,
 }: {
   gyms: GymMapProps['gyms'];
   userLocation: Coordinate | null;
   onSelectGym: (id: string) => void;
-  sprites: { dojo: string; stray: string; player: string };
+  sprites: { dojo: string; stray: string };
+  playerUrl: string;
 }) {
   const map = useMap();
   const [, setV] = useState(0);
@@ -238,7 +235,7 @@ function SpriteLayer({
         const p = project(userLocation.latitude, userLocation.longitude);
         return (
           <img
-            src={sprites.player}
+            src={playerUrl}
             alt="你"
             className="paw-sprite"
             style={{
@@ -259,6 +256,8 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
   const [follow, setFollow] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const sprites = useMemo(buildSprites, []);
+  const trainerCfg = useStore((st) => st.user.trainerAvatar) ?? DEFAULT_TRAINER;
+  const playerUrl = useMemo(() => rectsToDataUrl(trainerRects(trainerCfg)), [trainerCfg]);
   const s = STYLES[style];
 
   const recenter = () => {
@@ -294,7 +293,7 @@ export function GymMap({ gyms, userLocation, center, onSelectGym, onPickLocation
         )}
         <ClickCatcher onPick={onPickLocation} />
         <FollowController userLocation={userLocation} follow={follow} onRoam={() => setFollow(false)} />
-        <SpriteLayer gyms={gyms} userLocation={userLocation} onSelectGym={onSelectGym} sprites={sprites} />
+        <SpriteLayer gyms={gyms} userLocation={userLocation} onSelectGym={onSelectGym} sprites={sprites} playerUrl={playerUrl} />
       </MapContainer>
 
       {/* 漫遊提示 */}

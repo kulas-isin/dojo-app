@@ -16,8 +16,11 @@ import {
   type Move,
 } from '@/battle/engine';
 import { typeMeta } from '@/battle/stats';
+import { AvatarView } from '@/avatar/AvatarView';
+import type { PetAvatar } from '@/avatar/sprite';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
+import type { PetType } from '@/types';
 
 function hpColors(pct: number): [string, string] {
   if (pct > 50) return ['#6FB08E', '#4F8F6C'];
@@ -49,6 +52,7 @@ export default function BattleScreen() {
   const gym = gyms.find((g) => g.id === gymId);
   const myPet = pets.find((p) => p.id === myPetId);
   const champEntry = gym?.championEntryId ? entries.find((e) => e.id === gym.championEntryId) : undefined;
+  const champPet = champEntry?.petId ? pets.find((p) => p.id === champEntry.petId) : undefined;
 
   const mine = useMemo<Fighter | null>(() => (myPet ? makeFighter(myPet) : null), [myPet]);
   const foe = useMemo<Fighter | null>(
@@ -385,12 +389,24 @@ export default function BattleScreen() {
       {/* 對手（上） */}
       <View style={styles.rowTop}>
         <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} />
-        <FighterAvatar pet={champEntry} anim={foeA} color={foeMeta.color} />
+        <FighterAvatar
+          pet={champEntry}
+          avatarCfg={champPet?.avatar}
+          petType={champPet?.petType ?? champEntry?.petType}
+          anim={foeA}
+          color={foeMeta.color}
+        />
       </View>
 
       {/* 我方（下） */}
       <View style={styles.rowBottom}>
-        <FighterAvatar pet={myPet} anim={myA} color={myMeta.color} />
+        <FighterAvatar
+          pet={myPet}
+          avatarCfg={myPet?.avatar}
+          petType={myPet?.petType}
+          anim={myA}
+          color={myMeta.color}
+        />
         <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} />
       </View>
 
@@ -456,10 +472,14 @@ export default function BattleScreen() {
 
 function FighterAvatar({
   pet,
+  avatarCfg,
+  petType,
   anim,
   color,
 }: {
   pet: any;
+  avatarCfg?: PetAvatar;
+  petType?: PetType;
   anim: { tx: Animated.Value; ty: Animated.Value; hit: Animated.Value; glow: Animated.Value };
   color: string;
 }) {
@@ -476,7 +496,11 @@ function FighterAvatar({
         }}
       />
       <View style={styles.avatar}>
-        {pet?.avatarUri || pet?.mediaUri ? (
+        {avatarCfg ? (
+          <View style={[styles.avatarImg, styles.avatarPixel]}>
+            <AvatarView size={104} pet={avatarCfg} petType={petType ?? 'cat'} />
+          </View>
+        ) : pet?.avatarUri || pet?.mediaUri ? (
           <Image source={pet.thumbUri ?? pet.avatarUri ?? pet.mediaUri} style={styles.avatarImg} contentFit="cover" />
         ) : (
           <View style={[styles.avatarImg, { backgroundColor: colors.cardAlt }]} />
@@ -624,6 +648,7 @@ const styles = StyleSheet.create({
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },
   avatarImg: { width: '100%', height: '100%' },
+  avatarPixel: { backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   avatarFlash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff' },
   hpCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, minWidth: 190, borderWidth: 1, borderColor: colors.border, ...shadow.card },
   hpRow1: { flexDirection: 'row', alignItems: 'center', gap: 6 },

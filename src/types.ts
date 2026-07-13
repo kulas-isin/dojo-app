@@ -1,3 +1,5 @@
+import type { PetAvatar, TrainerAvatar } from './avatar/sprite';
+
 export type PetType = 'cat' | 'dog' | 'other';
 export type MediaType = 'photo' | 'video';
 
@@ -81,6 +83,8 @@ export interface Pet {
   ptsDef?: number;
   ptsSpd?: number;
   level?: number;
+  /** 像素捏臉造型（無則對戰畫面 fallback 用真實照片）*/
+  avatar?: PetAvatar;
 }
 
 /** 貼文留言 */
@@ -141,6 +145,8 @@ export interface User {
   id: string;
   name: string;
   avatar: string;
+  /** 訓練家像素造型（地圖與個人頁用）*/
+  trainerAvatar?: TrainerAvatar;
   titles: Title[];
   wins: number;
   losses: number;

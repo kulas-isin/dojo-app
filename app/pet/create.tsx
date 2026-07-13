@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '@/auth/authStore';
+import { AvatarEditor } from '@/avatar/AvatarEditor';
+import { DEFAULT_PET, type PetAvatar } from '@/avatar/sprite';
 import { BATTLE_TYPES, STAT_BUDGET, baseFor } from '@/battle/stats';
 import { Button } from '@/components/Button';
 import { Camera, Check, HeartHandshake, PawPrint, PetIcon } from '@/components/icons';
@@ -59,6 +61,7 @@ export default function CreatePetScreen() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [battleType, setBattleType] = useState<string | null>(null);
   const [pts, setPts] = useState<Record<StatKey, number>>({ hp: 0, atk: 0, def: 0, spd: 0 });
+  const [petAvatar, setPetAvatar] = useState<PetAvatar>(DEFAULT_PET);
 
   const base = baseFor(petType, battleType ?? 'derp');
   const remaining = STAT_BUDGET - (pts.hp + pts.atk + pts.def + pts.spd);
@@ -103,6 +106,7 @@ export default function CreatePetScreen() {
         avatarUri: uploaded.url,
         thumbUri: uploaded.thumbUrl,
         bio,
+        avatar: petAvatar,
         ...(isStray
           ? { area, status }
           : {
@@ -171,6 +175,10 @@ export default function CreatePetScreen() {
           );
         })}
       </View>
+
+      <Text style={styles.label}>像素造型（捏臉）</Text>
+      <Text style={styles.hint}>對戰畫面會用這個像素造型登場，之後也能再改。</Text>
+      <AvatarEditor kind="pet" petType={petType} value={petAvatar} onChange={setPetAvatar} />
 
       {isStray ? (
         <>

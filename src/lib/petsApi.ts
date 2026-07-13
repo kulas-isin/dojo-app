@@ -1,3 +1,4 @@
+import type { PetAvatar } from '../avatar/sprite';
 import type { Comment, MediaType, Pet, PetKind, Post, StrayStatus, Visibility } from '../types';
 import { supabase } from './supabase';
 
@@ -26,6 +27,7 @@ function mapPet(r: any): Pet {
     ptsDef: r.pts_def ?? 0,
     ptsSpd: r.pts_spd ?? 0,
     level: r.level ?? 1,
+    avatar: r.pet_avatar ?? undefined,
   };
 }
 
@@ -116,6 +118,7 @@ export interface CreatePetRemote {
   ptsAtk?: number;
   ptsDef?: number;
   ptsSpd?: number;
+  avatar?: PetAvatar;
 }
 
 export async function createPetRemote(input: CreatePetRemote, userId: string): Promise<string> {
@@ -138,6 +141,7 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
     caretaker_ids: isStray ? [userId] : [],
     status: isStray ? input.status ?? 'adoptable' : null,
     area: isStray ? input.area?.trim() ?? '' : null,
+    pet_avatar: input.avatar ?? null,
   };
   const { data, error } = await supabase.from('pets').insert(row).select('id').single();
   if (error) throw error;

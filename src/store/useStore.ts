@@ -22,6 +22,7 @@ import {
   winGymBattleRemote,
 } from '../lib/gymsApi';
 import { seedUser } from '../data/seed';
+import type { PetAvatar, TrainerAvatar } from '../avatar/sprite';
 import type {
   Battle,
   Comment,
@@ -79,6 +80,8 @@ export interface NewPetInput {
   ptsAtk?: number;
   ptsDef?: number;
   ptsSpd?: number;
+  // 像素捏臉造型
+  avatar?: PetAvatar;
 }
 
 export interface NewPostInput {
@@ -116,6 +119,8 @@ interface StoreState {
   winGymBattle: (gymId: string, petId: string) => Promise<void>;
   /** 本地 demo：對戰勝利後暫時把寵物升一級（不寫雲端） */
   bumpPetLevelLocal: (petId: string) => void;
+  /** 更新訓練家像素造型（本機持久化，隨帳號頭銜一起保存）*/
+  setTrainerAvatar: (avatar: TrainerAvatar) => void;
   syncSocial: () => Promise<void>;
   createPet: (input: NewPetInput) => Promise<string | null>;
   addPost: (input: NewPostInput) => Promise<void>;
@@ -256,6 +261,10 @@ export const useStore = create<StoreState>()(
             p.id === petId ? { ...p, level: (p.level ?? 1) + 1 } : p,
           ),
         }));
+      },
+
+      setTrainerAvatar: (avatar) => {
+        set((s) => ({ user: { ...s.user, trainerAvatar: avatar } }));
       },
 
       syncSocial: async () => {

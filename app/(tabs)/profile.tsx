@@ -2,10 +2,12 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AvatarView } from '@/avatar/AvatarView';
+import { DEFAULT_TRAINER } from '@/avatar/sprite';
 import { AccountCard } from '@/auth/AccountCard';
 import { displayName, useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
-import { Crown, PawPrint, Plus, Shield } from '@/components/icons';
+import { Crown, Palette, PawPrint, Plus, Shield } from '@/components/icons';
 import { Doodle } from '@/illustrations';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
@@ -36,7 +38,7 @@ export default function ProfileScreen() {
           <Doodle name="paw" size={22} color={colors.primarySoft} />
         </View>
         <View style={styles.avatar}>
-          <PawPrint size={40} color={colors.primary} strokeWidth={2.2} />
+          <AvatarView size={78} trainer={user.trainerAvatar ?? DEFAULT_TRAINER} />
         </View>
         <Text style={styles.name}>{shownName}</Text>
         <View style={styles.statsRow}>
@@ -44,6 +46,13 @@ export default function ProfileScreen() {
           <Stat label="敗場" value={user.losses} color={colors.primary} />
           <Stat label="總得票" value={totalVotes} color={colors.gold} />
         </View>
+        <Button
+          label="編輯我的造型"
+          icon={Palette}
+          variant="ghost"
+          onPress={() => router.push('/avatar')}
+          style={{ marginTop: spacing.md }}
+        />
       </View>
 
       {/* 帳號（Phase 2） */}
@@ -160,6 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   name: { color: colors.text, fontSize: font.size.xl, fontWeight: font.weight.heavy, marginTop: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.lg },

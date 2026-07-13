@@ -1,3 +1,4 @@
+import { DEFAULT_TRAINER } from '../avatar/sprite';
 import type { Battle, Comment, Entry, Gym, Pet, Post, User } from '../types';
 
 const HOUR = 1000 * 60 * 60;
@@ -8,6 +9,7 @@ export const seedUser: User = {
   id: 'me',
   name: '訓練家小明',
   avatar: '🧑‍🦱',
+  trainerAvatar: DEFAULT_TRAINER,
   titles: [],
   wins: 0,
   losses: 0,

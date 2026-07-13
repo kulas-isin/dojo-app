@@ -38,8 +38,13 @@ create table if not exists pets (
   caretaker_ids uuid[] not null default '{}',
   status text check (status in ('intact','neutered','adoptable','adopted')),
   area text,
+  -- 像素捏臉造型設定（{fur,pattern,face,collar}）
+  pet_avatar jsonb,
   created_at timestamptz not null default now()
 );
+
+-- 既有資料庫升級用（新增像素造型欄位；已存在則略過）
+alter table pets add column if not exists pet_avatar jsonb;
 
 -- ========== 貼文 ==========
 create table if not exists posts (
