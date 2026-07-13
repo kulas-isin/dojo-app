@@ -131,10 +131,12 @@ export default function BattleScreen() {
   type Ring = { id: number; side: 'me' | 'foe'; color: string; size: number; ox: number; oy: number };
   type Bolt = { id: number; side: 'me' | 'foe'; ox: number };
   type RayItem = { id: number; side: 'me' | 'foe'; color: string; angle: number; len: number; width: number; dist: number; mode: 'in' | 'out' };
+  type NumItem = { id: number; side: 'me' | 'foe'; value: number; kind: 'dmg' | 'heal'; big: boolean; ox: number };
   const [parts, setParts] = useState<Part[]>([]);
   const [rings, setRings] = useState<Ring[]>([]);
   const [bolts, setBolts] = useState<Bolt[]>([]);
   const [rays, setRays] = useState<RayItem[]>([]);
+  const [nums, setNums] = useState<NumItem[]>([]);
   const fxId = useRef(0);
   const shakeA = useRef(new Animated.Value(0)).current;
   // 即時 HP（state 更新非同步，用 ref 當戰鬥即時真相）
@@ -222,6 +224,12 @@ export default function BattleScreen() {
     }));
     setRays((r) => [...r, ...items]);
     setTimeout(() => setRays((r) => r.filter((x) => !items.find((it) => it.id === x.id))), mode === 'in' ? 340 : 500);
+  };
+  // 浮動數字（傷害/回血）
+  const spawnNum = (side: 'me' | 'foe', value: number, kind: 'dmg' | 'heal', big: boolean) => {
+    const it: NumItem = { id: fxId.current++, side, value, kind, big, ox: (Math.random() - 0.5) * 36 };
+    setNums((n) => [...n, it]);
+    setTimeout(() => setNums((n) => n.filter((x) => x.id !== it.id)), 950);
   };
   const doShake = (px: number) => {
     Animated.sequence([
@@ -367,7 +375,10 @@ export default function BattleScreen() {
 
   const maxHpOf = (side: 'me' | 'foe') => (side === 'me' ? mine!.maxHp : foe!.maxHp);
   const setHp = (side: 'me' | 'foe', val: number) => {
+    const prev = hpRef[side];
     hpRef[side] = Math.max(0, Math.min(maxHpOf(side), val));
+    const delta = Math.round(hpRef[side] - prev);
+    if (delta !== 0) spawnNum(side, Math.abs(delta), delta < 0 ? 'dmg' : 'heal', Math.abs(delta) >= maxHpOf(side) * 0.14);
     if (side === 'me') setMyHp(hpRef.me); else setFoeHp(hpRef.foe);
     Animated.timing(side === 'me' ? hpMyA : hpFoeA, {
       toValue: hpRef[side] / maxHpOf(side), duration: 420, useNativeDriver: false,
@@ -956,6 +967,9 @@ export default function BattleScreen() {
       {parts.map((p) => (
         <Particle key={p.id} cx={fxPos[p.side].x} cy={fxPos[p.side].y} color={p.color} dx={p.dx} dy={p.dy} size={p.size} spin={p.spin} ox={p.ox} oy={p.oy} />
       ))}
+      {nums.map((n) => (
+        <DamageNum key={n.id} cx={fxPos[n.side].x + n.ox} cy={fxPos[n.side].y} value={n.value} kind={n.kind} big={n.big} />
+      ))}
 
       {/* 節奏小遊戲 */}
       {timingOn ? (
@@ -1261,6 +1275,26 @@ function Ray({ cx, cy, color, angle, len, width, dist, mode }: { cx: number; cy:
         transform: [{ rotate: `${angle}rad` }, { translateX }, { scaleX }],
       }}
     />
+  );
+}
+
+function DamageNum({ cx, cy, value, kind, big }: { cx: number; cy: number; value: number; kind: 'dmg' | 'heal'; big: boolean }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [a]);
+  const translateY = a.interpolate({ inputRange: [0, 1], outputRange: [0, -64] });
+  const scale = a.interpolate({ inputRange: [0, 0.18, 0.32, 1], outputRange: [0.3, 1.3, 1, 1] });
+  const opacity = a.interpolate({ inputRange: [0, 0.1, 0.7, 1], outputRange: [0, 1, 1, 0] });
+  const color = kind === 'heal' ? '#7CE0A0' : big ? '#FFE45C' : '#ffffff';
+  const stroke = kind === 'heal' ? '#1c1a17' : big ? '#B23B1E' : '#C0392B';
+  const fontSize = (big ? 40 : 28) * (kind === 'heal' ? 0.85 : 1);
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: cx - 40, top: cy - 24, width: 80, alignItems: 'center', zIndex: 26, opacity, transform: [{ translateY }, { scale }] }}>
+      <Text style={{ fontSize, fontWeight: '900', color, textShadowColor: stroke, textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 }}>
+        {kind === 'heal' ? '+' : ''}{value}
+      </Text>
+    </Animated.View>
   );
 }
 
