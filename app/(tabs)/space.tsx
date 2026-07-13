@@ -1,0 +1,214 @@
+import { router } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AvatarView } from '@/avatar/AvatarView';
+import { DEFAULT_PET } from '@/avatar/sprite';
+import { Button } from '@/components/Button';
+import { Plus } from '@/components/icons';
+import { EmptyState } from '@/illustrations';
+import { CATALOG, useSpaceStore } from '@/space/spaceStore';
+import { SpaceYard } from '@/space/SpaceYard';
+import { useStore } from '@/store/useStore';
+import { colors, font, radius, shadow, spacing } from '@/theme';
+
+export default function SpaceScreen() {
+  const pets = useStore((s) => s.pets);
+  const currentUserId = useStore((s) => s.currentUserId);
+  const myPets = useMemo(
+    () => pets.filter((p) => p.kind === 'owned' && p.ownerId === currentUserId),
+    [pets, currentUserId],
+  );
+
+  const cans = useSpaceStore((s) => s.cans);
+  const decorations = useSpaceStore((s) => s.decorations);
+  const affection = useSpaceStore((s) => s.affection);
+  const idleRate = useSpaceStore((s) => s.idleRate);
+  const collectIdle = useSpaceStore((s) => s.collectIdle);
+  const buyDecoration = useSpaceStore((s) => s.buyDecoration);
+  const moveDecoration = useSpaceStore((s) => s.moveDecoration);
+  const removeDecoration = useSpaceStore((s) => s.removeDecoration);
+  const petPet = useSpaceStore((s) => s.petPet);
+  const feedPet = useSpaceStore((s) => s.feedPet);
+
+  const [tab, setTab] = useState<'raise' | 'shop'>('raise');
+  const [edit, setEdit] = useState(false);
+  const [welcome, setWelcome] = useState<number | null>(null);
+
+  useEffect(() => {
+    const gained = collectIdle();
+    if (gained > 0) setWelcome(gained);
+    const t = setTimeout(() => setWelcome(null), 3200);
+    return () => clearTimeout(t);
+  }, [collectIdle]);
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* 頂部：罐罐 */}
+      <View style={styles.head}>
+        <View>
+          <Text style={styles.title}>我的空間</Text>
+          <Text style={styles.sub}>掛機＋遛狗累積罐罐，養牠、佈置牠的家</Text>
+        </View>
+        <View style={styles.cans}>
+          <Text style={styles.canN}>🥫 {cans}</Text>
+          <Text style={styles.rate}>掛機 +{idleRate()}/時</Text>
+        </View>
+      </View>
+
+      {welcome != null ? (
+        <View style={styles.welcome}>
+          <Text style={styles.welcomeText}>歡迎回來！離線收益 +{welcome} 🥫</Text>
+        </View>
+      ) : null}
+
+      {myPets.length === 0 ? (
+        <EmptyState
+          doodle="paw"
+          title="還沒有毛孩住進來"
+          subtitle="先建立一隻寵物，就能在這裡陪伴、養成牠。"
+        />
+      ) : (
+        <>
+          {/* 院子 */}
+          <View style={styles.yardWrap}>
+            <SpaceYard
+              pets={myPets}
+              decorations={decorations}
+              editMode={edit}
+              onPetTap={petPet}
+              onMoveDecoration={moveDecoration}
+              onRemoveDecoration={removeDecoration}
+            />
+            <Pressable
+              style={[styles.editBtn, edit && styles.editBtnOn]}
+              onPress={() => setEdit((v) => !v)}
+            >
+              <Text style={[styles.editText, edit && { color: colors.onColor }]}>
+                {edit ? '✓ 完成佈置' : '✏️ 佈置'}
+              </Text>
+            </Pressable>
+            <Text style={styles.yardHint}>{edit ? '拖曳擺放 · 點 ✕ 刪除' : '戳戳你的毛孩 👆'}</Text>
+          </View>
+
+          {/* 分頁 */}
+          <View style={styles.tabs}>
+            <Pressable onPress={() => setTab('raise')} style={[styles.tab, tab === 'raise' && styles.tabOn]}>
+              <Text style={[styles.tabText, tab === 'raise' && { color: colors.onColor }]}>🍖 養成</Text>
+            </Pressable>
+            <Pressable onPress={() => setTab('shop')} style={[styles.tab, tab === 'shop' && styles.tabOn]}>
+              <Text style={[styles.tabText, tab === 'shop' && { color: colors.onColor }]}>🪴 商店</Text>
+            </Pressable>
+          </View>
+
+          {tab === 'raise' ? (
+            <View style={styles.list}>
+              <Text style={styles.hint}>摸摸／餵食提升親密度。（親密度接對戰加成為下一步）</Text>
+              {myPets.map((p) => {
+                const aff = affection[p.id] ?? 0;
+                return (
+                  <View key={p.id} style={styles.petRow}>
+                    <View style={styles.petMini}>
+                      <AvatarView size={44} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.petName}>{p.name}</Text>
+                      <View style={styles.bar}>
+                        <View style={[styles.barFill, { width: `${aff}%` }]} />
+                      </View>
+                      <Text style={styles.affText}>親密度 {aff}/100</Text>
+                    </View>
+                    <View style={{ gap: 6 }}>
+                      <Pressable style={styles.smallBtn} onPress={() => petPet(p.id)}>
+                        <Text style={styles.smallBtnText}>摸摸</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.smallBtn, styles.feedBtn, cans < 20 && styles.disabled]}
+                        onPress={() => feedPet(p.id)}
+                      >
+                        <Text style={styles.smallBtnText}>餵食 20🥫</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.list}>
+              <Text style={styles.hint}>買了進院子，切「佈置」可自由拖曳／刪除。★ 的有加成。</Text>
+              {CATALOG.map((s) => {
+                const buff = s.bonus || s.enable;
+                return (
+                  <View key={s.kind} style={styles.shopRow}>
+                    <View style={styles.shopIco}>
+                      <Text style={{ fontSize: 22 }}>{s.emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.petName}>{s.label}</Text>
+                      <Text style={[styles.shopDesc, buff && { color: colors.accent }]}>
+                        {buff ? '★ ' : ''}{s.desc}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={[styles.buyBtn, cans < s.cost && styles.disabled]}
+                      onPress={() => buyDecoration(s.kind)}
+                    >
+                      <Text style={styles.buyText}>{s.cost} 🥫</Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </>
+      )}
+
+      {/* 新增寵物捷徑 */}
+      <Button
+        label="新增寵物"
+        icon={Plus}
+        variant="ghost"
+        onPress={() => router.push({ pathname: '/pet/create', params: { kind: 'owned' } })}
+        style={{ marginTop: spacing.lg }}
+      />
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  title: { color: colors.text, fontSize: font.size.xxl, fontWeight: font.weight.heavy },
+  sub: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2, fontWeight: font.weight.semibold },
+  cans: { backgroundColor: colors.text, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'flex-end' },
+  canN: { color: colors.onColor, fontSize: font.size.md, fontWeight: font.weight.heavy },
+  rate: { color: colors.gold, fontSize: 10, fontWeight: font.weight.bold, marginTop: 1 },
+  welcome: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold },
+  welcomeText: { color: colors.gold, fontWeight: font.weight.bold, fontSize: font.size.sm, textAlign: 'center' },
+  yardWrap: { position: 'relative', borderRadius: radius.lg, overflow: 'hidden', ...shadow.card },
+  editBtn: { position: 'absolute', right: 10, bottom: 10, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.text, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
+  editBtnOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  editText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.xs },
+  yardHint: { position: 'absolute', left: 12, bottom: 14, color: '#fff', fontSize: 10, fontWeight: font.weight.heavy, textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 3, textShadowOffset: { width: 1, height: 1 } },
+  tabs: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.card },
+  tabOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.sm },
+  list: { marginTop: spacing.md, gap: spacing.sm },
+  hint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: font.weight.semibold, marginBottom: 2 },
+  petRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  petMini: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  petName: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.bold },
+  bar: { height: 9, backgroundColor: colors.cardAlt, borderRadius: 6, overflow: 'hidden', marginTop: 5, borderWidth: 1, borderColor: colors.border },
+  barFill: { height: '100%', backgroundColor: colors.primary },
+  affText: { color: colors.textMuted, fontSize: font.size.xs, marginTop: 3, fontWeight: font.weight.semibold },
+  smallBtn: { backgroundColor: colors.cardAlt, borderRadius: 10, paddingHorizontal: spacing.md, paddingVertical: 7, alignItems: 'center' },
+  feedBtn: { backgroundColor: colors.goldSoft },
+  smallBtnText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.xs },
+  disabled: { opacity: 0.4 },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  shopIco: { width: 44, height: 44, borderRadius: 11, backgroundColor: colors.cardAlt, alignItems: 'center', justifyContent: 'center' },
+  shopDesc: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2, fontWeight: font.weight.semibold },
+  buyBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: spacing.md, paddingVertical: 9 },
+  buyText: { color: colors.onColor, fontWeight: font.weight.heavy, fontSize: font.size.xs },
+});

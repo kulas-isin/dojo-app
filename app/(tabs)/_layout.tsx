@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Compass, Map, PawPrint, Trophy } from 'lucide-react-native';
+import { Compass, Home, Map, PawPrint, Trophy } from 'lucide-react-native';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
@@ -38,6 +38,15 @@ export default function TabsLayout() {
           title: '探索',
           tabBarIcon: ({ color, focused }) => (
             <Compass size={focused ? 26 : 23} color={color} strokeWidth={2.2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="space"
+        options={{
+          title: '空間',
+          tabBarIcon: ({ color, focused }) => (
+            <Home size={focused ? 26 : 23} color={color} strokeWidth={2.2} />
           ),
         }}
       />

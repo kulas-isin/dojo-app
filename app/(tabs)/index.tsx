@@ -1,20 +1,33 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GymMap } from '@/components/GymMap';
 import { PawPrint, Plus } from '@/components/icons';
 import { Doodle } from '@/illustrations';
 import { SEED_CENTER } from '@/data/seed';
+import { useSpaceStore } from '@/space/spaceStore';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { Coordinate } from '@/types';
+
+function distMeters(a: Coordinate, b: Coordinate) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const gyms = useStore((s) => s.gyms);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
+  const lastWalkRef = useRef<Coordinate | null>(null);
 
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
@@ -28,12 +41,24 @@ export default function MapScreen() {
           accuracy: Location.Accuracy.Balanced,
         });
         if (active) {
-          setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+          const c0 = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          setUserLocation(c0);
+          lastWalkRef.current = c0;
         }
         // 之後省電地持續跟隨：走約 8 公尺才更新一次
         sub = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 8, timeInterval: 4000 },
-          (l) => setUserLocation({ latitude: l.coords.latitude, longitude: l.coords.longitude }),
+          (l) => {
+            const c = { latitude: l.coords.latitude, longitude: l.coords.longitude };
+            setUserLocation(c);
+            // 走路距離換罐罐（忽略 GPS 抖動與瞬移）
+            const prev = lastWalkRef.current;
+            if (prev) {
+              const m = distMeters(prev, c);
+              if (m >= 3 && m < 200) useSpaceStore.getState().addWalk(m);
+            }
+            lastWalkRef.current = c;
+          },
         );
       } catch {
         // 取不到位置就用示範中心點
