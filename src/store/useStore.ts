@@ -12,6 +12,7 @@ import {
   reportPostRemote,
   setFollowRemote,
   setLikeRemote,
+  updatePetAvatarRemote,
 } from '../lib/petsApi';
 import {
   createGymRemote,
@@ -123,6 +124,8 @@ interface StoreState {
   setTrainerAvatar: (avatar: TrainerAvatar) => void;
   syncSocial: () => Promise<void>;
   createPet: (input: NewPetInput) => Promise<string | null>;
+  /** 更新既有寵物的像素造型（雲端）*/
+  updatePetAvatar: (petId: string, avatar: PetAvatar) => Promise<void>;
   addPost: (input: NewPostInput) => Promise<void>;
   toggleFollowPet: (petId: string) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
@@ -292,6 +295,13 @@ export const useStore = create<StoreState>()(
         const id = await createPetRemote(input, u.id);
         await get().syncSocial();
         return id;
+      },
+
+      updatePetAvatar: async (petId, avatar) => {
+        const u = authUser();
+        if (!u) return;
+        await updatePetAvatarRemote(petId, avatar);
+        await get().syncSocial();
       },
 
       addPost: async (input) => {

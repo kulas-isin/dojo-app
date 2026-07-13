@@ -10,10 +10,11 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '@/auth/authStore';
+import { AvatarView } from '@/avatar/AvatarView';
 import { StatCard } from '@/battle/StatCard';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
-import { Heart, ImagePlus, MapPin, PawPrint, PetIcon, Shield } from '@/components/icons';
+import { Heart, ImagePlus, MapPin, Palette, PawPrint, PetIcon, Shield } from '@/components/icons';
 import { EmptyState } from '@/illustrations';
 import { canAddRecord, canEditProfile, canViewProfile } from '@/permissions';
 import { useStore } from '@/store/useStore';
@@ -65,13 +66,20 @@ export default function PetProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Image
-          source={pet.thumbUri ?? pet.avatarUri}
-          style={styles.avatar}
-          contentFit="cover"
-          transition={150}
-          cachePolicy="memory-disk"
-        />
+        <View style={styles.avatarPair}>
+          <Image
+            source={pet.thumbUri ?? pet.avatarUri}
+            style={styles.avatar}
+            contentFit="cover"
+            transition={150}
+            cachePolicy="memory-disk"
+          />
+          {pet.avatar ? (
+            <View style={styles.pixelBadge}>
+              <AvatarView size={46} pet={pet.avatar} petType={pet.petType} />
+            </View>
+          ) : null}
+        </View>
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <PetIcon type={pet.petType} size={18} color={colors.textDim} />
@@ -139,6 +147,16 @@ export default function PetProfileScreen() {
         ) : null}
       </View>
 
+      {canEditProfile(me, pet) || isAdmin ? (
+        <Button
+          label={pet.avatar ? '編輯像素造型' : '幫牠捏個像素造型'}
+          icon={Palette}
+          variant="ghost"
+          onPress={() => router.push({ pathname: '/avatar', params: { petId } })}
+          style={{ marginTop: spacing.md }}
+        />
+      ) : null}
+
       {isStray ? (
         <Text style={styles.coop}>這是共筆檔案，任何人都能幫牠新增紀錄。</Text>
       ) : null}
@@ -185,6 +203,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   dim: { color: colors.textDim, fontSize: font.size.sm },
   header: { flexDirection: 'row', gap: spacing.lg, alignItems: 'center' },
+  avatarPair: { position: 'relative' },
   avatar: {
     width: 96,
     height: 96,
@@ -192,6 +211,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardAlt,
     borderWidth: 3,
     borderColor: colors.card,
+    ...shadow.card,
+  },
+  pixelBadge: {
+    position: 'absolute',
+    right: -8,
+    bottom: -8,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 3,
+    borderColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
     ...shadow.card,
   },
   headerInfo: { flex: 1, gap: 6, alignItems: 'flex-start' },

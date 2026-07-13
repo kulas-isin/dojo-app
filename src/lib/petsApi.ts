@@ -148,6 +148,12 @@ export async function createPetRemote(input: CreatePetRemote, userId: string): P
   return data.id as string;
 }
 
+/** 更新既有寵物的像素造型 */
+export async function updatePetAvatarRemote(petId: string, avatar: PetAvatar): Promise<void> {
+  const { error } = await supabase.from('pets').update({ pet_avatar: avatar }).eq('id', petId);
+  if (error) throw error;
+}
+
 export async function addPostRemote(
   petId: string,
   userId: string,
