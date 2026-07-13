@@ -19,252 +19,311 @@
     display:flex; flex-direction:column;
   }
   .px{text-shadow:1.5px 1.5px 0 rgba(0,0,0,.18)}
-
-  /* top bar */
-  .top{display:flex; align-items:center; justify-content:space-between; padding:13px 16px 10px}
+  .top{display:flex; align-items:center; justify-content:space-between; padding:12px 16px 8px}
   .top h1{font-size:18px; letter-spacing:.5px}
   .top h1 b{color:var(--coral)}
-  .cans{
-    display:flex; align-items:center; gap:6px; background:var(--ink); color:#fff;
-    border:2px solid #000; border-radius:10px; padding:6px 11px; font-weight:800; font-size:14px;
-    box-shadow:2px 2px 0 rgba(0,0,0,.4);
-  }
+  .cans{display:flex; align-items:center; gap:6px; background:var(--ink); color:#fff;
+    border:2px solid #000; border-radius:10px; padding:6px 11px; font-weight:800; font-size:14px; box-shadow:2px 2px 0 rgba(0,0,0,.4)}
   .cans .rate{font-size:10px; color:var(--gold); font-weight:700}
 
-  /* yard */
   .yard{position:relative; margin:0 12px; border-radius:16px; overflow:hidden; border:3px solid var(--ink); box-shadow:4px 5px 0 rgba(0,0,0,.15)}
-  #scene{display:block; width:100%; image-rendering:pixelated}
-  .walk{
-    position:absolute; right:10px; bottom:10px; z-index:3;
-    display:flex; align-items:center; gap:6px;
-    background:var(--sage); color:#fff; border:2px solid var(--ink); border-radius:999px;
-    padding:8px 14px; font-weight:800; font-size:13px; cursor:pointer;
-    box-shadow:2px 3px 0 rgba(0,0,0,.35);
-  }
-  .walk:active{transform:translate(1px,2px)}
-  .float{position:absolute; z-index:4; font-weight:900; font-size:14px; color:var(--gold-dk); pointer-events:none;
-    text-shadow:1px 1px 0 #fff; animation:floatup 1s ease forwards}
-  @keyframes floatup{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-26px)}}
+  #scene{display:block; width:100%; image-rendering:pixelated; touch-action:none; cursor:pointer}
+  .banner{position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:5;
+    background:rgba(36,31,27,.92); color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; white-space:nowrap}
+  .tools{position:absolute; right:8px; bottom:8px; z-index:4; display:flex; gap:6px}
+  .tools button{border:2px solid var(--ink); border-radius:999px; padding:7px 11px; font-size:12px; font-weight:800; cursor:pointer;
+    background:var(--card); color:var(--ink); box-shadow:2px 2px 0 rgba(0,0,0,.3)}
+  .tools button:active{transform:translate(1px,1px)}
+  .tools .on{background:var(--coral); color:#fff}
+  .hintbar{position:absolute; left:8px; bottom:10px; z-index:4; font-size:10px; font-weight:800; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,.7)}
+  .float{position:absolute; z-index:6; font-weight:900; font-size:15px; pointer-events:none; text-shadow:1px 1px 0 #fff; animation:fl 1s ease forwards}
+  @keyframes fl{0%{opacity:0;transform:translateY(0) scale(.7)}20%{opacity:1;transform:translateY(-4px) scale(1)}100%{opacity:0;transform:translateY(-28px)}}
 
-  /* tabs */
   .tabs{display:flex; gap:8px; padding:12px 16px 8px}
-  .tabs button{
-    flex:1; border:2px solid var(--ink); border-radius:10px; padding:8px 0; font-size:14px; font-weight:800;
-    cursor:pointer; background:var(--card); color:var(--ink); box-shadow:2px 2px 0 rgba(0,0,0,.1);
-  }
+  .tabs button{flex:1; border:2px solid var(--ink); border-radius:10px; padding:8px 0; font-size:14px; font-weight:800;
+    cursor:pointer; background:var(--card); color:var(--ink); box-shadow:2px 2px 0 rgba(0,0,0,.1)}
   .tabs button.on{background:var(--coral); color:#fff}
-
   .panel{flex:1; overflow-y:auto; padding:2px 14px 12px}
   .panel::-webkit-scrollbar{width:0}
-
-  .petCard, .shopItem{
-    background:var(--card); border:2px solid var(--border); border-radius:14px;
-    padding:10px 12px; margin-bottom:9px; display:flex; align-items:center; gap:12px;
-  }
-  .petCard canvas{width:48px; height:48px; image-rendering:pixelated; flex:none; background:var(--sage); border-radius:11px}
+  .petCard,.shopItem{background:var(--card); border:2px solid var(--border); border-radius:14px; padding:10px 12px; margin-bottom:9px; display:flex; align-items:center; gap:12px}
+  .petCard canvas{width:46px; height:46px; image-rendering:pixelated; flex:none; background:var(--sage); border-radius:11px}
   .petInfo{flex:1; min-width:0}
-  .petName{font-weight:800; font-size:14px}
+  .petName{font-weight:800; font-size:14px; display:flex; align-items:center; gap:6px}
+  .pers{font-size:10px; font-weight:800; color:var(--coral-dk); background:var(--cream); border:1.5px solid var(--border); border-radius:6px; padding:1px 5px}
   .petLv{font-size:11px; color:var(--dim); font-weight:700}
   .bar{height:9px; background:var(--cream); border:1.5px solid var(--ink); border-radius:6px; overflow:hidden; margin-top:5px}
   .bar span{display:block; height:100%; background:linear-gradient(90deg,var(--gold),var(--coral)); width:0%; transition:width .25s}
-  .feed{
-    border:2px solid var(--ink); background:var(--gold); color:var(--ink); font-weight:800; font-size:12px;
-    border-radius:10px; padding:8px 11px; cursor:pointer; box-shadow:2px 2px 0 rgba(0,0,0,.2); white-space:nowrap;
-  }
+  .feed{border:2px solid var(--ink); background:var(--gold); color:var(--ink); font-weight:800; font-size:12px; border-radius:10px; padding:8px 11px; cursor:pointer; box-shadow:2px 2px 0 rgba(0,0,0,.2); white-space:nowrap}
   .feed:active{transform:translate(1px,1px)}
-  .feed:disabled{opacity:.45; cursor:default}
-
-  .shopItem .ico{width:44px; height:44px; border-radius:11px; background:var(--cream); border:2px solid var(--border);
-    display:grid; place-items:center; font-size:22px; flex:none}
-  .shopItem .buy{margin-left:auto; border:2px solid var(--ink); background:var(--sage); color:#fff; font-weight:800;
-    font-size:12px; border-radius:10px; padding:8px 12px; cursor:pointer; box-shadow:2px 2px 0 rgba(0,0,0,.2)}
-  .shopItem .buy.owned{background:var(--cream); color:var(--dim); border-color:var(--border); box-shadow:none; cursor:default}
-  .shopItem .buy:active{transform:translate(1px,1px)}
+  .feed:disabled{opacity:.45}
+  .shopItem .ico{width:44px; height:44px; border-radius:11px; background:var(--cream); border:2px solid var(--border); display:grid; place-items:center; font-size:22px; flex:none}
+  .shopItem .buy{margin-left:auto; border:2px solid var(--ink); background:var(--sage); color:#fff; font-weight:800; font-size:12px; border-radius:10px; padding:8px 12px; cursor:pointer; box-shadow:2px 2px 0 rgba(0,0,0,.2)}
+  .shopItem .buy.owned{background:var(--cream); color:var(--dim); border-color:var(--border); box-shadow:none}
+  .bonus{font-size:10px; color:var(--sage); font-weight:800}
   .hint{font-size:11px; color:var(--dim); font-weight:700; margin:2px 2px 10px}
-
-  .toast{
-    position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.85); z-index:9;
-    background:var(--ink); color:#fff; border:3px solid #000; border-radius:10px; padding:16px 22px;
-    text-align:center; line-height:1.6; box-shadow:5px 6px 0 rgba(0,0,0,.45); opacity:0; pointer-events:none;
-  }
+  .toast{position:absolute; left:50%; top:40%; transform:translate(-50%,-50%) scale(.85); z-index:9; background:var(--ink); color:#fff; border:3px solid #000; border-radius:10px; padding:16px 22px; text-align:center; line-height:1.6; box-shadow:5px 6px 0 rgba(0,0,0,.45); opacity:0; pointer-events:none}
   .toast .t{font-size:15px; font-weight:900}
-  .toast .n{font-size:22px; font-weight:900; color:var(--gold); margin-top:6px}
-  .toast.show{animation:pop 2.4s ease forwards}
+  .toast .n{font-size:20px; font-weight:900; color:var(--gold); margin-top:6px}
+  .toast.show{animation:pop 2.3s ease forwards}
   @keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.85)}8%{opacity:1;transform:translate(-50%,-50%) scale(1)}88%{opacity:1}100%{opacity:0}}
 </style>
 
 <div class="phone">
   <div class="top">
     <h1 class="px">我的<b>空間</b></h1>
-    <div class="cans px">🥫 <span id="canN">0</span> <span class="rate" id="rate">+掛機中</span></div>
+    <div class="cans px">🥫 <span id="canN">0</span> <span class="rate" id="rate"></span></div>
   </div>
 
   <div class="yard">
     <canvas id="scene" width="220" height="150"></canvas>
-    <button class="walk" onclick="walk()">🚶 散步賺罐罐</button>
+    <div class="banner" id="banner" style="display:none">拖曳擺放 · 點 ✕ 刪除</div>
+    <div class="hintbar" id="hintbar">戳戳看你的毛孩 👆</div>
+    <div class="tools">
+      <button onclick="throwItem('ball')">🎾 丟球</button>
+      <button onclick="throwItem('treat')">🍖 零食</button>
+      <button id="editBtn" onclick="toggleEdit()">✏️ 佈置</button>
+    </div>
   </div>
 
   <div class="tabs">
     <button id="tabRaise" class="on" onclick="setTab('raise')">🍖 養成</button>
-    <button id="tabDecor" onclick="setTab('decor')">🪴 佈置</button>
+    <button id="tabDecor" onclick="setTab('decor')">🪴 商店</button>
   </div>
   <div class="panel" id="panel"></div>
-
   <div class="toast" id="toast"></div>
 </div>
 
 <script>
 (() => {
-  const g = document.getElementById('scene').getContext('2d');
-  const R = (x,y,w,h,c)=>{ g.fillStyle=c; g.fillRect(x,y,w,h); };
-  const shade=(h,f)=>{const n=parseInt(h.slice(1),16);let r=(n>>16)*f,gg=((n>>8)&255)*f,b=(n&255)*f;
-    const c=v=>Math.max(0,Math.min(255,v|0));return `rgb(${c(r)},${c(gg)},${c(b)})`;};
+  const cv = document.getElementById('scene');
+  const g = cv.getContext('2d');
+  const R=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x|0,y|0,w,h);};
+  const shade=(h,f)=>{const n=parseInt(h.slice(1),16);const c=v=>Math.max(0,Math.min(255,v*f|0));return `rgb(${c(n>>16)},${c((n>>8)&255)},${c(n&255)})`;};
+  const rnd=(a,b)=>a+Math.random()*(b-a);
 
-  // ---- state ----
-  let cans = 320;
-  const idleRate = 1;              // demo：每 tick +1（真實為每小時）
-  let pets = [
-    { name:'可可', type:'dog', fur:'#e8975c', lv:5, exp:40, need:100, x:60,  dir:1, ph:0 },
-    { name:'麻糬', type:'cat', fur:'#f4f2ee', lv:3, exp:20, need:80,  x:120, dir:-1, ph:2 },
-    { name:'橘子', type:'cat', fur:'#e8975c', lv:7, exp:70, need:120, x:170, dir:1, ph:4 },
-  ];
-  const SHOP = [
-    { k:'bowl',  ico:'🥣', label:'食盆',   cost:30 },
-    { k:'ball',  ico:'⚽', label:'玩具球', cost:20 },
-    { k:'rug',   ico:'🟩', label:'草皮墊', cost:50 },
-    { k:'plant', ico:'🌷', label:'花圃',   cost:40 },
-    { k:'post',  ico:'🐈', label:'貓抓柱', cost:60 },
-  ];
-  const owned = {};                 // k -> true
-  const placed = [];                // {k, x, y}
-  const SLOTS = [[26,116],[196,120],[150,104],[44,132],[112,132]];
-  let tab='raise';
+  // ---- 個性 ----
+  const PERS={
+    hyper:{label:'過動',w:{walk:.35,play:.35,eat:.15,sit:.1,sleep:.05}},
+    clingy:{label:'黏人精',w:{walk:.3,sit:.2,play:.2,eat:.15,sleep:.15}},
+    proud:{label:'傲嬌',w:{sit:.4,sleep:.2,walk:.25,scratch:.1,eat:.05}},
+    sturdy:{label:'憨厚',w:{sleep:.4,sit:.3,walk:.2,eat:.1}},
+    derp:{label:'天然呆',w:{walk:.2,sit:.2,sleep:.2,play:.2,eat:.2}},
+  };
 
-  // ---- pixel pets ----
-  function drawPet(ox, oy, p, t){
-    const fur=p.fur, dark=shade(fur,.78), cat=p.type==='cat';
-    const bob = Math.round(Math.sin(t/300 + p.ph)*1.2);
-    oy += bob;
-    R(ox+3, oy+18, 18, 2, 'rgba(0,0,0,.14)');           // shadow
-    if(cat){ R(ox+19,oy+4,3,4,fur); R(ox+20,oy+1,2,4,fur); } else { R(ox+18,oy+9,5,4,dark); }  // tail/back ear
-    R(ox+4, oy+7, 14, 8, fur);                            // body
-    R(ox+4, oy+7, 14, 1, shade(fur,1.08));
-    if(cat){ R(ox+3,oy,4,5,fur); R(ox+13,oy,4,5,fur); R(ox+4,oy,2,2,'#e8887f'); R(ox+14,oy,2,2,'#e8887f'); } // ears
-    else { R(ox+1,oy+2,4,8,dark); R(ox+15,oy+2,4,8,dark); }                                                  // floppy ears
-    R(ox+3, oy+2, 14, 8, fur);                            // head
-    R(ox+6,oy+5,1,1,'#241f1b'); R(ox+12,oy+5,1,1,'#241f1b'); // eyes
-    R(ox+9,oy+6,2,1,'#5a3a2e');                            // nose
-    R(ox+5,oy+14,3,3,fur); R(ox+12,oy+14,3,3,fur);        // legs
+  let cans=320;
+  let pets=[
+    {name:'可可',type:'dog',fur:'#e8975c',pers:'hyper', lv:5,exp:40,need:100,x:60,y:104,dir:1,state:'walk',st:2,target:60,bub:null,bubT:0},
+    {name:'麻糬',type:'cat',fur:'#f4f2ee',pers:'clingy',lv:3,exp:20,need:80, x:120,y:110,dir:-1,state:'sit',st:3,target:120,bub:null,bubT:0},
+    {name:'橘子',type:'cat',fur:'#e8975c',pers:'proud', lv:7,exp:70,need:120,x:170,y:100,dir:1,state:'sit',st:4,target:170,bub:null,bubT:0},
+  ];
+  const SHOP=[
+    {k:'bowl', ico:'🥣',label:'食盆',   cost:30,bonus:'idle', desc:'掛機 +1/tick'},
+    {k:'bed',  ico:'🛏️',label:'寵物床', cost:45,bonus:'idle', desc:'掛機 +1/tick'},
+    {k:'ball', ico:'⚽',label:'玩具球', cost:20,enable:'play',desc:'解鎖「玩球」行為'},
+    {k:'post', ico:'🐈',label:'貓抓柱', cost:60,enable:'scratch',desc:'貓咪會來磨爪'},
+    {k:'rug',  ico:'🟩',label:'草皮墊', cost:50,desc:'純佈置'},
+    {k:'plant',ico:'🌷',label:'花圃',   cost:40,desc:'純佈置'},
+  ];
+  const WSIZE={bowl:16,bed:20,ball:12,post:14,rug:26,plant:14,treat:8};
+  const owned={}; let placed=[]; let thrown=null; let tab='raise'; let edit=false;
+  let hearts=[]; // {x,y,vy,life,ch}
+
+  // ---- 像素寵物 ----
+  function drawPet(p,t){
+    const ox=p.x|0, oy=p.y|0, fur=p.fur, dark=shade(fur,.78), cat=p.type==='cat';
+    const moving=(p.state==='walk'||p.state==='approach'||p.state==='eat'||p.state==='play');
+    const bob = p.state==='sleep' ? 0 : Math.round(Math.sin(t/260 + ox)* (p.state==='play'?2:1));
+    const y=oy+bob;
+    R(ox+3,oy+18,18,2,'rgba(0,0,0,.14)');
+    if(cat){R(ox+19,y+4,3,4,fur);R(ox+20,y+1,2,4,fur);} else {R(ox+18,y+9,5,4,dark);} // tail/back
+    R(ox+4,y+7,14,8,fur);                                    // body
+    R(ox+4,y+7,14,1,shade(fur,1.08));
+    if(cat){R(ox+3,y,4,5,fur);R(ox+13,y,4,5,fur);R(ox+4,y,2,2,'#e8887f');R(ox+14,y,2,2,'#e8887f');}
+    else {R(ox+1,y+2,4,8,dark);R(ox+15,y+2,4,8,dark);}
+    R(ox+3,y+2,14,8,fur);                                    // head
+    if(p.state==='sleep'){ R(ox+6,y+6,3,1,'#241f1b'); R(ox+11,y+6,3,1,'#241f1b'); }  // closed eyes
+    else if(p.state==='play'||p.state==='approach'){ R(ox+6,y+5,2,2,'#241f1b'); R(ox+11,y+5,2,2,'#241f1b'); } // wide
+    else { R(ox+6,y+5,1,1,'#241f1b'); R(ox+12,y+5,1,1,'#241f1b'); }
+    R(ox+9,y+6,2,1,'#5a3a2e');
+    if(moving && (Math.floor(t/140)%2)){ R(ox+5,y+14,3,3,fur);R(ox+12,y+14,3,3,fur);} else {R(ox+6,y+14,3,3,fur);R(ox+11,y+14,3,3,fur);}
+    if(p.bub) drawBubble(ox+9,y-8,p.bub);
+  }
+  function drawBubble(x,y,kind){
+    if(kind==='heart'){R(x+1,y,1,1,'#e0485f');R(x+3,y,1,1,'#e0485f');R(x,y+1,5,1,'#e0485f');R(x+1,y+2,3,1,'#e0485f');R(x+2,y+3,1,1,'#e0485f');}
+    else if(kind==='sleep'){R(x,y,4,1,'#6a9cd0');R(x+2,y+1,2,1,'#6a9cd0');R(x,y+2,4,1,'#6a9cd0');}
+    else if(kind==='note'){R(x+3,y,1,4,'#8a6cc0');R(x+1,y+3,3,2,'#8a6cc0');}
+    else if(kind==='food'){R(x,y+1,5,2,'#b5722e');R(x+1,y,1,1,'#8a5a2b');}
+    else if(kind==='angry'){R(x,y,1,1,'#c0453b');R(x+3,y,1,1,'#c0453b');R(x+1,y+1,2,1,'#c0453b');}
   }
 
-  // ---- decorations ----
-  function drawDecor(d){
-    const {k,x,y}=d;
-    if(k==='bowl'){ R(x,y+4,16,4,'#b9b0a2'); R(x+2,y+2,12,3,'#8a5a3c'); R(x,y+7,16,2,'#9a9184'); }
-    else if(k==='ball'){ R(x+2,y,8,2,'#e04848'); R(x,y+2,12,6,'#e04848'); R(x+2,y+8,8,2,'#e04848'); R(x+3,y+2,3,2,'#fff'); }
-    else if(k==='rug'){ R(x,y+2,26,10,'#7cb489'); R(x,y+2,26,2,'#5e9b7e'); R(x,y+10,26,2,'#5e9b7e'); }
-    else if(k==='plant'){ R(x+3,y+6,8,6,'#c97b4a'); R(x+2,y+2,4,5,'#4f9166'); R(x+8,y+1,4,6,'#4f9166'); R(x+5,y,3,4,'#e8809a'); }
-    else if(k==='post'){ R(x+3,y,8,3,'#c9a26b'); R(x+5,y+3,4,10,'#a97c4e'); R(x+2,y+12,10,3,'#c9a26b'); }
+  // ---- 裝飾 ----
+  function drawDecor(d){const {k,x,y}=d;
+    if(k==='bowl'){R(x,y+4,16,4,'#b9b0a2');R(x+2,y+2,12,3,'#8a5a3c');R(x,y+7,16,2,'#9a9184');}
+    else if(k==='bed'){R(x,y+3,20,8,'#c98a9a');R(x+2,y+5,16,5,'#f3d7dd');R(x,y+2,20,2,'#b56b7d');}
+    else if(k==='ball'){R(x+2,y,8,2,'#e04848');R(x,y+2,12,6,'#e04848');R(x+2,y+8,8,2,'#e04848');R(x+3,y+2,3,2,'#fff');}
+    else if(k==='post'){R(x+3,y,8,3,'#c9a26b');R(x+5,y+3,4,10,'#a97c4e');R(x+2,y+12,10,3,'#c9a26b');}
+    else if(k==='rug'){R(x,y+2,26,10,'#7cb489');R(x,y+2,26,2,'#5e9b7e');R(x,y+10,26,2,'#5e9b7e');}
+    else if(k==='plant'){R(x+3,y+6,8,6,'#c97b4a');R(x+2,y+2,4,5,'#4f9166');R(x+8,y+1,4,6,'#4f9166');R(x+5,y,3,4,'#e8809a');}
+    else if(k==='treat'){R(x,y+1,7,3,'#b5722e');R(x+1,y,1,1,'#8a5a2b');R(x+5,y,1,1,'#8a5a2b');}
+    if(edit && k!=='treat'){ const w=WSIZE[k]||16; R(x+w-2,y-6,7,7,'#c0453b'); R(x+w,y-4,1,3,'#fff'); R(x+w-1,y-4,3,1,'#fff'); R(x+w+1,y-4,1,3,'#fff'); }
   }
 
   function grass(){
-    for(let y=0;y<150;y+=10) for(let x=0;x<220;x+=10){
-      R(x,y,10,10, ((x/10+y/10)%2) ? '#6fa57c':'#74ab82');
-      const h=((x*13)^(y*7))%7; if(h===0){g.fillStyle='#7cb489'; g.fillRect(x+3,y+6,2,2);} if(h===3){g.fillStyle='rgba(70,120,85,.35)'; g.fillRect(x+7,y+3,3,1);}
+    for(let y=0;y<150;y+=10)for(let x=0;x<220;x+=10){
+      R(x,y,10,10,((x/10+y/10)%2)?'#6fa57c':'#74ab82');
+      const h=((x*13)^(y*7))%7; if(h===0){R(x+3,y+6,2,2,'#7cb489');} if(h===3){R(x+7,y+3,3,1,'rgba(70,120,85,.35)');}
     }
-    // fence
-    for(let x=2;x<220;x+=16){ R(x,2,3,14,'#c9a26b'); R(x+1,2,1,14,shade('#c9a26b',.8)); }
+    for(let x=2;x<220;x+=16){R(x,2,3,14,'#c9a26b');R(x+1,2,1,14,shade('#c9a26b',.8));}
     R(0,10,220,2,'#b98f5e'); R(0,4,220,2,'#c9a26b');
   }
 
-  // ---- render loop ----
-  function render(t){
-    grass();
-    const items=[...placed.map(d=>({y:d.y,d})), ...pets.map(p=>({y:118,p}))].sort((a,b)=>a.y-b.y);
-    for(const it of items){ if(it.d) drawDecor(it.d); }
-    for(const p of pets){
-      p.x += p.dir*0.25;
-      if(p.x>196){p.x=196;p.dir=-1;} if(p.x<8){p.x=8;p.dir=1;}
-      drawPet(Math.round(p.x), 100, p, t);
+  // ---- props helpers ----
+  const findProp=(k)=>placed.find(d=>d.k===k);
+  const canPlay=()=> !!findProp('ball') || (thrown&&thrown.k==='ball');
+  const canEat =()=> !!findProp('bowl') || (thrown&&thrown.k==='treat');
+  const canScratch=()=> !!findProp('post');
+  const idleRate=()=> 1 + placed.filter(d=>SHOP.find(s=>s.k===d.k)?.bonus==='idle').length;
+
+  // ---- 行為狀態機 ----
+  const DUR={walk:[2,4],sit:[3,6],sleep:[5,9],eat:[3,4],play:[3,5],scratch:[3,4],approach:[2,3],happy:[.7,.7]};
+  const BUB={sleep:'sleep',eat:'food',play:'note',scratch:'angry',sit:null,walk:null};
+  function nextState(p){
+    const w={...PERS[p.pers].w};
+    if(!canPlay()) delete w.play;
+    if(!canEat()) delete w.eat;
+    if(!(canScratch()&&p.type==='cat')) w.scratch=0;
+    let keys=Object.keys(w).filter(k=>w[k]>0);
+    let tot=keys.reduce((s,k)=>s+w[k],0), r=Math.random()*tot, st='walk';
+    for(const k of keys){ r-=w[k]; if(r<=0){st=k;break;} }
+    enter(p,st);
+  }
+  function enter(p,st){
+    p.state=st; const d=DUR[st]||[2,4]; p.st=rnd(d[0],d[1]);
+    p.bub = st in BUB ? BUB[st] : p.bub;
+    if(st==='walk') p.target=rnd(12,196);
+    else if(st==='eat'){ const b=(thrown&&thrown.k==='treat')?thrown:findProp('bowl'); p.target=b?b.x:p.x; }
+    else if(st==='play'){ const b=(thrown&&thrown.k==='ball')?thrown:findProp('ball'); p.target=b?b.x:p.x; if(p.pers==='hyper')p.bub='note'; }
+    else if(st==='scratch'){ const b=findProp('post'); p.target=b?b.x:p.x; }
+    else if(st==='approach'){ p.bub='heart'; }
+    else if(st==='happy'){ p.bub='heart'; }
+    else p.target=p.x;
+    if(st==='sit'&&p.pers==='proud'&&Math.random()<.5)p.bub='angry';
+    if(st==='sit'&&p.pers==='clingy'&&Math.random()<.4)p.bub='heart';
+  }
+
+  function step(p,dt,t){
+    p.st-=dt;
+    const tx=p.target;
+    if(['walk','eat','play','scratch','approach'].includes(p.state)){
+      const dx=tx-p.x; if(Math.abs(dx)>1){ p.dir=Math.sign(dx); p.x+=p.dir*(p.state==='approach'?26:p.state==='play'?24:16)*dt; }
     }
-    requestAnimationFrame(render);
+    if(p.st<=0){
+      if(p.state==='happy'){ nextState(p); }
+      else nextState(p);
+    }
+    if(p.bubT>0){p.bubT-=dt; if(p.bubT<=0)p.bub=(p.state in BUB)?BUB[p.state]:null;}
   }
-  requestAnimationFrame(render);
 
-  // ---- economy ----
-  const canN=document.getElementById('canN');
-  function setCans(v){ cans=v; canN.textContent=cans; renderPanel(); }
-  setInterval(()=>{ cans+=idleRate; canN.textContent=cans; }, 800);   // 掛機
-
-  function floatText(txt){
-    const yard=document.querySelector('.yard');
-    const el=document.createElement('div'); el.className='float'; el.textContent=txt;
-    el.style.left=(30+Math.random()*120)+'px'; el.style.bottom='54px';
-    yard.appendChild(el); setTimeout(()=>el.remove(),1000);
+  // ---- render ----
+  let last=0;
+  function loop(t){
+    const dt=Math.min(.05,(t-last)/1000)||0; last=t;
+    grass();
+    if(thrown){ thrown.life-=dt; if(thrown.life<=0)thrown=null; }
+    pets.forEach(p=>step(p,dt,t));
+    const drawList=[...placed.map(d=>({y:d.y,f:()=>drawDecor(d)})), ...(thrown?[{y:thrown.y,f:()=>drawDecor(thrown)}]:[]), ...pets.map(p=>({y:p.y+18,f:()=>drawPet(p,t)}))].sort((a,b)=>a.y-b.y);
+    drawList.forEach(o=>o.f());
+    requestAnimationFrame(loop);
   }
-  window.walk=()=>{ const g2=12+Math.floor(Math.random()*8); setCans(cans+g2); floatText('+'+g2+' 🥫'); };
+  requestAnimationFrame(loop);
 
-  // ---- panels ----
+  // ---- 掛機 ----
+  const canN=document.getElementById('canN'), rateEl=document.getElementById('rate');
+  function refreshRate(){ rateEl.textContent='+'+idleRate()+'/掛機'; }
+  setInterval(()=>{ cans+=idleRate(); canN.textContent=cans; }, 800);
+
+  function floatEmoji(cx,ch){
+    const y=document.querySelector('.yard'), r=cv.getBoundingClientRect(), yr=y.getBoundingClientRect();
+    const el=document.createElement('div'); el.className='float'; el.textContent=ch;
+    el.style.left=(cx/220*r.width)+'px'; el.style.top=(60)+'px';
+    y.appendChild(el); setTimeout(()=>el.remove(),1000);
+  }
+
+  // ---- 互動 ----
+  window.throwItem=(k)=>{ const x=rnd(20,190); thrown={k,x,y:118,life:k==='ball'?7:5};
+    pets.forEach(p=>{ const want = k==='ball'?(p.pers==='hyper'||p.pers==='derp'||Math.random()<.5):(Math.random()<.7);
+      if(want) enter(p,k==='ball'?'play':'eat'); });
+    floatEmoji(x,k==='ball'?'🎾':'🍖');
+  };
+  function petAt(x,y){ return pets.find(p=> x>=p.x-2 && x<=p.x+22 && y>=p.y-6 && y<=p.y+22); }
+  function itemAt(x,y){ for(let i=placed.length-1;i>=0;i--){const d=placed[i],w=WSIZE[d.k]||16; if(x>=d.x-2&&x<=d.x+w+2&&y>=d.y-8&&y<=d.y+16)return i;} return -1; }
+  function pet(p){
+    enter(p,'happy'); p.exp=Math.min(p.need,p.exp+6);
+    floatEmoji(p.x, p.pers==='proud'?'😼':'❤️'); setTimeout(()=>floatEmoji(p.x+10,'❤️'),160);
+    renderPanel();
+  }
+
+  // ---- pointer（點寵物 / 編輯拖曳）----
+  let drag=null;
+  const toXY=e=>{const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*220,y:(e.clientY-r.top)/r.height*150};};
+  cv.addEventListener('pointerdown',e=>{ const {x,y}=toXY(e);
+    if(edit){ const i=itemAt(x,y); if(i>=0){ const d=placed[i],w=WSIZE[d.k]||16;
+        if(x>=d.x+w-2&&x<=d.x+w+5&&y>=d.y-6&&y<=d.y+1){ placed.splice(i,1); refreshRate(); return; } // ✕ 刪除
+        drag={i,dx:x-d.x,dy:y-d.y}; cv.setPointerCapture(e.pointerId); } return; }
+    const p=petAt(x,y); if(p) pet(p);
+  });
+  cv.addEventListener('pointermove',e=>{ if(!drag)return; const {x,y}=toXY(e); const d=placed[drag.i];
+    d.x=Math.max(0,Math.min(200,x-drag.dx)); d.y=Math.max(20,Math.min(132,y-drag.dy)); });
+  cv.addEventListener('pointerup',()=>{drag=null;});
+  cv.addEventListener('pointercancel',()=>{drag=null;});
+
+  window.toggleEdit=()=>{ edit=!edit;
+    document.getElementById('editBtn').classList.toggle('on',edit);
+    document.getElementById('editBtn').textContent = edit?'✓ 完成':'✏️ 佈置';
+    document.getElementById('banner').style.display = edit?'block':'none';
+    document.getElementById('hintbar').textContent = edit?'拖曳擺放你的裝飾':'戳戳看你的毛孩 👆';
+  };
+
+  // ---- 面板 ----
   const panel=document.getElementById('panel');
   window.setTab=(tb)=>{ tab=tb;
     document.getElementById('tabRaise').classList.toggle('on',tb==='raise');
-    document.getElementById('tabDecor').classList.toggle('on',tb==='decor');
-    renderPanel();
-  };
-  function renderPanel(){
-    if(tab==='raise') renderRaise(); else renderDecor();
-  }
+    document.getElementById('tabDecor').classList.toggle('on',tb==='decor'); renderPanel(); };
+  function petMini(p){ const cvs=document.createElement('canvas'); cvs.width=40;cvs.height=40; const c=cvs.getContext('2d');
+    const G=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h);}; const fur=p.fur,dark=shade(fur,.78),cat=p.type==='cat';
+    if(cat){G(28,8,4,5,fur);}else{G(27,13,6,4,dark);} G(8,12,22,12,fur);
+    if(cat){G(6,2,6,7,fur);G(20,2,6,7,fur);}else{G(2,5,7,12,dark);G(23,5,7,12,dark);}
+    G(6,4,22,12,fur);G(12,9,2,2,'#241f1b');G(22,9,2,2,'#241f1b');G(17,11,3,2,'#5a3a2e'); return cvs; }
+  function renderPanel(){ tab==='raise'?renderRaise():renderDecor(); refreshRate(); canN.textContent=cans; }
   function renderRaise(){
-    panel.innerHTML='<div class="hint">餵食累積經驗，滿了就升級 → 影響對戰數值。</div>';
-    pets.forEach((p,i)=>{
-      const card=document.createElement('div'); card.className='petCard';
-      const cv=document.createElement('canvas'); cv.width=40; cv.height=40;
-      const c=cv.getContext('2d'); const gs=g; // draw pet into mini
-      (function(ctx){ const G=(x,y,w,h,col)=>{ctx.fillStyle=col;ctx.fillRect(x,y,w,h);};
-        const fur=p.fur,dark=shade(fur,.78),cat=p.type==='cat';
-        if(cat){G(28,8,4,5,fur);} else {G(27,13,6,4,dark);}
-        G(8,12,22,12,fur);
-        if(cat){G(6,2,6,7,fur);G(20,2,6,7,fur);} else {G(2,5,7,12,dark);G(23,5,7,12,dark);}
-        G(6,4,22,12,fur); G(12,9,2,2,'#241f1b'); G(22,9,2,2,'#241f1b'); G(17,11,3,2,'#5a3a2e');
-      })(c);
+    panel.innerHTML='<div class="hint">摸摸/餵食/玩耍都會加經驗，滿了升級 → 影響對戰。</div>';
+    pets.forEach(p=>{ const card=document.createElement('div');card.className='petCard';
+      const info=document.createElement('div');info.className='petInfo';
       const pct=Math.round(p.exp/p.need*100);
-      const info=document.createElement('div'); info.className='petInfo';
-      info.innerHTML=`<div class="petName">${p.name} <span class="petLv">Lv.${p.lv}</span></div>
-        <div class="bar"><span style="width:${pct}%"></span></div>`;
-      const btn=document.createElement('button'); btn.className='feed'; btn.textContent='餵食 20🥫';
-      btn.disabled = cans<20;
-      btn.onclick=()=>{ if(cans<20) return; cans-=20; p.exp+=34;
-        if(p.exp>=p.need){ p.lv++; p.exp-=p.need; p.need+=20; showToast('升級了！','🎉 '+p.name+' → Lv.'+p.lv); }
-        canN.textContent=cans; renderPanel(); };
-      card.append(cv,info,btn); panel.appendChild(card);
-    });
+      info.innerHTML=`<div class="petName">${p.name} <span class="pers">${PERS[p.pers].label}</span> <span class="petLv">Lv.${p.lv}</span></div><div class="bar"><span style="width:${pct}%"></span></div>`;
+      const btn=document.createElement('button');btn.className='feed';btn.textContent='餵食 20🥫';btn.disabled=cans<20;
+      btn.onclick=()=>{ if(cans<20)return; cans-=20; p.exp+=34; enter(p,'eat');
+        if(p.exp>=p.need){p.lv++;p.exp-=p.need;p.need+=20;showToast('升級了！','🎉 '+p.name+' → Lv.'+p.lv);} renderPanel(); };
+      card.append(petMini(p),info,btn); panel.appendChild(card); });
   }
   function renderDecor(){
-    panel.innerHTML='<div class="hint">買了會直接擺進院子，讓毛孩住得更舒服。</div>';
-    SHOP.forEach(s=>{
-      const row=document.createElement('div'); row.className='shopItem';
-      const ico=document.createElement('div'); ico.className='ico'; ico.textContent=s.ico;
-      const info=document.createElement('div'); info.className='petInfo';
-      info.innerHTML=`<div class="petName">${s.label}</div><div class="petLv">${s.cost} 🥫</div>`;
+    panel.innerHTML='<div class="hint">買了會進院子，切「✏️ 佈置」可自由拖曳／刪除。★ 的有加成。</div>';
+    SHOP.forEach(s=>{ const row=document.createElement('div');row.className='shopItem';
+      const ico=document.createElement('div');ico.className='ico';ico.textContent=s.ico;
+      const info=document.createElement('div');info.className='petInfo';
+      const b=(s.bonus||s.enable)?`<span class="bonus">★ ${s.desc}</span>`:`<span class="petLv">${s.desc}</span>`;
+      info.innerHTML=`<div class="petName">${s.label}</div><div class="petLv">${s.cost} 🥫 · ${b}</div>`;
       const buy=document.createElement('button');
-      if(owned[s.k]){ buy.className='buy owned'; buy.textContent='已擺放'; }
-      else { buy.className='buy'; buy.textContent='購買'; buy.disabled=cans<s.cost;
-        if(cans<s.cost) buy.style.opacity=.45;
-        buy.onclick=()=>{ if(cans<s.cost) return; cans-=s.cost; owned[s.k]=true;
-          const slot=SLOTS[placed.length % SLOTS.length]; placed.push({k:s.k,x:slot[0],y:slot[1]});
-          canN.textContent=cans; showToast('擺好了！',s.ico+' '+s.label+' 進駐院子'); renderPanel(); };
-      }
-      row.append(ico,info,buy); panel.appendChild(row);
-    });
+      buy.className='buy'; buy.textContent='購買'; buy.disabled=cans<s.cost; if(cans<s.cost)buy.style.opacity=.45;
+      buy.onclick=()=>{ if(cans<s.cost)return; cans-=s.cost;
+        placed.push({k:s.k,x:rnd(20,180)|0,y:rnd(96,124)|0}); refreshRate();
+        showToast('買好了！',s.ico+' 拖到喜歡的位置'); renderPanel(); };
+      row.append(ico,info,buy); panel.appendChild(row); });
   }
-
   const toast=document.getElementById('toast');
-  function showToast(t,n){ toast.innerHTML=`<div class="t">${t}</div><div class="n">${n}</div>`;
-    toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show'); }
+  function showToast(t,n){toast.innerHTML=`<div class="t">${t}</div><div class="n">${n}</div>`;toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');}
 
-  // 離線收益歡迎
-  setTimeout(()=>{ const off=180; setCans(cans+off); showToast('歡迎回來！','離線收益 +'+off+' 🥫'); }, 500);
-
-  renderPanel();
+  setTimeout(()=>{ cans+=180; canN.textContent=cans; showToast('歡迎回來！','離線收益 +180 🥫'); },500);
+  refreshRate(); renderPanel();
 })();
 </script>
