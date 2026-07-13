@@ -660,9 +660,9 @@ export default function BattleScreen() {
                 onPress={() => playerTurn(i)}
                 style={[styles.move, disabled && { opacity: 0.45 }]}
               >
-                <Text style={styles.moveName}>{myMeta.emoji} {m.name}{m.tag ? ` ・${m.tag}` : ''}</Text>
-                <Text style={styles.moveMeta}>
-                  {m.power > 0 ? `威力 ${m.power} · 命中 ${Math.round(m.acc * 100)}%` : '輔助'} · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}
+                <Text style={styles.moveName} numberOfLines={1}>{myMeta.emoji} {m.name}</Text>
+                <Text style={styles.moveMeta} numberOfLines={1}>
+                  {m.power > 0 ? `威力 ${m.power} · 命中 ${Math.round(m.acc * 100)}%` : '輔助'} · {m.cost === 0 ? '免 MP' : `MP ${m.cost}`}{m.tag ? ` · ${m.tag}` : ''}
                 </Text>
               </Pressable>
             );
@@ -674,9 +674,9 @@ export default function BattleScreen() {
             onPress={playerWildcard}
             style={[styles.wildBtn, (busy || !!result || !started || mine.wildcard.cost > myMp) && { opacity: 0.45 }]}
           >
-            <Text style={styles.wildName}>🎲 {mine.wildcard.name}{mine.wildcard.tag ? ` ・${mine.wildcard.tag}` : ''}</Text>
-            <Text style={styles.wildMeta}>
-              {mine.wildcard.power > 0 ? `威力 ${mine.wildcard.power}` : '奇招'} · {mine.wildcard.cost === 0 ? '免 MP' : `MP ${mine.wildcard.cost}`}
+            <Text style={styles.wildName} numberOfLines={1}>🎲 {mine.wildcard.name}</Text>
+            <Text style={styles.wildMeta} numberOfLines={1}>
+              {mine.wildcard.power > 0 ? `威力 ${mine.wildcard.power}` : '奇招'} · {mine.wildcard.cost === 0 ? '免 MP' : `MP ${mine.wildcard.cost}`}{mine.wildcard.tag ? ` · ${mine.wildcard.tag}` : ''}
             </Text>
           </Pressable>
         ) : null}
@@ -739,7 +739,7 @@ function FighterAvatar({
       {/* 有像素造型 → 無框、直接站進場景；沒有 → fallback 真實照片（保留框）*/}
       <View style={avatarCfg ? styles.avatarBare : styles.avatar}>
         {avatarCfg ? (
-          <AvatarView size={124} pet={avatarCfg} petType={petType ?? 'cat'} />
+          <AvatarView size={104} pet={avatarCfg} petType={petType ?? 'cat'} />
         ) : pet?.avatarUri || pet?.mediaUri ? (
           <Image source={pet.thumbUri ?? pet.avatarUri ?? pet.mediaUri} style={styles.avatarImg} contentFit="cover" />
         ) : (
@@ -888,12 +888,12 @@ const styles = StyleSheet.create({
   },
   flash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff', zIndex: 16 },
   mute: { position: 'absolute', top: 14, right: 14, zIndex: 40, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' },
-  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, paddingTop: 52 },
-  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg },
+  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: 38, paddingBottom: spacing.sm },
+  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },
   avatarImg: { width: '100%', height: '100%' },
   // 像素造型：無底色/邊框，讓角色像真的站在場景裡；仍保留命中白閃（圓角裁切）
-  avatarBare: { width: 124, height: 124, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  avatarBare: { width: 104, height: 104, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   avatarFlash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#fff' },
   hpCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, minWidth: 190, borderWidth: 1, borderColor: colors.border, ...shadow.card },
   hpRow1: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -911,16 +911,16 @@ const styles = StyleSheet.create({
   redTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#E23B3B', zIndex: 14 },
   comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
   comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
-  panel: { marginTop: 'auto', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: spacing.xl },
-  log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, padding: spacing.md, minHeight: 96, justifyContent: 'flex-end', borderWidth: 1, borderColor: colors.border },
-  logText: { color: colors.text, fontSize: font.size.md, lineHeight: font.size.md * 1.35 },
-  logDim: { opacity: 0.4, fontSize: font.size.sm },
-  logPrompt: { color: colors.primary, fontSize: font.size.sm, fontWeight: font.weight.bold, marginTop: 4 },
-  moves: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
-  move: { width: '48%', backgroundColor: colors.card, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
-  ultBtn: { marginTop: spacing.md, backgroundColor: '#2E2A26', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 2, borderColor: colors.gold },
+  panel: { marginTop: 'auto', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: spacing.lg },
+  log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, height: 84, overflow: 'hidden', justifyContent: 'flex-end', borderWidth: 1, borderColor: colors.border },
+  logText: { color: colors.text, fontSize: font.size.sm, lineHeight: font.size.sm * 1.3 },
+  logDim: { opacity: 0.38 },
+  logPrompt: { color: colors.primary, fontSize: font.size.sm, fontWeight: font.weight.bold, marginTop: 3 },
+  moves: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  move: { width: '48%', backgroundColor: colors.card, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  ultBtn: { marginTop: spacing.sm, backgroundColor: '#2E2A26', borderRadius: radius.md, paddingVertical: spacing.sm + 2, alignItems: 'center', borderWidth: 2, borderColor: colors.gold },
   ultText: { color: colors.gold, fontWeight: '900', fontSize: font.size.md },
-  wildBtn: { marginTop: spacing.sm, backgroundColor: '#EADFF0', borderRadius: radius.md, padding: spacing.md, borderWidth: 2, borderColor: '#9b6bd6' },
+  wildBtn: { marginTop: spacing.sm, backgroundColor: '#EADFF0', borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 2, borderColor: '#9b6bd6' },
   wildName: { color: '#6a3fa0', fontWeight: '800', fontSize: font.size.md },
   wildMeta: { color: '#8a6cc0', fontSize: font.size.xs, marginTop: 2, fontWeight: '600' },
   timingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
