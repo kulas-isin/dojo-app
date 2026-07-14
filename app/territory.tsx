@@ -159,11 +159,9 @@ export default function TerritoryScreen() {
             <View style={[styles.btn, styles.btnGhost]}><Text style={styles.btnGhostT}>這是你的地盤</Text></View>
           ) : selShielded ? (
             <View style={[styles.btn, styles.btnDim]}><Text style={styles.btnDimT}>🛡️ 保護中，暫時搶不了</Text></View>
-          ) : !sel.inRange && !!userLocation ? (
-            <View style={[styles.btn, styles.btnDim]}><Text style={styles.btnDimT}>🔒 走近一點才能挑戰</Text></View>
           ) : (
             <Pressable style={styles.btn} onPress={challenge}>
-              <Text style={styles.btnT}>⚔️ 挑戰佔領</Text>
+              <Text style={styles.btnT}>⚔️ 挑戰佔領{!sel.inRange && !!userLocation ? '（遠征）' : ''}</Text>
             </Pressable>
           )}
         </View>
