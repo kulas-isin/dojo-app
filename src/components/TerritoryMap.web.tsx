@@ -2,7 +2,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Map as LMap } from 'leaflet';
 import { useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { cellAt, cellCorners, cellsAround, cellsInBounds, inCaptureRange } from '../territory/h3grid';
+import { cellAt, cellCorners, cellsAround, inCaptureRange } from '../territory/h3grid';
 import { colors } from '../theme';
 import type { Coordinate } from '../types';
 import type { TerritoryMapProps } from './TerritoryMap.types';
@@ -24,12 +24,15 @@ function HexLayer(props: TerritoryMapProps) {
   const myCell = userLocation ? cellAt(userLocation.latitude, userLocation.longitude) : null;
   const rangeCells = useMemo(() => new Set(myCell ? cellsAround(myCell, 1) : []), [myCell]);
 
+  const visibleCells = () => {
+    const cc = map.getCenter();
+    const z = map.getZoom();
+    const k = z >= 16 ? 4 : z >= 15 ? 6 : z >= 14 ? 9 : 12;
+    return cellsAround(cellAt(cc.lat, cc.lng), k);
+  };
+
   const emit = () => {
-    const bb = map.getBounds();
-    const cc = cellsInBounds(
-      { latitude: bb.getSouth(), longitude: bb.getWest() },
-      { latitude: bb.getNorth(), longitude: bb.getEast() },
-    );
+    const cc = visibleCells();
     const key = cc.length + ':' + (cc[0] ?? '');
     if (key !== lastCells.current) { lastCells.current = key; onVisibleCells(cc); }
   };
@@ -47,32 +50,27 @@ function HexLayer(props: TerritoryMapProps) {
   });
 
   const size = map.getSize();
-  const b = map.getBounds();
-  const cells = cellsInBounds(
-    { latitude: b.getSouth(), longitude: b.getWest() },
-    { latitude: b.getNorth(), longitude: b.getEast() },
-  );
+  const cells = visibleCells();
 
   return (
     <svg
       width={size.x}
       height={size.y}
-      style={{ position: 'absolute', left: 0, top: 0, zIndex: 350, pointerEvents: 'none' }}
+      style={{ position: 'absolute', left: 0, top: 0, zIndex: 450, pointerEvents: 'none' }}
     >
       {cells.map((h3) => {
         const t = territories[h3];
         const isLand = landmarks.has(h3);
         const mine = t && t.ownerId === myUserId;
-        const col = t ? ownerColor(t.ownerId, myUserId) : isLand ? colors.gold : '#8a7a5c';
-        const pts = cellCorners(h3)
-          .map((c) => {
-            const p = map.latLngToContainerPoint([c.latitude, c.longitude]);
-            return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-          })
-          .join(' ');
+        const col = t ? ownerColor(t.ownerId, myUserId) : isLand ? colors.gold : '#8f7d5c';
+        const proj = cellCorners(h3).map((c) => map.latLngToContainerPoint([c.latitude, c.longitude]));
+        // 螢幕外的格子略過
+        if (proj.every((p) => p.x < -6) || proj.every((p) => p.x > size.x + 6) ||
+            proj.every((p) => p.y < -6) || proj.every((p) => p.y > size.y + 6)) return null;
+        const pts = proj.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
         const inRange = myCell && !mine && rangeCells.has(h3);
         const selected = h3 === selectedH3;
-        const fillOp = t ? (isLand ? 0.34 : 0.26) : isLand ? 0.14 : 0;
+        const fillOp = t ? (isLand ? 0.36 : 0.26) : isLand ? 0.16 : 0.05;
         return (
           <polygon
             key={h3}
@@ -80,8 +78,8 @@ function HexLayer(props: TerritoryMapProps) {
             fill={col}
             fillOpacity={fillOp}
             stroke={selected ? colors.text : isLand ? colors.gold : col}
-            strokeOpacity={t || isLand ? 0.9 : 0.18}
-            strokeWidth={selected ? 3.5 : t ? 2.5 : isLand ? 2.5 : 1}
+            strokeOpacity={t || isLand ? 0.95 : 0.4}
+            strokeWidth={selected ? 4 : t ? 2.6 : isLand ? 2.6 : 1.4}
             strokeDasharray={inRange ? '2 5' : undefined}
             strokeLinejoin="round"
           />
