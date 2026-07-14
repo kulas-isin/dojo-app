@@ -168,14 +168,14 @@ export default function TerritoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  hud: { position: 'absolute', top: 48, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
+  hud: { position: 'absolute', top: 48, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center', zIndex: 1000 },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   backT: { fontSize: 26, color: colors.text, marginTop: -3, fontWeight: '800' },
   hudCard: { backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 8, ...shadow.card },
   hudK: { fontSize: 10, color: colors.textDim, fontWeight: '800' },
   hudV: { fontSize: 18, color: colors.primary, fontWeight: '900' },
   hudU: { fontSize: 11, color: colors.textDim, fontWeight: '700' },
-  sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card, borderWidth: 1, borderColor: colors.border },
+  sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card, borderWidth: 1, borderColor: colors.border, zIndex: 1000 },
   sheetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetTitle: { fontSize: font.size.md, fontWeight: '900', color: colors.text, flex: 1 },
   sheetDist: { fontSize: font.size.sm, color: colors.textDim, fontWeight: '800' },
@@ -187,6 +187,6 @@ const styles = StyleSheet.create({
   btnGhostT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },
   btnDim: { backgroundColor: colors.cardAlt },
   btnDimT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },
-  hint: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, ...shadow.card },
+  hint: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, ...shadow.card, zIndex: 1000 },
   hintT: { fontSize: font.size.sm, color: colors.textDim, textAlign: 'center', fontWeight: '600' },
 });
