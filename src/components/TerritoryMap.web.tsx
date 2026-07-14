@@ -67,7 +67,13 @@ function HexLayer(props: TerritoryMapProps) {
         // 螢幕外的格子略過
         if (proj.every((p) => p.x < -6) || proj.every((p) => p.x > size.x + 6) ||
             proj.every((p) => p.y < -6) || proj.every((p) => p.y > size.y + 6)) return null;
-        const pts = proj.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        // 往中心內縮 → 格子看起來小一點、彼此留間隙
+        const SHRINK = 0.72;
+        const ccx = proj.reduce((s, p) => s + p.x, 0) / proj.length;
+        const ccy = proj.reduce((s, p) => s + p.y, 0) / proj.length;
+        const pts = proj
+          .map((p) => `${(ccx + (p.x - ccx) * SHRINK).toFixed(1)},${(ccy + (p.y - ccy) * SHRINK).toFixed(1)}`)
+          .join(' ');
         const inRange = myCell && !mine && rangeCells.has(h3);
         const selected = h3 === selectedH3;
         const fillOp = t ? (isLand ? 0.36 : 0.26) : isLand ? 0.16 : 0.05;
