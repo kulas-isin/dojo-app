@@ -105,6 +105,14 @@ export default function MapScreen() {
         </Text>
       </View>
 
+      {/* 地盤地圖入口 */}
+      <Pressable
+        style={[styles.terrBtn, { top: insets.top + spacing.xxl + spacing.md }]}
+        onPress={() => router.push('/territory')}
+      >
+        <Text style={styles.terrBtnText}>🗺️ 地盤佔領</Text>
+      </Pressable>
+
       {/* 建立道館 FAB */}
       <Pressable
         style={[styles.fab, { bottom: insets.bottom + spacing.lg }]}
@@ -150,4 +158,6 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   fabText: { color: colors.onColor, fontWeight: font.weight.heavy, fontSize: font.size.md },
+  terrBtn: { position: 'absolute', right: spacing.lg, zIndex: 1000, backgroundColor: colors.card, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1.5, borderColor: colors.primary, ...shadow.card },
+  terrBtnText: { color: colors.primary, fontWeight: font.weight.heavy, fontSize: font.size.sm },
 });
