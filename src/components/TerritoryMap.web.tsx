@@ -2,9 +2,10 @@ import 'leaflet/dist/leaflet.css';
 import type { Map as LMap } from 'leaflet';
 import { useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { petRects, type PetAvatar, type Px } from '../avatar/sprite';
 import { cellAt, cellCorners, cellDist, cellsAround, inCaptureRange } from '../territory/h3grid';
 import { colors } from '../theme';
-import type { Coordinate } from '../types';
+import type { Coordinate, PetType } from '../types';
 import type { TerritoryMapProps } from './TerritoryMap.types';
 
 // ---------- 像素 sprite（canvas → dataURL，靠 image-rendering:pixelated 放大）----------
@@ -53,6 +54,20 @@ function hashNum(s: string) {
   let h = 0;
   for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return h;
+}
+// 寵物像素造型 → dataURL（畫「本尊」而非通用貓狗），依 config 快取
+function rectsToDataUrl(rects: Px[]) {
+  if (typeof document === 'undefined') return '';
+  const { c, x } = cvpx(40, 40);
+  rects.forEach((r) => { x.fillStyle = r.c; x.fillRect(r.x, r.y, r.w, r.h); });
+  return c.toDataURL();
+}
+const avatarCache = new Map<string, string>();
+function avatarUrl(avatar: PetAvatar, petType: PetType) {
+  const key = petType + '|' + JSON.stringify(avatar);
+  let u = avatarCache.get(key);
+  if (!u) { u = rectsToDataUrl(petRects(avatar, petType)); avatarCache.set(key, u); }
+  return u;
 }
 
 const OWNER_COLORS = ['#3E9AD4', '#4FAE6B', '#9E5FD6', '#E0A32C', '#D75A9A', '#2CB5A8'];
@@ -113,7 +128,7 @@ function HexLayer(props: TerritoryMapProps) {
     const cyMid = (Math.min(...ys) + Math.max(...ys)) / 2;
     const cy = cyMid + (Math.max(...ys) - Math.min(...ys)) * 0.18; // 站在格子中央偏下
     if (cx < -24 || cx > size.x + 24 || cy < -24 || cy > size.y + 44) return [] as any[];
-    return [{ h3, cx, cy, petType: t?.petType, isLand }];
+    return [{ h3, cx, cy, petType: t?.petType, avatar: t?.avatar, isLand }];
   });
 
   return (
@@ -159,7 +174,11 @@ function HexLayer(props: TerritoryMapProps) {
     </svg>
     {/* 駐守毛孩 / 道館像素 sprite（走動巡邏） */}
     {placements.map((pl: any) => {
-      const src = pl.isLand ? sp.dojo : pl.petType === 'cat' ? sp.cat : sp.dog;
+      const src = pl.isLand
+        ? sp.dojo
+        : pl.avatar
+          ? avatarUrl(pl.avatar, (pl.petType || 'cat') as PetType) // 你捏的本尊
+          : pl.petType === 'cat' ? sp.cat : sp.dog;                // 沒造型時用通用貓狗
       return (
         <img
           key={'s' + pl.h3}
@@ -168,7 +187,7 @@ function HexLayer(props: TerritoryMapProps) {
           className={pl.isLand ? 'terr-dojo' : 'terr-pet'}
           style={{
             position: 'absolute', left: pl.cx, top: pl.cy,
-            width: pl.isLand ? 26 : 24, height: pl.isLand ? 32 : 22,
+            width: pl.isLand ? 26 : 30, height: pl.isLand ? 32 : 30,
             zIndex: 460, pointerEvents: 'none', imageRendering: 'pixelated',
             animationDelay: `${-(hashNum(pl.h3) % 30) / 10}s`,
           }}

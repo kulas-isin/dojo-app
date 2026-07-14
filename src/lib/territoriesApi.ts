@@ -11,6 +11,7 @@ function mapRow(r: any): Territory {
     petName: r.pet_name ?? '毛孩',
     petType: (r.pet_type ?? 'other') as PetType,
     thumbUri: r.thumb_url ?? undefined,
+    avatar: r.pet_avatar ?? undefined,
     capturedAt: r.captured_at ? Date.parse(r.captured_at) : 0,
     shieldUntil: r.shield_until ? Date.parse(r.shield_until) : null,
   };

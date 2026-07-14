@@ -11,8 +11,10 @@ create table if not exists territories (
   pet_type     text not null default 'other',
   thumb_url    text,
   captured_at  timestamptz not null default now(),
-  shield_until timestamptz                              -- 佔領保護到期
+  shield_until timestamptz,                             -- 佔領保護到期
+  pet_avatar   jsonb                                    -- 駐守寵物的像素造型快照
 );
+alter table territories add column if not exists pet_avatar jsonb;
 
 alter table territories enable row level security;
 
@@ -29,19 +31,19 @@ returns void language plpgsql security definer set search_path = public as $$
 declare v_pet record; v_owner text;
 begin
   if auth.uid() is null then raise exception '需要登入'; end if;
-  select id, name, pet_type, thumb_url into v_pet from pets where id = p_pet and owner_id = auth.uid();
+  select id, name, pet_type, thumb_url, pet_avatar into v_pet from pets where id = p_pet and owner_id = auth.uid();
   if not found then raise exception '這不是你的寵物'; end if;
   if exists (select 1 from territories where h3 = p_h3 and shield_until is not null and shield_until > now()) then
     raise exception '這塊地還在保護中';
   end if;
   select coalesce(name, '訓練家') into v_owner from profiles where id = auth.uid();
 
-  insert into territories (h3, owner_id, owner_name, pet_id, pet_name, pet_type, thumb_url, captured_at, shield_until)
-  values (p_h3, auth.uid(), coalesce(v_owner,'訓練家'), v_pet.id, v_pet.name, v_pet.pet_type, v_pet.thumb_url,
+  insert into territories (h3, owner_id, owner_name, pet_id, pet_name, pet_type, thumb_url, pet_avatar, captured_at, shield_until)
+  values (p_h3, auth.uid(), coalesce(v_owner,'訓練家'), v_pet.id, v_pet.name, v_pet.pet_type, v_pet.thumb_url, v_pet.pet_avatar,
           now(), now() + (interval '1 hour' * 3))
   on conflict (h3) do update set
     owner_id = excluded.owner_id, owner_name = excluded.owner_name, pet_id = excluded.pet_id,
-    pet_name = excluded.pet_name, pet_type = excluded.pet_type, thumb_url = excluded.thumb_url,
+    pet_name = excluded.pet_name, pet_type = excluded.pet_type, thumb_url = excluded.thumb_url, pet_avatar = excluded.pet_avatar,
     captured_at = now(), shield_until = now() + (interval '1 hour' * 3);
 end; $$;
 
@@ -53,9 +55,9 @@ create or replace function garrison_territory(p_h3 text, p_pet uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare v_pet record;
 begin
-  select id, name, pet_type, thumb_url into v_pet from pets where id = p_pet and owner_id = auth.uid();
+  select id, name, pet_type, thumb_url, pet_avatar into v_pet from pets where id = p_pet and owner_id = auth.uid();
   if not found then raise exception '這不是你的寵物'; end if;
-  update territories set pet_id = v_pet.id, pet_name = v_pet.name, pet_type = v_pet.pet_type, thumb_url = v_pet.thumb_url
+  update territories set pet_id = v_pet.id, pet_name = v_pet.name, pet_type = v_pet.pet_type, thumb_url = v_pet.thumb_url, pet_avatar = v_pet.pet_avatar
     where h3 = p_h3 and owner_id = auth.uid();
 end; $$;
 revoke all on function garrison_territory(text, uuid) from public;
