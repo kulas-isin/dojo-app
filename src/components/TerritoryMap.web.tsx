@@ -124,11 +124,13 @@ function HexLayer(props: TerritoryMapProps) {
     if (!t && !isLand) return [] as any[];
     const proj = cellCorners(h3).map((c) => map.latLngToContainerPoint([c.latitude, c.longitude]));
     const cx = proj.reduce((s, p) => s + p.x, 0) / proj.length;
+    const xs = proj.map((p) => p.x);
     const ys = proj.map((p) => p.y);
+    const cw = Math.max(...xs) - Math.min(...xs);
     const cyMid = (Math.min(...ys) + Math.max(...ys)) / 2;
-    const cy = cyMid + (Math.max(...ys) - Math.min(...ys)) * 0.18; // 站在格子中央偏下
+    const cy = cyMid + (Math.max(...ys) - Math.min(...ys)) * 0.14; // 站在格子中央
     if (cx < -24 || cx > size.x + 24 || cy < -24 || cy > size.y + 44) return [] as any[];
-    return [{ h3, cx, cy, petType: t?.petType, avatar: t?.avatar, isLand }];
+    return [{ h3, cx, cy, cw, petType: t?.petType, avatar: t?.avatar, isLand }];
   });
 
   return (
@@ -189,7 +191,9 @@ function HexLayer(props: TerritoryMapProps) {
             position: 'absolute', left: pl.cx, top: pl.cy,
             width: pl.isLand ? 26 : 30, height: pl.isLand ? 32 : 30,
             zIndex: 460, pointerEvents: 'none', imageRendering: 'pixelated',
-            animationDelay: `${-(hashNum(pl.h3) % 30) / 10}s`,
+            animationDelay: `${-(hashNum(pl.h3) % 40) / 10}s`,
+            // 巡邏範圍隨格子大小放大
+            ...({ '--amp': `${Math.max(6, Math.round(pl.cw * 0.34))}px` } as any),
           }}
         />
       );
@@ -215,13 +219,13 @@ export function TerritoryMap(props: TerritoryMapProps) {
         .pawterr img.terr-pet{transform-origin:center bottom;animation:terrpat 3.6s ease-in-out infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
         .pawterr img.terr-dojo{animation:terrbob 2.6s ease-in-out infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
         @keyframes terrpat{
-          0%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(1)}
-          25%{transform:translate(-50%,-100%) translate(-1px,-1.5px) scaleX(1)}
-          48%{transform:translate(-50%,-100%) translate(3px,0) scaleX(1)}
-          50%{transform:translate(-50%,-100%) translate(3px,0) scaleX(-1)}
-          75%{transform:translate(-50%,-100%) translate(0,-1.5px) scaleX(-1)}
-          98%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(-1)}
-          100%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(1)}
+          0%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * -1)) scaleX(1)}
+          24%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * -0.4)) translateY(-2px) scaleX(1)}
+          48%{transform:translate(-50%,-100%) translateX(var(--amp,6px)) scaleX(1)}
+          50%{transform:translate(-50%,-100%) translateX(var(--amp,6px)) scaleX(-1)}
+          74%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * 0.1)) translateY(-2px) scaleX(-1)}
+          98%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * -1)) scaleX(-1)}
+          100%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * -1)) scaleX(1)}
         }
         @keyframes terrbob{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 2px))}}
         @media (prefers-reduced-motion:reduce){.pawterr img.terr-pet,.pawterr img.terr-dojo{animation:none;transform:translate(-50%,-100%)}}
