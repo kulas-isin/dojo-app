@@ -185,7 +185,7 @@ export function TerritoryMap(props: TerritoryMapProps) {
   const mapRef = useRef<LMap | null>(null);
   const recenter = () => {
     const t = props.userLocation ?? props.center;
-    mapRef.current?.setView([t.latitude, t.longitude], mapRef.current.getZoom() || 16, { animate: true });
+    mapRef.current?.setView([t.latitude, t.longitude], mapRef.current.getZoom() || 15, { animate: true });
   };
   const center = useMemo<[number, number]>(() => [c.latitude, c.longitude], []); // eslint-disable-line
 
@@ -211,7 +211,7 @@ export function TerritoryMap(props: TerritoryMapProps) {
       <MapContainer
         ref={mapRef}
         center={center}
-        zoom={16}
+        zoom={15}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom
         zoomControl={false}
