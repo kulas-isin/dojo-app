@@ -2,7 +2,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Map as LMap } from 'leaflet';
 import { useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { cellAt, cellCorners, cellsAround, inCaptureRange } from '../territory/h3grid';
+import { cellAt, cellCorners, cellDist, cellsAround, inCaptureRange } from '../territory/h3grid';
 import { colors } from '../theme';
 import type { Coordinate } from '../types';
 import type { TerritoryMapProps } from './TerritoryMap.types';
@@ -74,10 +74,12 @@ function HexLayer(props: TerritoryMapProps) {
 
   const visibleCells = () => {
     const cc = map.getCenter();
-    const z = map.getZoom();
-    // res 9 格較小 → 每級多長幾圈才填得滿畫面
-    const k = z >= 17 ? 5 : z >= 16 ? 8 : z >= 15 ? 12 : 16;
-    return cellsAround(cellAt(cc.lat, cc.lng), k);
+    const b = map.getBounds();
+    const centerCell = cellAt(cc.lat, cc.lng);
+    // 依畫面對角距離自動估要長幾圈（跨解析度/縮放都準）
+    const d = cellDist(centerCell, cellAt(b.getNorth(), b.getEast()));
+    const k = d >= 0 ? Math.min(22, d + 2) : 8;
+    return cellsAround(centerCell, k);
   };
 
   const emit = () => {
@@ -107,7 +109,9 @@ function HexLayer(props: TerritoryMapProps) {
     if (!t && !isLand) return [] as any[];
     const proj = cellCorners(h3).map((c) => map.latLngToContainerPoint([c.latitude, c.longitude]));
     const cx = proj.reduce((s, p) => s + p.x, 0) / proj.length;
-    const cy = Math.max(...proj.map((p) => p.y)) - 4; // 站在格子底部
+    const ys = proj.map((p) => p.y);
+    const cyMid = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const cy = cyMid + (Math.max(...ys) - Math.min(...ys)) * 0.18; // 站在格子中央偏下
     if (cx < -24 || cx > size.x + 24 || cy < -24 || cy > size.y + 44) return [] as any[];
     return [{ h3, cx, cy, petType: t?.petType, isLand }];
   });

@@ -1,6 +1,6 @@
 /**
  * H3 六角網格工具（地盤系統）。
- * 解析度 res 9（邊長 ~0.17km）——比 res 8 小約 2.6 倍，更細的地盤格。
+ * 解析度 res 10（邊長 ~0.065km）——細緻的小地盤格。
  */
 import {
   cellToBoundary,
@@ -13,7 +13,7 @@ import {
 } from 'h3-js';
 import type { Coordinate } from '../types';
 
-export const RES = 9;
+export const RES = 10;
 /** 挑戰範圍：你與目標格的網格距離 <= 這個值才能打（1 = 相鄰格） */
 export const CAPTURE_RANGE_CELLS = 1;
 
@@ -52,6 +52,15 @@ export function cellsInBounds(
 /** 玩家周圍 k 圈的格子（含自己）——畫「附近可佔」用 */
 export function cellsAround(h3: string, k = 3): string[] {
   return gridDisk(h3, k);
+}
+
+/** 兩格的網格距離（跨不了回 -1）——自動估算要畫幾圈用 */
+export function cellDist(a: string, b: string): number {
+  try {
+    return gridDistance(a, b);
+  } catch {
+    return -1;
+  }
 }
 
 /** 目標格是否在挑戰範圍內 */
