@@ -7,6 +7,54 @@ import { colors } from '../theme';
 import type { Coordinate } from '../types';
 import type { TerritoryMapProps } from './TerritoryMap.types';
 
+// ---------- 像素 sprite（canvas → dataURL，靠 image-rendering:pixelated 放大）----------
+function cvpx(w: number, h: number) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return { c, x: c.getContext('2d')! };
+}
+function makeDog() {
+  const { c, x } = cvpx(26, 20);
+  x.fillStyle = '#c98f55'; x.fillRect(2, 1, 5, 5); x.fillRect(19, 1, 5, 5);      // 耳
+  x.fillStyle = '#e3b277'; x.fillRect(5, 4, 16, 12);                              // 身
+  x.fillStyle = '#cd955a'; x.fillRect(5, 13, 16, 3);                             // 腿影
+  x.fillStyle = '#2e241a'; x.fillRect(9, 8, 2, 2); x.fillRect(15, 8, 2, 2);      // 眼
+  x.fillStyle = '#3a2a18'; x.fillRect(12, 11, 2, 2);                             // 鼻
+  return c.toDataURL();
+}
+function makeCat() {
+  const { c, x } = cvpx(26, 20);
+  x.fillStyle = '#a9a6b2'; x.fillRect(3, 0, 4, 5); x.fillRect(19, 0, 4, 5);      // 尖耳
+  x.fillStyle = '#cfcbd6'; x.fillRect(4, 3, 18, 13);                             // 身
+  x.fillStyle = '#a9a6b2'; x.fillRect(4, 13, 18, 3);
+  x.fillStyle = '#2e241a'; x.fillRect(9, 8, 2, 2); x.fillRect(15, 8, 2, 2);      // 眼
+  x.fillStyle = '#b06a6a'; x.fillRect(12, 11, 2, 1);                             // 鼻
+  return c.toDataURL();
+}
+function makeDojo() {
+  const { c, x } = cvpx(26, 32);
+  x.fillStyle = '#fbf6ee'; x.fillRect(3, 15, 20, 16);
+  x.fillStyle = '#c9b48f'; x.fillRect(3, 27, 20, 4);
+  x.fillStyle = '#7a5233'; x.fillRect(10, 21, 6, 9);
+  x.fillStyle = '#8fcadd'; x.fillRect(6, 18, 4, 4); x.fillRect(16, 18, 4, 4);
+  x.fillStyle = '#e8805c'; x.fillRect(1, 12, 24, 4);
+  x.fillStyle = '#e8805c'; x.fillRect(4, 7, 18, 6); x.fillRect(7, 3, 12, 5);
+  x.fillStyle = '#f6c453'; x.fillRect(12, 0, 2, 4);
+  return c.toDataURL();
+}
+let SPRITES: { dog: string; cat: string; dojo: string } | null = null;
+function sprites() {
+  if (SPRITES) return SPRITES;
+  if (typeof document === 'undefined') return { dog: '', cat: '', dojo: '' };
+  SPRITES = { dog: makeDog(), cat: makeCat(), dojo: makeDojo() };
+  return SPRITES;
+}
+function hashNum(s: string) {
+  let h = 0;
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
 const OWNER_COLORS = ['#3E9AD4', '#4FAE6B', '#9E5FD6', '#E0A32C', '#D75A9A', '#2CB5A8'];
 function ownerColor(id: string | null, myId: string | null): string {
   if (id && id === myId) return colors.primary;
@@ -51,8 +99,20 @@ function HexLayer(props: TerritoryMapProps) {
 
   const size = map.getSize();
   const cells = visibleCells();
+  const sp = sprites();
+  const placements = cells.flatMap((h3) => {
+    const t = territories[h3];
+    const isLand = landmarks.has(h3);
+    if (!t && !isLand) return [] as any[];
+    const proj = cellCorners(h3).map((c) => map.latLngToContainerPoint([c.latitude, c.longitude]));
+    const cx = proj.reduce((s, p) => s + p.x, 0) / proj.length;
+    const cy = Math.max(...proj.map((p) => p.y)) - 4; // 站在格子底部
+    if (cx < -24 || cx > size.x + 24 || cy < -24 || cy > size.y + 44) return [] as any[];
+    return [{ h3, cx, cy, petType: t?.petType, isLand }];
+  });
 
   return (
+    <>
     <svg
       width={size.x}
       height={size.y}
@@ -97,6 +157,25 @@ function HexLayer(props: TerritoryMapProps) {
         return <circle cx={p.x} cy={p.y} r={7} fill="#fff" stroke={colors.primary} strokeWidth={4} />;
       })() : null}
     </svg>
+    {/* 駐守毛孩 / 道館像素 sprite（走動巡邏） */}
+    {placements.map((pl: any) => {
+      const src = pl.isLand ? sp.dojo : pl.petType === 'cat' ? sp.cat : sp.dog;
+      return (
+        <img
+          key={'s' + pl.h3}
+          src={src}
+          alt=""
+          className={pl.isLand ? 'terr-dojo' : 'terr-pet'}
+          style={{
+            position: 'absolute', left: pl.cx, top: pl.cy,
+            width: pl.isLand ? 26 : 24, height: pl.isLand ? 32 : 22,
+            zIndex: 460, pointerEvents: 'none', imageRendering: 'pixelated',
+            animationDelay: `${-(hashNum(pl.h3) % 30) / 10}s`,
+          }}
+        />
+      );
+    })}
+    </>
   );
 }
 
@@ -114,6 +193,19 @@ export function TerritoryMap(props: TerritoryMapProps) {
       <style>{`
         .pawterr .leaflet-tile-pane{filter:saturate(.55) brightness(1.02) contrast(.98)}
         .pawterr .leaflet-container{background:#e9e3d7}
+        .pawterr img.terr-pet{transform-origin:center bottom;animation:terrpat 3.6s ease-in-out infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+        .pawterr img.terr-dojo{animation:terrbob 2.6s ease-in-out infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+        @keyframes terrpat{
+          0%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(1)}
+          25%{transform:translate(-50%,-100%) translate(-1px,-1.5px) scaleX(1)}
+          48%{transform:translate(-50%,-100%) translate(3px,0) scaleX(1)}
+          50%{transform:translate(-50%,-100%) translate(3px,0) scaleX(-1)}
+          75%{transform:translate(-50%,-100%) translate(0,-1.5px) scaleX(-1)}
+          98%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(-1)}
+          100%{transform:translate(-50%,-100%) translate(-3px,0) scaleX(1)}
+        }
+        @keyframes terrbob{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 2px))}}
+        @media (prefers-reduced-motion:reduce){.pawterr img.terr-pet,.pawterr img.terr-dojo{animation:none;transform:translate(-50%,-100%)}}
       `}</style>
       <MapContainer
         ref={mapRef}
