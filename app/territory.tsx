@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { TerritoryMap } from '@/components/TerritoryMap';
@@ -7,11 +7,7 @@ import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
 import { cellBaseIncome, landmarkCells, totalIncomePerHour } from '@/territory/income';
 import type { Territory } from '@/territory/types';
-import {
-  captureTerritoryRemote,
-  fetchMyTerritories,
-  fetchTerritories,
-} from '@/lib/territoriesApi';
+import { fetchMyTerritories, fetchTerritories } from '@/lib/territoriesApi';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { Coordinate } from '@/types';
@@ -39,7 +35,6 @@ export default function TerritoryScreen() {
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [terr, setTerr] = useState<Record<string, Territory>>({});
   const [sel, setSel] = useState<{ h3: string; inRange: boolean; center: Coordinate } | null>(null);
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [mine, setMine] = useState<Territory[]>([]);
   const fetchTimer = useRef<any>(null);
@@ -91,20 +86,33 @@ export default function TerritoryScreen() {
   const selLandmark = sel ? landmarks.has(sel.h3) : false;
   const selDist = sel && userLocation ? distMeters(userLocation, cellCenter(sel.h3)) : null;
 
-  const capture = async () => {
-    if (!sel || !myPets.length) { setMsg('先建立一隻寵物才能佔領'); return; }
-    setBusy(true); setMsg(null);
-    try {
-      // MVP：直接佔領（正式版會先接對戰，打贏才佔）
-      await captureTerritoryRemote(sel.h3, myPets[0].id);
-      const rows = await fetchTerritories([sel.h3]);
-      if (rows[0]) setTerr((prev) => ({ ...prev, [sel.h3]: rows[0] }));
-      await refreshMine();
-      setMsg('🚩 佔領成功！');
-    } catch (e: any) {
-      setMsg(e?.message ?? '佔領失敗');
-    } finally { setBusy(false); }
+  // 挑戰 → 跑回合制對戰，打贏才佔（capture 在 battle.tsx 結算時呼叫 RPC）
+  const challenge = () => {
+    if (!sel) return;
+    if (!myPets.length) { setMsg('先建立一隻寵物才能佔領'); return; }
+    const p = myPets[0];
+    router.push({
+      pathname: '/battle',
+      params: {
+        myPetId: p.id,
+        terrH3: sel.h3,
+        foeName: selT?.petName ?? '野生毛孩',
+        foeType: selT?.petType ?? (Math.random() < 0.5 ? 'cat' : 'dog'),
+        foeLevel: String(p.level ?? 1),
+      },
+    });
   };
+
+  // 從對戰返回時，重新整理地盤（可能剛佔到）
+  useFocusEffect(
+    useCallback(() => {
+      refreshMine();
+      if (sel) fetchTerritories([sel.h3]).then((rows) => {
+        if (rows[0]) setTerr((prev) => ({ ...prev, [sel.h3]: rows[0] }));
+      }).catch(() => {});
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshMine, sel?.h3]),
+  );
 
   return (
     <View style={styles.screen}>
@@ -154,8 +162,8 @@ export default function TerritoryScreen() {
           ) : !sel.inRange && !!userLocation ? (
             <View style={[styles.btn, styles.btnDim]}><Text style={styles.btnDimT}>🔒 走近一點才能挑戰</Text></View>
           ) : (
-            <Pressable style={[styles.btn, busy && { opacity: 0.6 }]} disabled={busy} onPress={capture}>
-              <Text style={styles.btnT}>{busy ? '佔領中…' : '🚩 挑戰佔領'}</Text>
+            <Pressable style={styles.btn} onPress={challenge}>
+              <Text style={styles.btnT}>⚔️ 挑戰佔領</Text>
             </Pressable>
           )}
         </View>
