@@ -1,6 +1,6 @@
 /**
  * H3 六角網格工具（地盤系統）。
- * 決策：解析度 res 8（邊長 ~0.46km），適合「走到附近才能佔」的尺度。
+ * 解析度 res 9（邊長 ~0.17km）——比 res 8 小約 2.6 倍，更細的地盤格。
  */
 import {
   cellToBoundary,
@@ -13,7 +13,7 @@ import {
 } from 'h3-js';
 import type { Coordinate } from '../types';
 
-export const RES = 8;
+export const RES = 9;
 /** 挑戰範圍：你與目標格的網格距離 <= 這個值才能打（1 = 相鄰格） */
 export const CAPTURE_RANGE_CELLS = 1;
 

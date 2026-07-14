@@ -75,7 +75,8 @@ function HexLayer(props: TerritoryMapProps) {
   const visibleCells = () => {
     const cc = map.getCenter();
     const z = map.getZoom();
-    const k = z >= 16 ? 4 : z >= 15 ? 6 : z >= 14 ? 9 : 12;
+    // res 9 格較小 → 每級多長幾圈才填得滿畫面
+    const k = z >= 17 ? 5 : z >= 16 ? 8 : z >= 15 ? 12 : 16;
     return cellsAround(cellAt(cc.lat, cc.lng), k);
   };
 
@@ -184,7 +185,7 @@ export function TerritoryMap(props: TerritoryMapProps) {
   const mapRef = useRef<LMap | null>(null);
   const recenter = () => {
     const t = props.userLocation ?? props.center;
-    mapRef.current?.setView([t.latitude, t.longitude], mapRef.current.getZoom() || 15, { animate: true });
+    mapRef.current?.setView([t.latitude, t.longitude], mapRef.current.getZoom() || 16, { animate: true });
   };
   const center = useMemo<[number, number]>(() => [c.latitude, c.longitude], []); // eslint-disable-line
 
@@ -210,7 +211,7 @@ export function TerritoryMap(props: TerritoryMapProps) {
       <MapContainer
         ref={mapRef}
         center={center}
-        zoom={15}
+        zoom={16}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom
         zoomControl={false}
