@@ -1,7 +1,9 @@
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AvatarView } from '@/avatar/AvatarView';
+import { DEFAULT_PET } from '@/avatar/sprite';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
@@ -36,6 +38,11 @@ export default function TerritoryScreen() {
   const [terr, setTerr] = useState<Record<string, Territory>>({});
   const [sel, setSel] = useState<{ h3: string; inRange: boolean; center: Coordinate } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [challengerId, setChallengerId] = useState<string | null>(null);
+  const challenger = myPets.find((p) => p.id === challengerId) ?? myPets[0];
+  useEffect(() => {
+    if (!challengerId && myPets[0]) setChallengerId(myPets[0].id);
+  }, [challengerId, myPets]);
   const [mine, setMine] = useState<Territory[]>([]);
   const fetchTimer = useRef<any>(null);
 
@@ -90,7 +97,7 @@ export default function TerritoryScreen() {
   const challenge = () => {
     if (!sel) return;
     if (!myPets.length) { setMsg('先建立一隻寵物才能佔領'); return; }
-    const p = myPets[0];
+    const p = challenger ?? myPets[0];
     router.push({
       pathname: '/battle',
       params: {
@@ -154,6 +161,24 @@ export default function TerritoryScreen() {
             {'　'}收益 +{cellBaseIncome(sel.h3, landmarks)}🥫/時
             {selShielded ? '　🛡️ 保護中' : ''}
           </Text>
+          {!selMine && !selShielded && myPets.length > 0 ? (
+            <View style={{ marginTop: spacing.md }}>
+              <Text style={styles.pickLabel}>出戰寵物</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {myPets.map((p) => {
+                  const on = (challenger?.id ?? myPets[0]?.id) === p.id;
+                  return (
+                    <Pressable key={p.id} onPress={() => setChallengerId(p.id)} style={[styles.petChip, on && styles.petChipOn]}>
+                      <AvatarView size={30} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
+                      <Text style={[styles.petChipT, on && { color: colors.primary }]} numberOfLines={1}>
+                        {p.name}<Text style={styles.petChipLv}> Lv{p.level ?? 1}</Text>
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
           {msg ? <Text style={styles.msg}>{msg}</Text> : null}
           {selMine ? (
             <View style={[styles.btn, styles.btnGhost]}><Text style={styles.btnGhostT}>這是你的地盤</Text></View>
@@ -187,6 +212,11 @@ const styles = StyleSheet.create({
   sheetDist: { fontSize: font.size.sm, color: colors.textDim, fontWeight: '800' },
   sheetSub: { fontSize: font.size.sm, color: colors.textDim, marginTop: 4, fontWeight: '600' },
   msg: { fontSize: font.size.sm, color: colors.primary, marginTop: 8, fontWeight: '800' },
+  pickLabel: { fontSize: 10, color: colors.textDim, fontWeight: '900', marginBottom: 5, letterSpacing: 0.4 },
+  petChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.cardAlt, borderRadius: radius.pill, paddingLeft: 4, paddingRight: 12, paddingVertical: 4, borderWidth: 2, borderColor: 'transparent' },
+  petChipOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  petChipT: { fontSize: font.size.sm, color: colors.text, fontWeight: '800' },
+  petChipLv: { fontSize: 10, color: colors.textDim, fontWeight: '700' },
   btn: { marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   btnT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.md },
   btnGhost: { backgroundColor: colors.cardAlt },
