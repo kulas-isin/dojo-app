@@ -14,4 +14,6 @@ export interface TerritoryMapProps {
   onSelectCell: (h3: string, inRange: boolean, center: Coordinate) => void;
   /** 可視範圍變動 → 上層去抓這些格子的擁有權 */
   onVisibleCells: (cells: string[]) => void;
+  /** 該格的事件圖示（emoji），沒有則 null（未領取的事件格才顯示） */
+  eventMarker?: (h3: string) => string | null;
 }

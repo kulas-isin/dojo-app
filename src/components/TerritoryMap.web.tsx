@@ -133,6 +133,20 @@ function HexLayer(props: TerritoryMapProps) {
     return [{ h3, cx, cy, cw, petType: t?.petType, avatar: t?.avatar, isLand }];
   });
 
+  // 事件格（只在無主格上；被佔的格放毛孩）
+  const events = props.eventMarker
+    ? cells.flatMap((h3) => {
+        if (territories[h3]) return [] as any[];
+        const em = props.eventMarker!(h3);
+        if (!em) return [] as any[];
+        const proj = cellCorners(h3).map((c) => map.latLngToContainerPoint([c.latitude, c.longitude]));
+        const cx = proj.reduce((s, p) => s + p.x, 0) / proj.length;
+        const cy = proj.reduce((s, p) => s + p.y, 0) / proj.length;
+        if (cx < -24 || cx > size.x + 24 || cy < -24 || cy > size.y + 24) return [] as any[];
+        return [{ h3, cx, cy, em }];
+      })
+    : [];
+
   return (
     <>
     <svg
@@ -198,6 +212,16 @@ function HexLayer(props: TerritoryMapProps) {
         />
       );
     })}
+    {/* 隨機事件格 */}
+    {events.map((ev: any) => (
+      <div
+        key={'e' + ev.h3}
+        className="terr-event"
+        style={{ position: 'absolute', left: ev.cx, top: ev.cy, zIndex: 465, pointerEvents: 'none', animationDelay: `${-(hashNum(ev.h3) % 20) / 10}s` }}
+      >
+        {ev.em}
+      </div>
+    ))}
     </>
   );
 }
@@ -228,6 +252,9 @@ export function TerritoryMap(props: TerritoryMapProps) {
           100%{transform:translate(-50%,-100%) translateX(calc(var(--amp,6px) * -1)) scaleX(1)}
         }
         @keyframes terrbob{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 2px))}}
+        .pawterr .terr-event{transform:translate(-50%,-55%);width:26px;height:26px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,.9);border:1.5px solid rgba(90,70,45,.35);box-shadow:0 2px 5px rgba(0,0,0,.25);animation:evbob 1.8s ease-in-out infinite}
+        @keyframes evbob{0%,100%{transform:translate(-50%,-55%)}50%{transform:translate(-50%,-70%)}}
+        @media (prefers-reduced-motion:reduce){.pawterr .terr-event{animation:none}}
         @media (prefers-reduced-motion:reduce){.pawterr img.terr-pet,.pawterr img.terr-dojo{animation:none;transform:translate(-50%,-100%)}}
       `}</style>
       <MapContainer

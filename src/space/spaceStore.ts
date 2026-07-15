@@ -40,6 +40,8 @@ interface SpaceState {
   walkRemainder: number;
 
   lastTerritoryAt: number; // 上次領取地盤收益
+  eventLog: Record<string, string>; // h3 -> 領取日期（每日重置）
+  claimEvent: (h3: string, amount: number) => void; // 領取事件獎勵（罐罐）並標記今日已領
   idleRate: () => number; // 每小時
   collectIdle: () => number; // 回傳這次領取的罐罐
   collectTerritory: (perHour: number) => number; // 地盤被動收益，回傳這次領取的罐罐
@@ -97,6 +99,7 @@ export const useSpaceStore = create<SpaceState>()(
       playedAt: {},
       lastLevelUp: null,
       lastTerritoryAt: Date.now(),
+      eventLog: {},
       careStreak: 0,
       lastCareDay: '',
       lastDaily: null,
@@ -124,6 +127,11 @@ export const useSpaceStore = create<SpaceState>()(
         if (gained > 0) set((s) => ({ cans: s.cans + gained, lastCollectedAt: now }));
         else set({ lastCollectedAt: now });
         return gained;
+      },
+
+      claimEvent: (h3, amount) => {
+        const day = new Date().toDateString();
+        set((s) => ({ cans: s.cans + Math.max(0, amount), eventLog: { ...s.eventLog, [h3]: day } }));
       },
 
       collectTerritory: (perHour) => {

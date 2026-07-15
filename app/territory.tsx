@@ -7,6 +7,7 @@ import { DEFAULT_PET } from '@/avatar/sprite';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
+import { eventFor } from '@/territory/events';
 import { cellBaseIncome, landmarkCells, totalIncomePerHour } from '@/territory/income';
 import type { Territory } from '@/territory/types';
 import { fetchMyTerritories, fetchTerritories } from '@/lib/territoriesApi';
@@ -49,6 +50,9 @@ export default function TerritoryScreen() {
   const fetchTimer = useRef<any>(null);
   const collectedRef = useRef(false);
   const collectTerritory = useSpaceStore((s) => s.collectTerritory);
+  const claimEvent = useSpaceStore((s) => s.claimEvent);
+  const eventLog = useSpaceStore((s) => s.eventLog);
+  const today = new Date().toDateString();
 
   // 定位
   useEffect(() => {
@@ -110,6 +114,53 @@ export default function TerritoryScreen() {
   const selLandmark = sel ? landmarks.has(sel.h3) : false;
   const selDist = sel && userLocation ? distMeters(userLocation, cellCenter(sel.h3)) : null;
 
+  // 事件格：地圖標示 + 選中互動
+  const eventMarker = useCallback((h3: string) => {
+    const e = eventFor(h3);
+    if (!e || eventLog[h3] === today) return null;
+    return e.emoji;
+  }, [eventLog, today]);
+  const selEvent = sel ? eventFor(sel.h3) : null;
+  const selEventOpen = !!selEvent && !selT && !!sel && eventLog[sel.h3] !== today;
+
+  const collectEvent = () => {
+    if (!sel || !selEvent) return;
+    if (selEvent.kind === 'stray') {
+      if (!myPets.length) { setMsg('先建立一隻寵物才能挑戰'); return; }
+      const p = challenger ?? myPets[0];
+      router.push({
+        pathname: '/battle',
+        params: {
+          myPetId: p.id, eventH3: sel.h3, rewardCans: String(selEvent.amount),
+          foeName: '野生浪浪', foeType: Math.random() < 0.5 ? 'cat' : 'dog', foeLevel: String(p.level ?? 1),
+        },
+      });
+    } else {
+      claimEvent(sel.h3, selEvent.amount);
+      setMsg(`+${selEvent.amount} 🥫 入袋！`);
+    }
+  };
+
+  // 出戰寵物選擇器（挑戰佔領 / 打浪浪共用）
+  const petPicker = myPets.length > 0 ? (
+    <View style={{ marginTop: spacing.md }}>
+      <Text style={styles.pickLabel}>出戰寵物</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+        {myPets.map((p) => {
+          const on = (challenger?.id ?? myPets[0]?.id) === p.id;
+          return (
+            <Pressable key={p.id} onPress={() => setChallengerId(p.id)} style={[styles.petChip, on && styles.petChipOn]}>
+              <AvatarView size={30} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
+              <Text style={[styles.petChipT, on && { color: colors.primary }]} numberOfLines={1}>
+                {p.name}<Text style={styles.petChipLv}> Lv{p.level ?? 1}</Text>
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  ) : null;
+
   // 挑戰 → 跑回合制對戰，打贏才佔（capture 在 battle.tsx 結算時呼叫 RPC）
   const challenge = () => {
     if (!sel) return;
@@ -149,6 +200,7 @@ export default function TerritoryScreen() {
         selectedH3={sel?.h3 ?? null}
         onSelectCell={(h3, inRange, center) => { setSel({ h3, inRange, center }); setMsg(null); }}
         onVisibleCells={onVisibleCells}
+        eventMarker={eventMarker}
       />
 
       {/* 頂部 HUD */}
@@ -169,7 +221,22 @@ export default function TerritoryScreen() {
       ) : null}
 
       {/* 底部資訊卡 */}
-      {sel ? (
+      {sel && selEventOpen && selEvent ? (
+        <View style={styles.sheet}>
+          <View style={styles.sheetTop}>
+            <Text style={styles.sheetTitle}>{selEvent.emoji} {selEvent.label}</Text>
+            {selDist != null ? <Text style={styles.sheetDist}>{fmtDist(selDist)}</Text> : null}
+          </View>
+          <Text style={styles.sheetSub}>
+            {selEvent.desc}　{selEvent.kind === 'stray' ? `打贏 +${selEvent.amount}🥫` : `+${selEvent.amount}🥫`}
+          </Text>
+          {selEvent.kind === 'stray' ? petPicker : null}
+          {msg ? <Text style={styles.msg}>{msg}</Text> : null}
+          <Pressable style={styles.btn} onPress={collectEvent}>
+            <Text style={styles.btnT}>{selEvent.kind === 'stray' ? '⚔️ 挑戰浪浪' : '🎁 打開領取'}</Text>
+          </Pressable>
+        </View>
+      ) : sel ? (
         <View style={styles.sheet}>
           <View style={styles.sheetTop}>
             <Text style={styles.sheetTitle}>
@@ -182,24 +249,7 @@ export default function TerritoryScreen() {
             {'　'}收益 +{cellBaseIncome(sel.h3, landmarks)}🥫/時
             {selShielded ? '　🛡️ 保護中' : ''}
           </Text>
-          {!selMine && !selShielded && myPets.length > 0 ? (
-            <View style={{ marginTop: spacing.md }}>
-              <Text style={styles.pickLabel}>出戰寵物</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
-                {myPets.map((p) => {
-                  const on = (challenger?.id ?? myPets[0]?.id) === p.id;
-                  return (
-                    <Pressable key={p.id} onPress={() => setChallengerId(p.id)} style={[styles.petChip, on && styles.petChipOn]}>
-                      <AvatarView size={30} pet={p.avatar ?? DEFAULT_PET} petType={p.petType} />
-                      <Text style={[styles.petChipT, on && { color: colors.primary }]} numberOfLines={1}>
-                        {p.name}<Text style={styles.petChipLv}> Lv{p.level ?? 1}</Text>
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          ) : null}
+          {!selMine && !selShielded ? petPicker : null}
           {msg ? <Text style={styles.msg}>{msg}</Text> : null}
           {selMine ? (
             <View style={[styles.btn, styles.btnGhost]}><Text style={styles.btnGhostT}>這是你的地盤</Text></View>

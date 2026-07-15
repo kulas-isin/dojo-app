@@ -22,6 +22,7 @@ import { AvatarView } from '@/avatar/AvatarView';
 import type { PetAvatar } from '@/avatar/sprite';
 import { logBattleRemote } from '@/lib/logsApi';
 import { captureTerritoryRemote } from '@/lib/territoriesApi';
+import { useSpaceStore } from '@/space/spaceStore';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { Pet, PetType } from '@/types';
@@ -64,8 +65,8 @@ function haptic(kind: 'light' | 'heavy') {
 }
 
 export default function BattleScreen() {
-  const { gymId, myPetId, terrH3, foeName, foeType, foeBattle, foeLevel } =
-    useLocalSearchParams<{ gymId: string; myPetId: string; terrH3: string; foeName: string; foeType: string; foeBattle: string; foeLevel: string }>();
+  const { gymId, myPetId, terrH3, eventH3, rewardCans, foeName, foeType, foeBattle, foeLevel } =
+    useLocalSearchParams<{ gymId: string; myPetId: string; terrH3: string; eventH3: string; rewardCans: string; foeName: string; foeType: string; foeBattle: string; foeLevel: string }>();
   const pets = useStore((s) => s.pets);
   const gyms = useStore((s) => s.gyms);
   const entries = useStore((s) => s.entries);
@@ -76,16 +77,16 @@ export default function BattleScreen() {
   const champEntry = gym?.championEntryId ? entries.find((e) => e.id === gym.championEntryId) : undefined;
   const champPet = champEntry?.petId ? pets.find((p) => p.id === champEntry.petId) : undefined;
 
-  // 地盤挑戰：對手是那格的駐守寵物（合成的 Fighter）
+  // 地盤挑戰 / 野生浪浪：對手是合成的 Fighter
   const foeSynthetic = useMemo<Pet | null>(() => {
-    if (!terrH3) return null;
+    if (!terrH3 && !eventH3) return null;
     return {
       id: 'terr-foe', kind: 'owned', name: foeName || '守方毛孩',
       petType: (foeType as PetType) || 'cat', avatarUri: '', thumbUri: undefined,
       bio: '', visibility: 'public', followers: 0, following: false, createdAt: 0,
       battleType: (foeBattle as any) || 'derp', level: Number(foeLevel) || 1,
     };
-  }, [terrH3, foeName, foeType, foeBattle, foeLevel]);
+  }, [terrH3, eventH3, foeName, foeType, foeBattle, foeLevel]);
 
   const mine = useMemo<Fighter | null>(() => (myPet ? makeFighter(myPet) : null), [myPet]);
   const foe = useMemo<Fighter | null>(
@@ -880,6 +881,8 @@ export default function BattleScreen() {
       if (terrH3) {
         setPrompt('結算中…插旗佔領');
         try { await captureTerritoryRemote(String(terrH3), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
+      } else if (eventH3) {
+        try { useSpaceStore.getState().claimEvent(String(eventH3), Number(rewardCans) || 0); } catch { /* ignore */ }
       } else if (gymId) {
         setPrompt('結算中…登頂並升級');
         try { await winGymBattle(String(gymId), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
@@ -1062,9 +1065,11 @@ export default function BattleScreen() {
       {!started ? (
         <View style={styles.overlay}>
           <View style={styles.card}>
-            <Text style={styles.ovTitle}>{terrH3 ? '搶地盤！🚩' : '準備對戰！'}</Text>
+            <Text style={styles.ovTitle}>{terrH3 ? '搶地盤！🚩' : eventH3 ? '野生對戰！🐈' : '準備對戰！'}</Text>
             <Text style={styles.ovSub}>
-              {terrH3 ? `${mine.name} 挑戰 ${foe.name} 鎮守的地盤` : `${mine.name} 挑戰 ${gym?.name ?? '道館'} 主 ${foe.name}`}
+              {terrH3 ? `${mine.name} 挑戰 ${foe.name} 鎮守的地盤`
+                : eventH3 ? `一隻野生浪浪出現了！打贏有 ${rewardCans ?? 0} 🥫`
+                : `${mine.name} 挑戰 ${gym?.name ?? '道館'} 主 ${foe.name}`}
             </Text>
             <Button label="⚔️ 開始對戰" onPress={begin} style={{ marginTop: spacing.md }} />
           </View>
@@ -1075,15 +1080,17 @@ export default function BattleScreen() {
       {result ? (
         <View style={styles.overlay}>
           <View style={styles.card}>
-            <Text style={styles.ovTitle}>{result === 'win' ? (terrH3 ? '佔領成功！🚩' : '你贏了！👑') : '落敗…'}</Text>
+            <Text style={styles.ovTitle}>{result === 'win' ? (terrH3 ? '佔領成功！🚩' : eventH3 ? '打贏了！🎉' : '你贏了！👑') : '落敗…'}</Text>
             <Text style={styles.ovSub}>
               {result === 'win'
                 ? terrH3
                   ? '這塊地盤插上你的旗子了，開始幫你生罐罐！'
-                  : `${mine.name} 成為新道館主，升到 Lv.${myPet?.level ?? 1}！`
+                  : eventH3
+                    ? `野生浪浪認輸了，賞金 +${rewardCans ?? 0} 🥫 入袋！`
+                    : `${mine.name} 成為新道館主，升到 Lv.${myPet?.level ?? 1}！`
                 : '再訓練一下，下次再來挑戰！'}
             </Text>
-            <Button label={terrH3 ? '返回地圖' : '返回道館'} onPress={() => router.back()} style={{ marginTop: spacing.md }} />
+            <Button label={terrH3 || eventH3 ? '返回地圖' : '返回道館'} onPress={() => router.back()} style={{ marginTop: spacing.md }} />
           </View>
         </View>
       ) : null}
