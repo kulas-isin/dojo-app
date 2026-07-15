@@ -10,6 +10,7 @@ import { cellCenter } from '@/territory/h3grid';
 import { cellBaseIncome, landmarkCells, totalIncomePerHour } from '@/territory/income';
 import type { Territory } from '@/territory/types';
 import { fetchMyTerritories, fetchTerritories } from '@/lib/territoriesApi';
+import { useSpaceStore } from '@/space/spaceStore';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, shadow, spacing } from '@/theme';
 import type { Coordinate } from '@/types';
@@ -44,7 +45,10 @@ export default function TerritoryScreen() {
     if (!challengerId && myPets[0]) setChallengerId(myPets[0].id);
   }, [challengerId, myPets]);
   const [mine, setMine] = useState<Territory[]>([]);
+  const [welcome, setWelcome] = useState<number | null>(null);
   const fetchTimer = useRef<any>(null);
+  const collectedRef = useRef(false);
+  const collectTerritory = useSpaceStore((s) => s.collectTerritory);
 
   // 定位
   useEffect(() => {
@@ -67,8 +71,21 @@ export default function TerritoryScreen() {
 
   const refreshMine = useCallback(async () => {
     if (!myUserId) return;
-    try { setMine(await fetchMyTerritories(myUserId)); } catch { /* ignore */ }
-  }, [myUserId]);
+    try {
+      const rows = await fetchMyTerritories(myUserId);
+      setMine(rows);
+      // 地盤被動收益 → 進罐罐（含連片加成），首次進來若有累積就跳歡迎
+      const rate = totalIncomePerHour(rows.map((t) => t.h3), landmarks);
+      const gained = collectTerritory(rate);
+      if (!collectedRef.current) {
+        collectedRef.current = true;
+        if (gained > 0) {
+          setWelcome(gained);
+          setTimeout(() => setWelcome(null), 3600);
+        }
+      }
+    } catch { /* ignore */ }
+  }, [myUserId, landmarks, collectTerritory]);
   useEffect(() => { refreshMine(); }, [refreshMine]);
 
   const onVisibleCells = useCallback((cells: string[]) => {
@@ -147,6 +164,10 @@ export default function TerritoryScreen() {
         </View>
       </View>
 
+      {welcome != null ? (
+        <View style={styles.welcome}><Text style={styles.welcomeT}>🚩 地盤收益進帳 +{welcome} 🥫</Text></View>
+      ) : null}
+
       {/* 底部資訊卡 */}
       {sel ? (
         <View style={styles.sheet}>
@@ -206,6 +227,8 @@ const styles = StyleSheet.create({
   hudK: { fontSize: 10, color: colors.textDim, fontWeight: '800' },
   hudV: { fontSize: 18, color: colors.primary, fontWeight: '900' },
   hudU: { fontSize: 11, color: colors.textDim, fontWeight: '700' },
+  welcome: { position: 'absolute', top: 104, left: 12, right: 12, zIndex: 1000, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.md, paddingVertical: 8, alignItems: 'center' },
+  welcomeT: { color: colors.gold, fontWeight: '900', fontSize: font.size.sm },
   sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card, borderWidth: 1, borderColor: colors.border, zIndex: 1000 },
   sheetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetTitle: { fontSize: font.size.md, fontWeight: '900', color: colors.text, flex: 1 },

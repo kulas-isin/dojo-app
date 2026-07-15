@@ -39,8 +39,10 @@ interface SpaceState {
   walkCansToday: number;
   walkRemainder: number;
 
+  lastTerritoryAt: number; // 上次領取地盤收益
   idleRate: () => number; // 每小時
   collectIdle: () => number; // 回傳這次領取的罐罐
+  collectTerritory: (perHour: number) => number; // 地盤被動收益，回傳這次領取的罐罐
   addWalk: (meters: number) => number; // 回傳這次獲得的罐罐
   buyDecoration: (kind: string) => boolean;
   moveDecoration: (id: string, x: number, y: number) => void;
@@ -94,6 +96,7 @@ export const useSpaceStore = create<SpaceState>()(
       fedAt: {},
       playedAt: {},
       lastLevelUp: null,
+      lastTerritoryAt: Date.now(),
       careStreak: 0,
       lastCareDay: '',
       lastDaily: null,
@@ -120,6 +123,15 @@ export const useSpaceStore = create<SpaceState>()(
         const gained = Math.floor((elapsed / HOUR) * get().idleRate());
         if (gained > 0) set((s) => ({ cans: s.cans + gained, lastCollectedAt: now }));
         else set({ lastCollectedAt: now });
+        return gained;
+      },
+
+      collectTerritory: (perHour) => {
+        const now = Date.now();
+        const elapsed = Math.min(now - get().lastTerritoryAt, IDLE_CAP_HOURS * HOUR);
+        const gained = perHour > 0 ? Math.floor((elapsed / HOUR) * perHour) : 0;
+        if (gained > 0) set((s) => ({ cans: s.cans + gained, lastTerritoryAt: now }));
+        else set({ lastTerritoryAt: now });
         return gained;
       },
 
