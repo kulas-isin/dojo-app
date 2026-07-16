@@ -352,12 +352,29 @@ function applyFilter(img: HTMLImageElement, filter: FilterKind, k: number): stri
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
   const { canvas, ctx } = newCanvas(w, h);
+
+  // 像素化：縮到很小再最近鄰放大成 8-bit（強度越高塊越大）
+  if (filter === 'pixel') {
+    const cells = Math.max(10, Math.round(64 - 52 * k)); // k:0→64、1→12 格
+    const scale = cells / Math.max(w, h);
+    const sw = Math.max(1, Math.round(w * scale));
+    const sh = Math.max(1, Math.round(h * scale));
+    const small = newCanvas(sw, sh);
+    small.ctx.drawImage(img, 0, 0, sw, sh);
+    ctx.imageSmoothingEnabled = false;
+    (ctx as any).filter = 'saturate(1.35) contrast(1.08)';
+    ctx.drawImage(small.canvas, 0, 0, sw, sh, 0, 0, w, h);
+    (ctx as any).filter = 'none';
+    return canvas.toDataURL('image/jpeg', 0.9);
+  }
+
   const css: Record<FilterKind, string> = {
     none: 'none',
     fried: `saturate(${1 + 1.7 * k}) contrast(${1 + 0.75 * k}) brightness(${1 + 0.05 * k})`,
     cry: `saturate(${1 - 0.4 * k}) brightness(${1 + 0.05 * k}) contrast(${1 + 0.12 * k})`,
     soft: `saturate(${1 + 0.28 * k}) brightness(${1 + 0.13 * k}) contrast(${1 - 0.06 * k})`,
     cursed: `saturate(${1 - 0.55 * k}) contrast(${1 + 0.65 * k}) brightness(${1 - 0.08 * k})`,
+    pixel: 'none', // 像素化在上方已提前處理
   };
   try { (ctx as any).filter = css[filter]; } catch { /* 不支援就靠疊色 */ }
   ctx.drawImage(img, 0, 0, w, h);

@@ -32,6 +32,7 @@ const FILTERS: { id: FilterKind; label: string; emoji: string }[] = [
   { id: 'cry', label: '哭哭', emoji: '😢' },
   { id: 'soft', label: '憨笑', emoji: '🥰' },
   { id: 'cursed', label: '驚嚇', emoji: '😱' },
+  { id: 'pixel', label: '像素', emoji: '👾' },
 ];
 
 const SAMPLES = [
@@ -66,6 +67,7 @@ export default function MemeScreen() {
   const [msg, setMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [pvSize, setPvSize] = useState<{ w: number; h: number } | null>(null);
+  const [spinning, setSpinning] = useState(false);
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
@@ -78,6 +80,46 @@ export default function MemeScreen() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
     if (!r.canceled && r.assets[0]) setImage(r.assets[0].uri);
   };
+  // 🎰 梗圖轉盤：隨機模板＋濾鏡＋梗句，帶拉霸輪動動畫
+  const spin = () => {
+    if (spinning) return;
+    let base = imgs;
+    if (!imgs[0]) {
+      const s = SAMPLES[Math.floor(Math.random() * SAMPLES.length)];
+      base = [s, imgs[1]];
+      setImgs(base);
+    }
+    const twoReady = !!base[0] && !!base[1];
+    const pool = TEMPLATES.filter((t) => t.images === 1 || twoReady);
+    setSpinning(true);
+    const total = 12;
+    let n = 0;
+    const tick = () => {
+      n += 1;
+      setTemplate(pool[Math.floor(Math.random() * pool.length)].id);
+      setFilter(FILTERS[Math.floor(Math.random() * FILTERS.length)].id);
+      if (n < total) {
+        setTimeout(tick, 55 + n * 16); // 由快到慢
+        return;
+      }
+      // 定格：最終隨機組合
+      const finalT = pool[Math.floor(Math.random() * pool.length)];
+      setTemplate(finalT.id);
+      setFilter(FILTERS[Math.floor(Math.random() * FILTERS.length)].id);
+      setStrength(0.5 + Math.random() * 0.5);
+      const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+      const line = randomLine(theme.id);
+      setTexts((prev) => {
+        const next = { ...prev };
+        if (finalT.slots[0]) next[finalT.slots[0].key] = line.a;
+        if (finalT.slots[1]) next[finalT.slots[1].key] = line.b;
+        return next;
+      });
+      setSpinning(false);
+    };
+    tick();
+  };
+
   const roll = (themeId?: string) => {
     const line = randomLine(themeId);
     setTexts((prev) => {
@@ -187,6 +229,12 @@ export default function MemeScreen() {
         })}
       </ScrollView>
       <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
+
+      {/* 🎰 梗圖轉盤 */}
+      <Pressable style={[styles.gacha, spinning && styles.gachaOn]} onPress={spin} disabled={spinning}>
+        <Text style={styles.gachaEmoji}>🎰</Text>
+        <Text style={styles.gachaT}>{spinning ? '抽取中…' : '隨機一發'}</Text>
+      </Pressable>
 
       {/* 迷因濾鏡 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
@@ -349,6 +397,10 @@ const styles = StyleSheet.create({
   tplEmoji: { fontSize: 20 },
   tplName: { fontSize: font.size.xs, fontWeight: '800', color: colors.text },
   tplHint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '700', marginTop: 4, marginBottom: spacing.sm },
+  gacha: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.gold, borderRadius: radius.md, borderWidth: 3, borderColor: colors.text, paddingVertical: 11, marginBottom: spacing.sm, ...Platform.select({ web: { boxShadow: '0 5px 0 #9A6410' } as any }) },
+  gachaOn: { opacity: 0.7 },
+  gachaEmoji: { fontSize: 18 },
+  gachaT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.md },
   filterRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
   filterChipOn: { backgroundColor: colors.primary, borderColor: colors.text },

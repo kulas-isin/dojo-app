@@ -14,7 +14,8 @@ export type FilterKind =
   | 'fried' // 炸圖 deep-fried
   | 'cry' // 哭哭藍調
   | 'soft' // 憨笑暖調
-  | 'cursed'; // 驚嚇 cursed
+  | 'cursed' // 驚嚇 cursed
+  | 'pixel'; // 像素化 8-bit
 
 export interface MemeInput {
   template: TemplateKind;
