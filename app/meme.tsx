@@ -28,13 +28,13 @@ import { THEMES, randomLine } from '@/meme/captions';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing, sticker } from '@/theme';
 
-const FILTERS: { id: FilterKind; label: string; emoji: string }[] = [
-  { id: 'none', label: '原圖', emoji: '🖼️' },
-  { id: 'fried', label: '炸圖', emoji: '🔥' },
-  { id: 'cry', label: '哭哭', emoji: '😢' },
-  { id: 'soft', label: '憨笑', emoji: '🥰' },
-  { id: 'cursed', label: '驚嚇', emoji: '😱' },
-  { id: 'pixel', label: '像素', emoji: '👾' },
+const FILTERS: { id: FilterKind; label: string; emoji: string; tint: string }[] = [
+  { id: 'none', label: '原圖', emoji: '🖼️', tint: '#C9DEB8' },
+  { id: 'fried', label: '炸圖', emoji: '🔥', tint: '#FF6A00' },
+  { id: 'cry', label: '哭哭', emoji: '😢', tint: '#2A5AD0' },
+  { id: 'soft', label: '憨笑', emoji: '🥰', tint: '#FFB84D' },
+  { id: 'cursed', label: '驚嚇', emoji: '😱', tint: '#3E5A3A' },
+  { id: 'pixel', label: '像素', emoji: '👾', tint: '#7A5CFF' },
 ];
 const FX_FILTERS = FILTERS.filter((f) => f.id !== 'none'); // 轉盤只抽有效果的
 
@@ -83,6 +83,9 @@ export default function MemeScreen() {
   const [rollMsg, setRollMsg] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const pulse = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
+  const tplScrollRef = useRef<ScrollView>(null);
+  const filterScrollRef = useRef<ScrollView>(null);
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
@@ -138,6 +141,11 @@ export default function MemeScreen() {
       setStarKey((k) => k + 1); // 落定撒像素星星
       setRollMsg(`🎁 抽到：${finalT.name}・${ff.label} ${Math.round(str * 100)}%`);
       setTimeout(() => setRollMsg(null), 2600);
+      // 把抽中的模板/濾鏡捲進視野
+      const tIdx = TEMPLATES.findIndex((t) => t.id === finalT.id);
+      const fIdx = FILTERS.findIndex((f) => f.id === ff.id);
+      tplScrollRef.current?.scrollTo({ x: Math.max(0, tIdx * 84 - 40), animated: true });
+      filterScrollRef.current?.scrollTo({ x: Math.max(0, fIdx * 84 - 40), animated: true });
     };
     tick();
   };
@@ -190,6 +198,19 @@ export default function MemeScreen() {
     loop.start();
     return () => loop.stop();
   }, [composing, pulse]);
+
+  // 轉盤時 🎰 抖動
+  useEffect(() => {
+    if (!spinning) { shake.stopAnimation(); shake.setValue(0); return; }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shake, { toValue: 1, duration: 90, useNativeDriver: true }),
+        Animated.timing(shake, { toValue: -1, duration: 90, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spinning, shake]);
 
   const download = async () => {
     if (!ready) { setMsg(twoImg ? '這個模板需要兩張圖' : '先選一張圖'); return; }
@@ -322,8 +343,8 @@ export default function MemeScreen() {
       </View>
 
       {/* 🎰 轉盤 */}
-      <Pressable style={[styles.gacha, spinning && styles.gachaOn]} onPress={spin} disabled={spinning}>
-        <Text style={styles.gachaEmoji}>🎰</Text>
+      <Pressable style={({ pressed }) => [styles.gacha, spinning && styles.gachaOn, pressed && !spinning && styles.gachaPressed]} onPress={spin} disabled={spinning}>
+        <Animated.Text style={[styles.gachaEmoji, { transform: [{ rotate: shake.interpolate({ inputRange: [-1, 1], outputRange: ['-18deg', '18deg'] }) }] }]}>🎰</Animated.Text>
         <Text style={styles.gachaT}>{spinning ? '抽取中…' : starKey > 0 ? '再抽一次' : '隨機一發'}</Text>
       </Pressable>
       {rollMsg ? <Text style={styles.rollMsg}>{rollMsg}</Text> : null}
@@ -353,7 +374,7 @@ export default function MemeScreen() {
       ))}
       <View style={styles.themeRow}>
         {THEMES.map((t) => (
-          <Pressable key={t.id} onPress={() => roll(t.id)} style={styles.themeChip}>
+          <Pressable key={t.id} onPress={() => roll(t.id)} style={({ pressed }) => [styles.themeChip, pressed && styles.pressed]}>
             <Text style={styles.themeEmoji}>{t.emoji}</Text>
             <Text style={styles.themeT}>{t.label}</Text>
           </Pressable>
@@ -389,11 +410,11 @@ export default function MemeScreen() {
       {/* 樣式 */}
       <View style={styles.hr} />
       <Text style={styles.label}>樣式</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tplRow}>
+      <ScrollView ref={tplScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tplRow}>
         {TEMPLATES.map((t) => {
           const on = template === t.id;
           return (
-            <Pressable key={t.id} onPress={() => { setTemplate(t.id); setActiveSlot(0); }} style={[styles.tplChip, on && styles.tplChipOn]}>
+            <Pressable key={t.id} onPress={() => { setTemplate(t.id); setActiveSlot(0); }} style={({ pressed }) => [styles.tplChip, on && styles.tplChipOn, pressed && styles.pressed]}>
               <Text style={styles.tplEmoji}>{t.emoji}</Text>
               <Text style={[styles.tplName, on && { color: colors.onColor }]}>{t.name}</Text>
             </Pressable>
@@ -401,11 +422,12 @@ export default function MemeScreen() {
         })}
       </ScrollView>
       <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView ref={filterScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {FILTERS.map((f) => {
           const on = filter === f.id;
           return (
-            <Pressable key={f.id} onPress={() => setFilter(f.id)} style={[styles.filterChip, on && styles.filterChipOn]}>
+            <Pressable key={f.id} onPress={() => setFilter(f.id)} style={({ pressed }) => [styles.filterChip, on && styles.filterChipOn, pressed && styles.pressed]}>
+              <View style={[styles.swatch, { backgroundColor: f.tint }]} />
               <Text style={styles.filterEmoji}>{f.emoji}</Text>
               <Text style={[styles.filterName, on && { color: colors.onColor }]}>{f.label}</Text>
             </Pressable>
@@ -452,7 +474,7 @@ export default function MemeScreen() {
           <Text style={styles.wallLabel}>🔥 大家的迷因</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
             {memeWall.map((p) => (
-              <Pressable key={p.id} onPress={() => router.push(`/pet/${p.petId}`)} style={styles.wallItem}>
+              <Pressable key={p.id} onPress={() => router.push(`/pet/${p.petId}`)} style={({ pressed }) => [styles.wallItem, pressed && styles.pressed]}>
                 <Image source={{ uri: p.thumbUri ?? p.mediaUri }} style={styles.fill} contentFit="cover" />
               </Pressable>
             ))}
@@ -543,7 +565,10 @@ const styles = StyleSheet.create({
   tplHint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '700', marginTop: 4, marginBottom: spacing.sm },
   gacha: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.gold, borderRadius: radius.md, borderWidth: 3, borderColor: colors.text, paddingVertical: 11, marginBottom: spacing.sm, ...Platform.select({ web: { boxShadow: '0 5px 0 #9A6410' } as any }) },
   gachaOn: { opacity: 0.7 },
+  gachaPressed: { transform: [{ translateY: 3 }] },
   gachaEmoji: { fontSize: 18 },
+  pressed: { opacity: 0.6, transform: [{ scale: 0.96 }] },
+  swatch: { width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: 'rgba(0,0,0,0.15)' },
   gachaT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.md },
   filterRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
