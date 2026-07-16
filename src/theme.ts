@@ -1,36 +1,36 @@
 /**
- * PawDojo 設計 Tokens — 插畫風暖色系
- * 暖奶油底、珊瑚主色、沙綠與奶油黃、粉彩色塊。
+ * PawDojo 設計 Tokens — 薄荷汽水（復古電玩）
+ * 淡薄荷綠底、番茄珊瑚主色、深松墨字，配復古汽水跳色。
  * 插畫用於 UI 裝飾與空狀態；寵物照片維持用戶真實上傳。
  */
 
 export const colors = {
   // 底色與表面
-  bg: '#FBF6EE', // 暖奶油
-  bgElevated: '#F3E9DA', // 次層背景
-  card: '#FFFFFF',
-  cardAlt: '#F5EFE4', // 卡內淡色區塊
-  border: '#EAE0D0',
+  bg: '#E3F0DA', // 淡薄荷
+  bgElevated: '#D7E8C9', // 次層背景（深一階薄荷）
+  card: '#FBFDF4', // 奶白（帶一點暖）
+  cardAlt: '#EAF3E0', // 卡內淡薄荷區塊
+  border: '#C9DEB8',
 
   // 文字
-  text: '#2E2A26', // 暖墨
-  textDim: '#6E6558',
-  textMuted: '#A89E8C',
+  text: '#22392F', // 深松墨
+  textDim: '#5E7A66',
+  textMuted: '#93A896',
   onColor: '#FFFFFF',
 
   // 品牌 / 語意色
-  primary: '#E8805C', // 珊瑚
-  primarySoft: '#FBE1D2', // 珊瑚粉彩底
-  accent: '#5E9B7E', // 沙綠
-  accentSoft: '#DDEBDF',
-  gold: '#C0872E', // 琥珀金（文字可讀）
-  goldSoft: '#F6E7C4',
-  danger: '#C0453B',
-  success: '#5E9B7E',
+  primary: '#F26B54', // 番茄珊瑚
+  primarySoft: '#FBDDD4', // 珊瑚粉彩底
+  accent: '#2E5EAA', // 海軍藍（次要強調）
+  accentSoft: '#D5E1F2',
+  gold: '#C77F12', // 琥珀金（文字可讀）
+  goldSoft: '#F7E6BC',
+  danger: '#E23B3B',
+  success: '#2FA46A',
 };
 
 /** 粉彩色塊：用於照片牆底、色塊 blob、標籤底等裝飾 */
-export const tints = ['#FBE1D2', '#DDEBDF', '#D9E8EC', '#EADFF0', '#F6E7C4'];
+export const tints = ['#FBDDD4', '#D5E1F2', '#D9EFD0', '#EFE1F6', '#F7E6BC'];
 
 export const spacing = {
   xs: 4,
@@ -69,10 +69,10 @@ export const font = {
 /** 卡片預設陰影（暖色柔和陰影） */
 export const shadow = {
   card: {
-    shadowColor: '#5A3A1A',
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#1E4030',
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
     elevation: 3,
   },
 };
