@@ -1,9 +1,12 @@
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Cat, Diamond, Gift, HelpCircle } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
+import { CanIcon } from '@/components/CanIcon';
+import { Castle, Flag, Shield, Swords } from '@/components/icons';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
@@ -118,8 +121,9 @@ export default function TerritoryScreen() {
   const eventMarker = useCallback((h3: string) => {
     const e = eventFor(h3);
     if (!e || eventLog[h3] === today) return null;
-    return e.emoji;
+    return e.id;
   }, [eventLog, today]);
+  const EV_ICON: Record<string, any> = { cans: CanIcon, treasure: Gift, big: Diamond, mystery: HelpCircle, stray: Cat };
   const selEvent = sel ? eventFor(sel.h3) : null;
   const selEventOpen = !!selEvent && !selT && !!sel && eventLog[sel.h3] !== today;
 
@@ -138,7 +142,7 @@ export default function TerritoryScreen() {
       });
     } else {
       claimEvent(sel.h3, selEvent.amount);
-      setMsg(`+${selEvent.amount} 🥫 入袋！`);
+      setMsg(`+${selEvent.amount} 罐罐入袋！`);
     }
   };
 
@@ -214,57 +218,73 @@ export default function TerritoryScreen() {
         </View>
         <View style={styles.hudCard}>
           <Text style={styles.hudK}>收益</Text>
-          <Text style={[styles.hudV, { color: colors.gold }]}>+{income}<Text style={styles.hudU}> 🥫/時</Text></Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <Text style={[styles.hudV, { color: colors.gold }]}>+{income}</Text>
+            <CanIcon size={13} color={colors.gold} />
+            <Text style={styles.hudU}>/時</Text>
+          </View>
         </View>
       </View>
 
       {welcome != null ? (
-        <View style={styles.welcome}><Text style={styles.welcomeT}>🚩 地盤收益進帳 +{welcome} 🥫</Text></View>
+        <View style={styles.welcome}>
+          <Flag size={14} color={colors.gold} />
+          <Text style={styles.welcomeT}>地盤收益進帳 +{welcome}</Text>
+          <CanIcon size={13} color={colors.gold} />
+        </View>
       ) : null}
 
       {/* 底部資訊卡 */}
       {sel && selEventOpen && selEvent ? (
         <View style={styles.sheet}>
           <View style={styles.sheetTop}>
-            <Text style={styles.sheetTitle}>{selEvent.emoji} {selEvent.label}</Text>
+            <View style={styles.titleRow}>
+              {(() => { const I = EV_ICON[selEvent.id]; return I ? <I size={18} color={colors.text} /> : null; })()}
+              <Text style={styles.sheetTitle}>{selEvent.label}</Text>
+            </View>
             {selDist != null ? <Text style={styles.sheetDist}>{fmtDist(selDist)}</Text> : null}
           </View>
           <Text style={styles.sheetSub}>
-            {selEvent.desc}　{selEvent.kind === 'stray' ? `打贏 +${selEvent.amount}🥫` : `+${selEvent.amount}🥫`}
+            {selEvent.desc}　{selEvent.kind === 'stray' ? `打贏 +${selEvent.amount}` : `+${selEvent.amount}`} 罐罐
           </Text>
           {selEvent.kind === 'stray' ? petPicker : null}
           {msg ? <Text style={styles.msg}>{msg}</Text> : null}
           <Pressable style={styles.btn} onPress={collectEvent}>
-            <Text style={styles.btnT}>{selEvent.kind === 'stray' ? '⚔️ 挑戰浪浪' : '🎁 打開領取'}</Text>
+            {selEvent.kind === 'stray' ? <Swords size={18} color={colors.onColor} /> : <Gift size={18} color={colors.onColor} />}
+            <Text style={styles.btnT}>{selEvent.kind === 'stray' ? '挑戰浪浪' : '打開領取'}</Text>
           </Pressable>
         </View>
       ) : sel ? (
         <View style={styles.sheet}>
           <View style={styles.sheetTop}>
-            <Text style={styles.sheetTitle}>
-              {selLandmark ? '⛩️ ' : ''}{selT ? selT.ownerName + ' 的地盤' : selLandmark ? '道館・戰略地標' : '無主之地'}
-            </Text>
+            <View style={styles.titleRow}>
+              {selLandmark ? <Castle size={16} color={colors.gold} /> : null}
+              <Text style={styles.sheetTitle}>
+                {selT ? selT.ownerName + ' 的地盤' : selLandmark ? '道館・戰略地標' : '無主之地'}
+              </Text>
+            </View>
             {selDist != null ? <Text style={styles.sheetDist}>{fmtDist(selDist)}</Text> : null}
           </View>
           <Text style={styles.sheetSub}>
             {selT ? `駐守：${selT.petName}` : '這塊地還沒人佔'}
-            {'　'}收益 +{cellBaseIncome(sel.h3, landmarks)}🥫/時
-            {selShielded ? '　🛡️ 保護中' : ''}
+            {'　'}收益 +{cellBaseIncome(sel.h3, landmarks)} 罐罐/時
+            {selShielded ? '　保護中' : ''}
           </Text>
           {!selMine && !selShielded ? petPicker : null}
           {msg ? <Text style={styles.msg}>{msg}</Text> : null}
           {selMine ? (
             <View style={[styles.btn, styles.btnGhost]}><Text style={styles.btnGhostT}>這是你的地盤</Text></View>
           ) : selShielded ? (
-            <View style={[styles.btn, styles.btnDim]}><Text style={styles.btnDimT}>🛡️ 保護中，暫時搶不了</Text></View>
+            <View style={[styles.btn, styles.btnDim]}><Shield size={16} color={colors.textDim} /><Text style={styles.btnDimT}>保護中，暫時搶不了</Text></View>
           ) : (
             <Pressable style={styles.btn} onPress={challenge}>
-              <Text style={styles.btnT}>⚔️ 挑戰佔領{!sel.inRange && !!userLocation ? '（遠征）' : ''}</Text>
+              <Swords size={18} color={colors.onColor} />
+              <Text style={styles.btnT}>挑戰佔領{!sel.inRange && !!userLocation ? '（遠征）' : ''}</Text>
             </Pressable>
           )}
         </View>
       ) : (
-        <View style={styles.hint}><Text style={styles.hintT}>點地圖上的六角格看看誰佔了哪，走到範圍內就能搶 🐾</Text></View>
+        <View style={styles.hint}><Text style={styles.hintT}>點地圖上的六角格看看誰佔了哪，走到範圍內就能搶</Text></View>
       )}
     </View>
   );
@@ -279,10 +299,11 @@ const styles = StyleSheet.create({
   hudK: { fontSize: 10, color: colors.textDim, fontWeight: '800' },
   hudV: { fontSize: 18, color: colors.primary, fontWeight: '900' },
   hudU: { fontSize: 11, color: colors.textDim, fontWeight: '700' },
-  welcome: { position: 'absolute', top: 104, left: 12, right: 12, zIndex: 1000, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.md, paddingVertical: 8, alignItems: 'center' },
+  welcome: { position: 'absolute', top: 104, left: 12, right: 12, zIndex: 1000, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   welcomeT: { color: colors.gold, fontWeight: '900', fontSize: font.size.sm },
   sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card, borderWidth: 1, borderColor: colors.border, zIndex: 1000 },
   sheetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
   sheetTitle: { fontSize: font.size.md, fontWeight: '900', color: colors.text, flex: 1 },
   sheetDist: { fontSize: font.size.sm, color: colors.textDim, fontWeight: '800' },
   sheetSub: { fontSize: font.size.sm, color: colors.textDim, marginTop: 4, fontWeight: '600' },
@@ -292,7 +313,7 @@ const styles = StyleSheet.create({
   petChipOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   petChipT: { fontSize: font.size.sm, color: colors.text, fontWeight: '800' },
   petChipLv: { fontSize: 10, color: colors.textDim, fontWeight: '700' },
-  btn: { marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  btn: { marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   btnT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.md },
   btnGhost: { backgroundColor: colors.cardAlt },
   btnGhostT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },

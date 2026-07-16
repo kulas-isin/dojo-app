@@ -70,6 +70,15 @@ function avatarUrl(avatar: PetAvatar, petType: PetType) {
   return u;
 }
 
+// 事件格單色 icon（線性、吃深松墨色，不帶額外顏色）
+const EVENT_ICON: Record<string, string> = {
+  cans: '<rect x="6" y="8" width="12" height="12" rx="2"/><path d="M6 11.5h12"/><path d="M9 8l1-4h4l1 4"/>',
+  treasure: '<rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M4 13.5h16"/><path d="M12 10v10"/><path d="M12 10c-1.6-3.2-5-1.6-3.6.3M12 10c1.6-3.2 5-1.6 3.6.3"/>',
+  big: '<path d="M6 3.5h12l3 5.5-9 11.5L3 9z"/><path d="M3 9h18"/><path d="M9 3.5 12 9l3-5.5"/>',
+  mystery: '<circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.6 2.6 0 1 1 3.6 2.4c-.9.4-1.2.9-1.2 1.7"/><circle cx="12" cy="16.6" r=".7" fill="currentColor" stroke="none"/>',
+  stray: '<circle cx="5.5" cy="12" r="1.6"/><circle cx="9.5" cy="7.4" r="1.6"/><circle cx="14.5" cy="7.4" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/><path d="M12 12.2c2.6 0 4.3 1.9 4.3 3.9 0 1.7-1.4 2.6-3 2-.8-.3-1.8-.3-2.6 0-1.6.6-3-.3-3-2 0-2 1.7-3.9 4.3-3.9z"/>',
+};
+
 const OWNER_COLORS = ['#3E9AD4', '#4FAE6B', '#9E5FD6', '#E0A32C', '#D75A9A', '#2CB5A8'];
 function ownerColor(id: string | null, myId: string | null): string {
   if (id && id === myId) return colors.primary;
@@ -212,14 +221,18 @@ function HexLayer(props: TerritoryMapProps) {
         />
       );
     })}
-    {/* 隨機事件格 */}
+    {/* 隨機事件格（單色 icon） */}
     {events.map((ev: any) => (
       <div
         key={'e' + ev.h3}
         className="terr-event"
         style={{ position: 'absolute', left: ev.cx, top: ev.cy, zIndex: 465, pointerEvents: 'none', animationDelay: `${-(hashNum(ev.h3) % 20) / 10}s` }}
       >
-        {ev.em}
+        <svg
+          width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#22392F"
+          strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round"
+          dangerouslySetInnerHTML={{ __html: EVENT_ICON[ev.em] || EVENT_ICON.cans }}
+        />
       </div>
     ))}
     </>
