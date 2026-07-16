@@ -1,11 +1,19 @@
 // 平台實作於 composeMeme.web.ts / composeMeme.native.ts，由 Metro 依平台挑選。
-export type MemeStyle = 'classic' | 'topbar';
+export type TemplateKind =
+  | 'classic' // 經典上下白字黑框
+  | 'topbar' // 上白條
+  | 'reaction' // 當…的時候（頂部深色帶白字）
+  | 'bubble' // 內心 OS 對話框
+  | 'label' // 標籤梗（箭頭指標籤）
+  | 'vs' // 期待 vs 現實（雙圖）
+  | 'drake'; // 我不要／我要（雙圖）
 
 export interface MemeInput {
-  imageUri: string;
-  topText: string;
-  bottomText: string;
-  style: MemeStyle;
+  template: TemplateKind;
+  /** 1 或 2 張圖，依模板而定 */
+  images: string[];
+  /** 依模板 slots 順序對應的文字 */
+  texts: string[];
 }
 
 export interface MemeResult {
