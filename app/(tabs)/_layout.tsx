@@ -53,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: '排行榜',
+          title: '人氣賽',
           tabBarIcon: ({ color, focused }) => (
             <Trophy size={focused ? 26 : 23} color={color} strokeWidth={2.2} />
           ),
