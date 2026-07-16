@@ -3,6 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cat, Diamond, Gift, HelpCircle } from 'lucide-react-native';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
 import { CanIcon } from '@/components/CanIcon';
@@ -10,7 +11,7 @@ import { Flag, Shield, Swords } from '@/components/icons';
 import { PixelSprite } from '@/components/PixelSprite';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
-import { cellCenter } from '@/territory/h3grid';
+import { cellAt, cellCenter } from '@/territory/h3grid';
 import { eventFor } from '@/territory/events';
 import { cellBaseIncome, landmarkCells, totalIncomePerHour } from '@/territory/income';
 import type { Territory } from '@/territory/types';
@@ -30,7 +31,8 @@ function distMeters(a: Coordinate, b: Coordinate) {
 }
 const fmtDist = (m: number) => (m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`);
 
-export default function TerritoryScreen() {
+export default function MapScreen() {
+  const insets = useSafeAreaInsets();
   const gyms = useStore((s) => s.gyms);
   const pets = useStore((s) => s.pets);
   const myUserId = useStore((s) => s.currentUserId);
@@ -39,6 +41,14 @@ export default function TerritoryScreen() {
     [pets, myUserId],
   );
   const landmarks = useMemo(() => landmarkCells(gyms), [gyms]);
+  // 道館 = 地標格：h3 → gym，讓點地標能開道館詳情
+  const gymByCell = useMemo(() => {
+    const m = new Map<string, (typeof gyms)[number]>();
+    for (const g of gyms) m.set(cellAt(g.coordinate.latitude, g.coordinate.longitude), g);
+    return m;
+  }, [gyms]);
+  const lastWalkRef = useRef<Coordinate | null>(null);
+  const addWalk = useSpaceStore((s) => s.addWalk);
 
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [terr, setTerr] = useState<Record<string, Territory>>({});
@@ -70,7 +80,17 @@ export default function TerritoryScreen() {
         if (active) setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
         sub = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 8, timeInterval: 4000 },
-          (l) => setUserLocation({ latitude: l.coords.latitude, longitude: l.coords.longitude }),
+          (l) => {
+            const here = { latitude: l.coords.latitude, longitude: l.coords.longitude };
+            setUserLocation(here);
+            // 走路賺罐罐：合理位移（3~200m）才計，避免定位跳點灌水
+            const prev = lastWalkRef.current;
+            if (prev) {
+              const m = distMeters(prev, here);
+              if (m >= 3 && m < 200) addWalk(m);
+            }
+            lastWalkRef.current = here;
+          },
         );
       } catch { /* 用示範中心 */ }
     })();
@@ -117,6 +137,7 @@ export default function TerritoryScreen() {
   const selShielded = !!selT?.shieldUntil && selT.shieldUntil > Date.now();
   const selLandmark = sel ? landmarks.has(sel.h3) : false;
   const selDist = sel && userLocation ? distMeters(userLocation, cellCenter(sel.h3)) : null;
+  const selGym = sel ? gymByCell.get(sel.h3) : undefined;
 
   // 事件格：地圖標示 + 選中互動
   const eventMarker = useCallback((h3: string) => {
@@ -211,8 +232,7 @@ export default function TerritoryScreen() {
       />
 
       {/* 頂部 HUD */}
-      <View style={styles.hud} pointerEvents="box-none">
-        <Pressable style={styles.back} onPress={() => router.back()}><Text style={styles.backT}>‹</Text></Pressable>
+      <View style={[styles.hud, { top: insets.top + 8 }]} pointerEvents="box-none">
         <View style={styles.hudCard}>
           <Text style={styles.hudK}>我的地盤</Text>
           <Text style={styles.hudV}>{mine.length}<Text style={styles.hudU}> 塊</Text></Text>
@@ -283,10 +303,30 @@ export default function TerritoryScreen() {
               <Text style={styles.btnT}>挑戰佔領{!sel.inRange && !!userLocation ? '（遠征）' : ''}</Text>
             </Pressable>
           )}
+          {selGym ? (
+            <Pressable style={[styles.btn, styles.btnGhost, { marginTop: 8 }]} onPress={() => router.push(`/gym/${selGym.id}`)}>
+              <PixelSprite name="tower" size={16} />
+              <Text style={styles.btnGhostT}>查看道館</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : (
         <View style={styles.hint}><Text style={styles.hintT}>點地圖上的六角格看看誰佔了哪，走到範圍內就能搶</Text></View>
       )}
+
+      {/* 建立道館：無資訊卡時顯示 */}
+      {!sel ? (
+        <Pressable
+          style={[styles.fab, { bottom: insets.bottom + 88 }]}
+          onPress={() => {
+            const c = userLocation ?? SEED_CENTER;
+            router.push({ pathname: '/gym/create', params: { latitude: String(c.latitude), longitude: String(c.longitude) } });
+          }}
+        >
+          <PixelSprite name="tower" size={20} />
+          <Text style={styles.fabT}>建立道館</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -294,8 +334,6 @@ export default function TerritoryScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   hud: { position: 'absolute', top: 48, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center', zIndex: 1000 },
-  back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', ...shadow.card },
-  backT: { fontSize: 26, color: colors.text, marginTop: -3, fontWeight: '800' },
   hudCard: { backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 8, ...sticker },
   hudK: { fontSize: 10, color: colors.textDim, fontWeight: '800' },
   hudV: { fontSize: 18, color: colors.primary, fontWeight: '900' },
@@ -322,4 +360,6 @@ const styles = StyleSheet.create({
   btnDimT: { color: colors.textDim, fontWeight: '900', fontSize: font.size.sm },
   hint: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, ...shadow.card, zIndex: 1000 },
   hintT: { fontSize: font.size.sm, color: colors.textDim, textAlign: 'center', fontWeight: '600' },
+  fab: { position: 'absolute', right: 14, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: colors.primary, borderRadius: radius.pill, borderWidth: 3, borderColor: colors.text, paddingLeft: 12, paddingRight: 16, paddingVertical: 10, zIndex: 1001, ...Platform.select({ web: { boxShadow: '0 5px 0 #C4402C' } as any }) },
+  fabT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.sm },
 });
