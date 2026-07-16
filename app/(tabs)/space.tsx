@@ -140,11 +140,17 @@ export default function SpaceScreen() {
       ) : null}
 
       {myPets.length === 0 ? (
-        <EmptyState
-          doodle="paw"
-          title="還沒有毛孩住進來"
-          subtitle="先建立一隻寵物，就能在這裡陪伴、養成牠。"
-        />
+        <View>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 12, marginTop: spacing.xl }}>
+            <PixelSprite name="dog" size={54} />
+            <PixelSprite name="cat" size={48} />
+          </View>
+          <EmptyState
+            doodle="paw"
+            title="還沒有毛孩住進來"
+            subtitle="先建立一隻寵物，就能在這裡陪伴、養成牠。"
+          />
+        </View>
       ) : (
         <>
           {/* 院子 */}

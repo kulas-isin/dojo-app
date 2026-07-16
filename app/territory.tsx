@@ -6,7 +6,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
 import { CanIcon } from '@/components/CanIcon';
-import { Castle, Flag, Shield, Swords } from '@/components/icons';
+import { Flag, Shield, Swords } from '@/components/icons';
+import { PixelSprite } from '@/components/PixelSprite';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
@@ -258,7 +259,7 @@ export default function TerritoryScreen() {
         <View style={styles.sheet}>
           <View style={styles.sheetTop}>
             <View style={styles.titleRow}>
-              {selLandmark ? <Castle size={16} color={colors.gold} /> : null}
+              {selLandmark ? <PixelSprite name="tower" size={18} /> : null}
               <Text style={styles.sheetTitle}>
                 {selT ? selT.ownerName + ' 的地盤' : selLandmark ? '道館・戰略地標' : '無主之地'}
               </Text>

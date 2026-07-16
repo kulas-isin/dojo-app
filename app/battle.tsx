@@ -20,6 +20,7 @@ import {
 import { typeMeta } from '@/battle/stats';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, type PetAvatar } from '@/avatar/sprite';
+import { PixelSprite } from '@/components/PixelSprite';
 import { logBattleRemote } from '@/lib/logsApi';
 import { captureTerritoryRemote } from '@/lib/territoriesApi';
 import { useSpaceStore } from '@/space/spaceStore';
@@ -155,6 +156,7 @@ export default function BattleScreen() {
   const [bolts, setBolts] = useState<Bolt[]>([]);
   const [rays, setRays] = useState<RayItem[]>([]);
   const [nums, setNums] = useState<NumItem[]>([]);
+  const [stars, setStars] = useState<{ id: number; cx: number; cy: number; dx: number; dy: number; size: number }[]>([]);
   const fxId = useRef(0);
   const shakeA = useRef(new Animated.Value(0)).current;
   // 即時 HP（state 更新非同步，用 ref 當戰鬥即時真相）
@@ -341,7 +343,18 @@ export default function BattleScreen() {
     ]).start();
   };
   // 大招開場：全螢幕漫畫集中線 + 「必殺!」大字彈出
+  // 像素星星迸發（必殺 / 佔領勝利）
+  const spawnStars = (cx: number, cy: number, n = 12) => {
+    const items = Array.from({ length: n }, () => {
+      const ang = Math.random() * Math.PI * 2, d = 40 + Math.random() * 90;
+      return { id: fxId.current++, cx, cy, dx: Math.cos(ang) * d, dy: Math.sin(ang) * d, size: 12 + Math.random() * 10 };
+    });
+    setStars((s) => [...s, ...items]);
+    setTimeout(() => setStars((s) => s.filter((x) => !items.find((it) => it.id === x.id))), 900);
+  };
   const playUltCinematic = (name: string) => {
+    const ccx = (fxPos.me.x + fxPos.foe.x) / 2, ccy = (fxPos.me.y + fxPos.foe.y) / 2;
+    setTimeout(() => spawnStars(ccx, ccy, 16), 480);
     setUltName(name);
     setMangaOn(true);
     mangaA.setValue(0);
@@ -865,7 +878,7 @@ export default function BattleScreen() {
 
   async function endBattle(kind: 'win' | 'lose') {
     await wait(300);
-    if (kind === 'win') sfx.winJingle();
+    if (kind === 'win') { sfx.winJingle(); spawnStars(fxPos.foe.x, fxPos.foe.y, 14); }
     else sfx.loseJingle();
     // 平衡數據（best-effort）
     const meMoves = myPet?.moveset ?? null;
@@ -994,6 +1007,9 @@ export default function BattleScreen() {
       ))}
       {nums.map((n) => (
         <DamageNum key={n.id} cx={fxPos[n.side].x + n.ox} cy={fxPos[n.side].y} value={n.value} kind={n.kind} big={n.big} />
+      ))}
+      {stars.map((s) => (
+        <StarBit key={s.id} cx={s.cx} cy={s.cy} dx={s.dx} dy={s.dy} size={s.size} />
       ))}
 
       {/* 節奏小遊戲 */}
@@ -1327,6 +1343,30 @@ function DamageNum({ cx, cy, value, kind, big }: { cx: number; cy: number; value
       <Text style={{ fontSize, fontWeight: '900', color, textShadowColor: stroke, textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 }}>
         {kind === 'heal' ? '+' : ''}{value}
       </Text>
+    </Animated.View>
+  );
+}
+
+function StarBit({ cx, cy, dx, dy, size }: { cx: number; cy: number; dx: number; dy: number; size: number }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: 820, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [a]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute', left: cx - size / 2, top: cy - size / 2, zIndex: 28,
+        opacity: a.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 0] }),
+        transform: [
+          { translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, dx] }) },
+          { translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, dy] }) },
+          { rotate: a.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '220deg'] }) },
+          { scale: a.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.3, 1.2, 0.7] }) },
+        ],
+      }}
+    >
+      <PixelSprite name="star" size={size} />
     </Animated.View>
   );
 }
