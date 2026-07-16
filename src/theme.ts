@@ -68,11 +68,19 @@ export const font = {
 
 /** 卡片預設陰影（暖色柔和陰影） */
 export const shadow = {
+  // 貼紙硬邊陰影（web 會轉成 0 5px 0 的硬 boxShadow）
   card: {
     shadowColor: '#1E4030',
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 3,
+    shadowOpacity: 0.28,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
+};
+
+/** 貼紙卡：粗墨邊 + 硬陰影，直接展進卡片 style。 */
+export const sticker = {
+  borderWidth: 2.5,
+  borderColor: colors.text,
+  ...shadow.card,
 };

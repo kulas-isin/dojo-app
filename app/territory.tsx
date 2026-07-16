@@ -16,7 +16,7 @@ import type { Territory } from '@/territory/types';
 import { fetchMyTerritories, fetchTerritories } from '@/lib/territoriesApi';
 import { useSpaceStore } from '@/space/spaceStore';
 import { useStore } from '@/store/useStore';
-import { colors, font, radius, shadow, spacing } from '@/theme';
+import { colors, font, radius, shadow, sticker, spacing } from '@/theme';
 import type { Coordinate } from '@/types';
 
 function distMeters(a: Coordinate, b: Coordinate) {
@@ -295,13 +295,13 @@ const styles = StyleSheet.create({
   hud: { position: 'absolute', top: 48, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center', zIndex: 1000 },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   backT: { fontSize: 26, color: colors.text, marginTop: -3, fontWeight: '800' },
-  hudCard: { backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 8, ...shadow.card },
+  hudCard: { backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 8, ...sticker },
   hudK: { fontSize: 10, color: colors.textDim, fontWeight: '800' },
   hudV: { fontSize: 18, color: colors.primary, fontWeight: '900' },
   hudU: { fontSize: 11, color: colors.textDim, fontWeight: '700' },
   welcome: { position: 'absolute', top: 104, left: 12, right: 12, zIndex: 1000, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   welcomeT: { color: colors.gold, fontWeight: '900', fontSize: font.size.sm },
-  sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card, borderWidth: 1, borderColor: colors.border, zIndex: 1000 },
+  sheet: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...sticker, zIndex: 1000 },
   sheetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
   sheetTitle: { fontSize: font.size.md, fontWeight: '900', color: colors.text, flex: 1 },

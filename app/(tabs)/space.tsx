@@ -11,7 +11,7 @@ import { MOOD_META, moodFor } from '@/space/mood';
 import { CATALOG, useSpaceStore } from '@/space/spaceStore';
 import { SpaceYard } from '@/space/SpaceYard';
 import { useStore } from '@/store/useStore';
-import { colors, font, radius, shadow, spacing } from '@/theme';
+import { colors, font, radius, shadow, sticker, spacing } from '@/theme';
 
 export default function SpaceScreen() {
   const pets = useStore((s) => s.pets);
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   tabText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.sm },
   list: { marginTop: spacing.md, gap: spacing.sm },
   hint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: font.weight.semibold, marginBottom: 2 },
-  petRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  petRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, ...sticker },
   petMini: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   petName: { color: colors.text, fontSize: font.size.md, fontWeight: font.weight.bold },
   bar: { height: 9, backgroundColor: colors.cardAlt, borderRadius: 6, overflow: 'hidden', marginTop: 5, borderWidth: 1, borderColor: colors.border },
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   feedBtn: { backgroundColor: colors.goldSoft },
   smallBtnText: { color: colors.text, fontWeight: font.weight.bold, fontSize: font.size.xs },
   disabled: { opacity: 0.4 },
-  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, ...sticker },
   shopIco: { width: 44, height: 44, borderRadius: 11, backgroundColor: colors.cardAlt, alignItems: 'center', justifyContent: 'center' },
   shopDesc: { color: colors.textDim, fontSize: font.size.xs, marginTop: 2, fontWeight: font.weight.semibold },
   buyBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: spacing.md, paddingVertical: 9 },
