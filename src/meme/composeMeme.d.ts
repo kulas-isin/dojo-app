@@ -9,12 +9,23 @@ export type TemplateKind =
   | 'drake' // 我不要／我要（雙圖）
   | 'burst'; // 彩虹光爆背景＋頂部字幕（羽化融入）
 
+export type FilterKind =
+  | 'none'
+  | 'fried' // 炸圖 deep-fried
+  | 'cry' // 哭哭藍調
+  | 'soft' // 憨笑暖調
+  | 'cursed'; // 驚嚇 cursed
+
 export interface MemeInput {
   template: TemplateKind;
   /** 1 或 2 張圖，依模板而定 */
   images: string[];
   /** 依模板 slots 順序對應的文字 */
   texts: string[];
+  /** 迷因濾鏡（處理來源照片），預設 none */
+  filter?: FilterKind;
+  /** 濾鏡強度 0~1，預設 0.8 */
+  filterStrength?: number;
 }
 
 export interface MemeResult {

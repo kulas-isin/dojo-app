@@ -16,14 +16,23 @@ import {
 import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Camera, ImagePlus, PetIcon } from '@/components/icons';
+import { Slider } from '@/components/Slider';
 import { uploadMedia } from '@/lib/storage';
 import { composeMeme } from '@/meme/composeMeme';
-import type { TemplateKind } from '@/meme/composeMeme.d';
+import type { FilterKind, TemplateKind } from '@/meme/composeMeme.d';
 import { burstBgDataUrl } from '@/meme/backgrounds';
 import { getTemplate, TEMPLATES } from '@/meme/templates';
 import { THEMES, randomLine } from '@/meme/captions';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing, sticker } from '@/theme';
+
+const FILTERS: { id: FilterKind; label: string; emoji: string }[] = [
+  { id: 'none', label: '原圖', emoji: '🖼️' },
+  { id: 'fried', label: '炸圖', emoji: '🔥' },
+  { id: 'cry', label: '哭哭', emoji: '😢' },
+  { id: 'soft', label: '憨笑', emoji: '🥰' },
+  { id: 'cursed', label: '驚嚇', emoji: '😱' },
+];
 
 const SAMPLES = [
   'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=800',
@@ -45,6 +54,8 @@ export default function MemeScreen() {
   const firstImg = params.imageUri ? String(params.imageUri) : initPet?.avatarUri ?? null;
 
   const [template, setTemplate] = useState<TemplateKind>('classic');
+  const [filter, setFilter] = useState<FilterKind>('none');
+  const [strength, setStrength] = useState(0.8);
   const [imgs, setImgs] = useState<(string | null)[]>([firstImg, null]);
   const [activeSlot, setActiveSlot] = useState(0);
   const [texts, setTexts] = useState<Record<string, string>>({});
@@ -81,11 +92,13 @@ export default function MemeScreen() {
     template,
     images: imgs.slice(0, tpl.images).filter(Boolean) as string[],
     texts: tpl.slots.map((s) => texts[s.key] ?? ''),
+    filter,
+    filterStrength: strength,
   });
   const ready = (imgs.slice(0, tpl.images).filter(Boolean) as string[]).length >= tpl.images;
 
   // 預覽即時合成真實輸出（所見即所得），去抖動避免每次按鍵都重畫
-  const composeKey = JSON.stringify({ template, imgs: imgs.slice(0, tpl.images), texts: tpl.slots.map((s) => texts[s.key] ?? '') });
+  const composeKey = JSON.stringify({ template, imgs: imgs.slice(0, tpl.images), texts: tpl.slots.map((s) => texts[s.key] ?? ''), filter, strength });
   useEffect(() => {
     if (Platform.OS !== 'web' || !ready) { setPreview(null); return; }
     let alive = true;
@@ -174,6 +187,26 @@ export default function MemeScreen() {
         })}
       </ScrollView>
       <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
+
+      {/* 迷因濾鏡 */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {FILTERS.map((f) => {
+          const on = filter === f.id;
+          return (
+            <Pressable key={f.id} onPress={() => setFilter(f.id)} style={[styles.filterChip, on && styles.filterChipOn]}>
+              <Text style={styles.filterEmoji}>{f.emoji}</Text>
+              <Text style={[styles.filterName, on && { color: colors.onColor }]}>{f.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {filter !== 'none' ? (
+        <View style={styles.strengthRow}>
+          <Text style={styles.strengthLabel}>強度</Text>
+          <View style={{ flex: 1 }}><Slider value={strength} onChange={setStrength} /></View>
+          <Text style={styles.strengthVal}>{Math.round(strength * 100)}%</Text>
+        </View>
+      ) : null}
 
       {/* 預覽 */}
       <View style={[styles.preview, { width: previewW, height: showComposed && pvSize ? Math.round((previewW * pvSize.h) / pvSize.w) : previewH }]}>
@@ -315,7 +348,15 @@ const styles = StyleSheet.create({
   tplChipOn: { backgroundColor: colors.primary, borderColor: colors.text },
   tplEmoji: { fontSize: 20 },
   tplName: { fontSize: font.size.xs, fontWeight: '800', color: colors.text },
-  tplHint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '700', marginTop: 4, marginBottom: spacing.md },
+  tplHint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '700', marginTop: 4, marginBottom: spacing.sm },
+  filterRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
+  filterChipOn: { backgroundColor: colors.primary, borderColor: colors.text },
+  filterEmoji: { fontSize: 15 },
+  filterName: { fontSize: font.size.xs, fontWeight: '800', color: colors.text },
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.md },
+  strengthLabel: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '900' },
+  strengthVal: { color: colors.primary, fontSize: font.size.xs, fontWeight: '900', width: 38, textAlign: 'right' },
   preview: { alignSelf: 'center', backgroundColor: '#000', borderRadius: radius.md, overflow: 'hidden', ...sticker },
   fill: { width: '100%', height: '100%' },
   slotEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card, position: 'absolute' },

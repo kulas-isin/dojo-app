@@ -1,5 +1,5 @@
 // Web：用 canvas 把寵物照片 + 梗字依模板合成一張迷因圖。
-import type { MemeInput, MemeResult } from './composeMeme.d';
+import type { FilterKind, MemeInput, MemeResult } from './composeMeme.d';
 import { drawBurst } from './backgrounds';
 
 const OUT_W = 1080;
@@ -347,9 +347,72 @@ function setF(ctx: CanvasRenderingContext2D, f: number) {
   return ctx;
 }
 
+/** 依濾鏡把來源照片重畫一張（strength 0~1 為 identity→全套） */
+function applyFilter(img: HTMLImageElement, filter: FilterKind, k: number): string {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const { canvas, ctx } = newCanvas(w, h);
+  const css: Record<FilterKind, string> = {
+    none: 'none',
+    fried: `saturate(${1 + 1.7 * k}) contrast(${1 + 0.75 * k}) brightness(${1 + 0.05 * k})`,
+    cry: `saturate(${1 - 0.4 * k}) brightness(${1 + 0.05 * k}) contrast(${1 + 0.12 * k})`,
+    soft: `saturate(${1 + 0.28 * k}) brightness(${1 + 0.13 * k}) contrast(${1 - 0.06 * k})`,
+    cursed: `saturate(${1 - 0.55 * k}) contrast(${1 + 0.65 * k}) brightness(${1 - 0.08 * k})`,
+  };
+  try { (ctx as any).filter = css[filter]; } catch { /* 不支援就靠疊色 */ }
+  ctx.drawImage(img, 0, 0, w, h);
+  (ctx as any).filter = 'none';
+
+  const overlay = (color: string, op: GlobalCompositeOperation, a: number) => {
+    ctx.globalCompositeOperation = op;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  };
+  const vignette = (a: number) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, `rgba(0,0,0,${a})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  };
+
+  if (filter === 'fried') {
+    overlay('#ff6a00', 'overlay', 0.22 * k);
+    overlay('#ff1a00', 'soft-light', 0.18 * k);
+    // 雜訊碎點（壓過頭的顆粒感）
+    const n = Math.round(w * h * 0.0012 * k);
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)';
+      ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  } else if (filter === 'cry') {
+    overlay('#2a5ad0', 'multiply', 0.3 * k);
+    overlay('#0a1830', 'soft-light', 0.25 * k);
+    vignette(0.4 * k);
+  } else if (filter === 'soft') {
+    overlay('#ffd48c', 'soft-light', 0.4 * k);
+    overlay('#fff2d0', 'overlay', 0.15 * k);
+  } else if (filter === 'cursed') {
+    overlay('#26301f', 'multiply', 0.22 * k);
+    vignette(0.6 * k);
+  }
+
+  // 炸圖用低品質 JPEG 加強崩壞
+  const q = filter === 'fried' ? Math.max(0.28, 0.85 - 0.5 * k) : 0.92;
+  return canvas.toDataURL('image/jpeg', q);
+}
+
 export async function composeMeme(input: MemeInput): Promise<MemeResult> {
-  const imgs = await Promise.all(input.images.filter(Boolean).map(load));
+  let imgs = await Promise.all(input.images.filter(Boolean).map(load));
   if (!imgs.length) throw new Error('請先選一張圖');
+  const filter = input.filter ?? 'none';
+  const k = input.filterStrength ?? 0.8;
+  if (filter !== 'none' && k > 0) {
+    imgs = await Promise.all(imgs.map((im) => load(applyFilter(im, filter, k))));
+  }
   const t = (input.texts || []).map((s) => (s || '').trim());
   switch (input.template) {
     case 'topbar':
