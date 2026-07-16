@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cat, Diamond, Gift, HelpCircle } from 'lucide-react-native';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
 import { CanIcon } from '@/components/CanIcon';
@@ -313,12 +313,12 @@ const styles = StyleSheet.create({
   petChipOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   petChipT: { fontSize: font.size.sm, color: colors.text, fontWeight: '800' },
   petChipLv: { fontSize: 10, color: colors.textDim, fontWeight: '700' },
-  btn: { marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  btn: { marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md, borderWidth: 3, borderColor: colors.text, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, ...Platform.select({ web: { boxShadow: '0 5px 0 #C4402C' } as any }) },
   btnT: { color: colors.onColor, fontWeight: '900', fontSize: font.size.md },
-  btnGhost: { backgroundColor: colors.cardAlt },
-  btnGhostT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },
-  btnDim: { backgroundColor: colors.cardAlt },
-  btnDimT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },
+  btnGhost: { backgroundColor: colors.card, ...Platform.select({ web: { boxShadow: `0 5px 0 ${colors.border}` } as any }) },
+  btnGhostT: { color: colors.text, fontWeight: '900', fontSize: font.size.sm },
+  btnDim: { backgroundColor: colors.cardAlt, ...Platform.select({ web: { boxShadow: `0 5px 0 ${colors.border}` } as any }) },
+  btnDimT: { color: colors.textDim, fontWeight: '900', fontSize: font.size.sm },
   hint: { position: 'absolute', left: 12, right: 12, bottom: 20, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, ...shadow.card, zIndex: 1000 },
   hintT: { fontSize: font.size.sm, color: colors.textDim, textAlign: 'center', fontWeight: '600' },
 });

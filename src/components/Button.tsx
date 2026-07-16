@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react-native';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -19,6 +20,13 @@ interface Props {
   style?: ViewStyle;
 }
 
+// 各變體的「陰影底色」（硬邊立體感用）
+const DARK: Record<string, string> = {
+  primary: '#C4402C', // 番茄珊瑚壓深
+  accent: '#1D3E78', // 海軍藍壓深
+  ghost: colors.border,
+};
+
 export function Button({
   label,
   onPress,
@@ -28,21 +36,25 @@ export function Button({
   loading,
   style,
 }: Props) {
-  const bg =
-    variant === 'primary'
-      ? colors.primary
-      : variant === 'accent'
-        ? colors.accent
-        : 'transparent';
+  const bg = variant === 'primary' ? colors.primary : variant === 'accent' ? colors.accent : colors.card;
   const fg = variant === 'ghost' ? colors.text : colors.onColor;
+  const dark = DARK[variant];
+  // 糖果立體陰影（web：硬邊 boxShadow；native：底部粗邊當立體感）
+  const lip = (pressed: boolean) =>
+    Platform.OS === 'web'
+      ? ({ boxShadow: `0 ${pressed ? 1 : 5}px 0 ${dark}` } as any)
+      : { borderBottomWidth: pressed ? 3 : 6, borderBottomColor: dark };
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.btn,
-        { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.85 : 1 },
-        variant === 'ghost' && styles.ghost,
+        { backgroundColor: bg, borderColor: colors.text },
+        lip(!!pressed),
+        pressed && Platform.OS === 'web' ? { transform: [{ translateY: 4 }] } : null,
+        disabled ? { opacity: 0.45 } : null,
         style,
       ]}
     >
@@ -50,7 +62,7 @@ export function Button({
         <ActivityIndicator color={fg} />
       ) : (
         <View style={styles.row}>
-          {Icon ? <Icon size={18} color={fg} strokeWidth={2.4} /> : null}
+          {Icon ? <Icon size={18} color={fg} strokeWidth={2.6} /> : null}
           <Text style={[styles.label, { color: fg }]}>{label}</Text>
         </View>
       )}
@@ -62,13 +74,10 @@ const styles = StyleSheet.create({
   btn: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
+    borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  ghost: {
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   row: {
     flexDirection: 'row',
@@ -77,6 +86,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: font.size.md,
-    fontWeight: font.weight.bold,
+    fontWeight: font.weight.heavy,
+    letterSpacing: 0.3,
   },
 });
