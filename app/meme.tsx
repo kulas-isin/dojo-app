@@ -243,93 +243,11 @@ export default function MemeScreen() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <View style={styles.titleRow}><Sparkles size={22} color={colors.primary} strokeWidth={2.4} /><Text style={styles.title}>迷因製造機</Text></View>
       <Text style={styles.sub}>挑個大家都認得的梗版型，換上自家毛孩就有共感</Text>
 
-      {/* 大家的迷因（靈感牆） */}
-      {memeWall.length ? (
-        <View style={{ marginBottom: spacing.sm }}>
-          <Text style={styles.wallLabel}>🔥 大家的迷因</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
-            {memeWall.map((p) => (
-              <Pressable key={p.id} onPress={() => router.push(`/pet/${p.petId}`)} style={styles.wallItem}>
-                <Image source={{ uri: p.thumbUri ?? p.mediaUri }} style={styles.fill} contentFit="cover" />
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
-
-      {/* 模板選擇 */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tplRow}>
-        {TEMPLATES.map((t) => {
-          const on = template === t.id;
-          return (
-            <Pressable key={t.id} onPress={() => { setTemplate(t.id); setActiveSlot(0); }} style={[styles.tplChip, on && styles.tplChipOn]}>
-              <Text style={styles.tplEmoji}>{t.emoji}</Text>
-              <Text style={[styles.tplName, on && { color: colors.onColor }]}>{t.name}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
-
-      {/* 🎰 梗圖轉盤 */}
-      <Pressable style={[styles.gacha, spinning && styles.gachaOn]} onPress={spin} disabled={spinning}>
-        <Text style={styles.gachaEmoji}>🎰</Text>
-        <Text style={styles.gachaT}>{spinning ? '抽取中…' : starKey > 0 ? '再抽一次' : '隨機一發'}</Text>
-      </Pressable>
-
-      {/* 迷因濾鏡 */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {FILTERS.map((f) => {
-          const on = filter === f.id;
-          return (
-            <Pressable key={f.id} onPress={() => setFilter(f.id)} style={[styles.filterChip, on && styles.filterChipOn]}>
-              <Text style={styles.filterEmoji}>{f.emoji}</Text>
-              <Text style={[styles.filterName, on && { color: colors.onColor }]}>{f.label}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      {filter !== 'none' ? (
-        <View style={styles.strengthRow}>
-          <Text style={styles.strengthLabel}>強度</Text>
-          <View style={{ flex: 1 }}><Slider value={strength} onChange={setStrength} /></View>
-          <Text style={styles.strengthVal}>{Math.round(strength * 100)}%</Text>
-        </View>
-      ) : null}
-
-      {/* 選圖 */}
-      {twoImg ? (
-        <View style={styles.slotRow}>
-          {[0, 1].map((i) => (
-            <Pressable key={i} onPress={() => { setActiveSlot(i); if (!imgs[i]) pick(); }} style={[styles.slot, activeSlot === i && styles.slotOn]}>
-              {imgs[i] ? <Image source={{ uri: imgs[i]! }} style={styles.slotImg} contentFit="cover" /> : <Camera size={20} color={colors.textMuted} />}
-              <Text style={styles.slotLabel}>{template === 'drake' ? (i === 0 ? '我不要' : '我要') : i === 0 ? '期待' : '現實'}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-      <View style={styles.srcRow}>
-        <Pressable style={styles.srcBtn} onPress={pick}><Camera size={16} color={colors.text} strokeWidth={2.2} /><Text style={styles.srcT}>相簿</Text></Pressable>
-        {SAMPLES.map((s) => (
-          <Pressable key={s} onPress={() => setImage(s)} style={styles.sample}><Image source={{ uri: s }} style={styles.fill} contentFit="cover" /></Pressable>
-        ))}
-      </View>
-      {myPets.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petRow}>
-          {myPets.map((p) => (
-            <Pressable key={p.id} onPress={() => setImage(p.avatarUri)} style={styles.petChip}>
-              <Image source={{ uri: p.thumbUri ?? p.avatarUri }} style={styles.petThumb} contentFit="cover" />
-              <Text style={styles.petChipT} numberOfLines={1}>{p.name}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
-
-      {/* 預覽（緊接文字欄位，打字時看得到） */}
+      {/* 預覽（主角，置頂） */}
       <View style={[styles.preview, { width: previewW, height: pvSize ? Math.round((previewW * pvSize.h) / pvSize.w) : previewH }]}>
         {showComposed ? (
           <Image
@@ -371,7 +289,14 @@ export default function MemeScreen() {
         {starKey > 0 ? <StarBurst key={starKey} /> : null}
       </View>
 
-      {/* 文字欄位 */}
+      {/* 🎰 轉盤 */}
+      <Pressable style={[styles.gacha, spinning && styles.gachaOn]} onPress={spin} disabled={spinning}>
+        <Text style={styles.gachaEmoji}>🎰</Text>
+        <Text style={styles.gachaT}>{spinning ? '抽取中…' : starKey > 0 ? '再抽一次' : '隨機一發'}</Text>
+      </Pressable>
+
+      {/* 梗字（緊接預覽，打字時預覽在上方） */}
+      <View style={styles.hr} />
       <View style={styles.labelRow}>
         <Text style={styles.label}>梗字</Text>
         <Pressable style={styles.rollBtn} onPress={() => roll()}><Shuffle size={14} color={colors.primary} strokeWidth={2.4} /><Text style={styles.rollT}>隨機</Text></Pressable>
@@ -387,9 +312,6 @@ export default function MemeScreen() {
           maxLength={40}
         />
       ))}
-
-      {/* 情境梗句包 */}
-      <Text style={styles.label}>情境梗句包</Text>
       <View style={styles.themeRow}>
         {THEMES.map((t) => (
           <Pressable key={t.id} onPress={() => roll(t.id)} style={styles.themeChip}>
@@ -399,9 +321,70 @@ export default function MemeScreen() {
         ))}
       </View>
 
+      {/* 選圖 */}
+      <View style={styles.hr} />
+      <Text style={styles.label}>選圖</Text>
+      {twoImg ? (
+        <View style={styles.slotRow}>
+          {[0, 1].map((i) => (
+            <Pressable key={i} onPress={() => { setActiveSlot(i); if (!imgs[i]) pick(); }} style={[styles.slot, activeSlot === i && styles.slotOn]}>
+              {imgs[i] ? <Image source={{ uri: imgs[i]! }} style={styles.slotImg} contentFit="cover" /> : <Camera size={20} color={colors.textMuted} />}
+              <Text style={styles.slotLabel}>{template === 'drake' ? (i === 0 ? '我不要' : '我要') : i === 0 ? '期待' : '現實'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.srcScroll}>
+        <Pressable style={styles.srcBtn} onPress={pick}><Camera size={16} color={colors.text} strokeWidth={2.2} /><Text style={styles.srcT}>相簿</Text></Pressable>
+        {SAMPLES.map((s) => (
+          <Pressable key={s} onPress={() => setImage(s)} style={styles.sample}><Image source={{ uri: s }} style={styles.fill} contentFit="cover" /></Pressable>
+        ))}
+        {myPets.map((p) => (
+          <Pressable key={p.id} onPress={() => setImage(p.avatarUri)} style={styles.petChip}>
+            <Image source={{ uri: p.thumbUri ?? p.avatarUri }} style={styles.petThumb} contentFit="cover" />
+            <Text style={styles.petChipT} numberOfLines={1}>{p.name}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* 樣式 */}
+      <View style={styles.hr} />
+      <Text style={styles.label}>樣式</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tplRow}>
+        {TEMPLATES.map((t) => {
+          const on = template === t.id;
+          return (
+            <Pressable key={t.id} onPress={() => { setTemplate(t.id); setActiveSlot(0); }} style={[styles.tplChip, on && styles.tplChipOn]}>
+              <Text style={styles.tplEmoji}>{t.emoji}</Text>
+              <Text style={[styles.tplName, on && { color: colors.onColor }]}>{t.name}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {FILTERS.map((f) => {
+          const on = filter === f.id;
+          return (
+            <Pressable key={f.id} onPress={() => setFilter(f.id)} style={[styles.filterChip, on && styles.filterChipOn]}>
+              <Text style={styles.filterEmoji}>{f.emoji}</Text>
+              <Text style={[styles.filterName, on && { color: colors.onColor }]}>{f.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {filter !== 'none' ? (
+        <View style={styles.strengthRow}>
+          <Text style={styles.strengthLabel}>強度</Text>
+          <View style={{ flex: 1 }}><Slider value={strength} onChange={setStrength} /></View>
+          <Text style={styles.strengthVal}>{Math.round(strength * 100)}%</Text>
+        </View>
+      ) : null}
+
       {/* 發文對象 */}
       {myPets.length > 1 ? (
         <>
+          <View style={styles.hr} />
           <Text style={styles.label}>發到誰的動態</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petRow}>
             {myPets.map((p) => {
@@ -422,6 +405,21 @@ export default function MemeScreen() {
 
       <Button label={session ? '發佈到動態' : '登入後才能發佈'} icon={ImagePlus} onPress={share} loading={busy} disabled={!ready || !session} style={{ marginTop: session ? spacing.xl : spacing.sm }} />
       {Platform.OS === 'web' ? <Button label="下載迷因" variant="ghost" icon={Download} onPress={download} loading={busy} disabled={!ready} style={{ marginTop: spacing.sm }} /> : null}
+
+      {/* 靈感牆（底部） */}
+      {memeWall.length ? (
+        <>
+          <View style={styles.hr} />
+          <Text style={styles.wallLabel}>🔥 大家的迷因</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
+            {memeWall.map((p) => (
+              <Pressable key={p.id} onPress={() => router.push(`/pet/${p.petId}`)} style={styles.wallItem}>
+                <Image source={{ uri: p.thumbUri ?? p.mediaUri }} style={styles.fill} contentFit="cover" />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </>
+      ) : null}
 
       {/* 發佈後慶祝 */}
       {published ? (
@@ -495,6 +493,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   title: { color: colors.text, fontSize: font.size.xl, fontWeight: font.weight.heavy },
   sub: { color: colors.textDim, fontSize: font.size.sm, marginTop: 4, marginBottom: spacing.md, fontWeight: '600' },
+  hr: { height: 1, backgroundColor: colors.border, marginTop: spacing.lg, marginBottom: spacing.sm },
+  srcScroll: { gap: spacing.sm, paddingVertical: spacing.xs, alignItems: 'center' },
   tplRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   tplChip: { alignItems: 'center', gap: 2, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border, minWidth: 74 },
   tplChipOn: { backgroundColor: colors.primary, borderColor: colors.text },
