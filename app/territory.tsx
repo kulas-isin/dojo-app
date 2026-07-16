@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarView } from '@/avatar/AvatarView';
-import { DEFAULT_PET } from '@/avatar/sprite';
+import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
 import { TerritoryMap } from '@/components/TerritoryMap';
 import { SEED_CENTER } from '@/data/seed';
 import { cellCenter } from '@/territory/h3grid';
@@ -133,6 +133,7 @@ export default function TerritoryScreen() {
         params: {
           myPetId: p.id, eventH3: sel.h3, rewardCans: String(selEvent.amount),
           foeName: '野生浪浪', foeType: Math.random() < 0.5 ? 'cat' : 'dog', foeLevel: String(p.level ?? 1),
+          foeAvatar: JSON.stringify(randomPet()),
         },
       });
     } else {
@@ -174,6 +175,7 @@ export default function TerritoryScreen() {
         foeName: selT?.petName ?? '野生毛孩',
         foeType: selT?.petType ?? (Math.random() < 0.5 ? 'cat' : 'dog'),
         foeLevel: String(p.level ?? 1),
+        foeAvatar: selT?.avatar ? JSON.stringify(selT.avatar) : '',
       },
     });
   };

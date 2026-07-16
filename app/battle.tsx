@@ -19,7 +19,7 @@ import {
 } from '@/battle/engine';
 import { typeMeta } from '@/battle/stats';
 import { AvatarView } from '@/avatar/AvatarView';
-import type { PetAvatar } from '@/avatar/sprite';
+import { DEFAULT_PET, type PetAvatar } from '@/avatar/sprite';
 import { logBattleRemote } from '@/lib/logsApi';
 import { captureTerritoryRemote } from '@/lib/territoriesApi';
 import { useSpaceStore } from '@/space/spaceStore';
@@ -65,8 +65,12 @@ function haptic(kind: 'light' | 'heavy') {
 }
 
 export default function BattleScreen() {
-  const { gymId, myPetId, terrH3, eventH3, rewardCans, foeName, foeType, foeBattle, foeLevel } =
-    useLocalSearchParams<{ gymId: string; myPetId: string; terrH3: string; eventH3: string; rewardCans: string; foeName: string; foeType: string; foeBattle: string; foeLevel: string }>();
+  const { gymId, myPetId, terrH3, eventH3, rewardCans, foeName, foeType, foeBattle, foeLevel, foeAvatar } =
+    useLocalSearchParams<{ gymId: string; myPetId: string; terrH3: string; eventH3: string; rewardCans: string; foeName: string; foeType: string; foeBattle: string; foeLevel: string; foeAvatar: string }>();
+  const foeAvatarCfg = useMemo(() => {
+    if (!terrH3 && !eventH3) return undefined;
+    try { return foeAvatar ? JSON.parse(foeAvatar) : DEFAULT_PET; } catch { return DEFAULT_PET; }
+  }, [foeAvatar, terrH3, eventH3]);
   const pets = useStore((s) => s.pets);
   const gyms = useStore((s) => s.gyms);
   const entries = useStore((s) => s.entries);
@@ -959,7 +963,7 @@ export default function BattleScreen() {
         <View ref={foeWrapRef} onLayout={measureAvatars} collapsable={false}>
           <FighterAvatar
             pet={champEntry}
-            avatarCfg={champPet?.avatar}
+            avatarCfg={champPet?.avatar ?? foeAvatarCfg}
             petType={champPet?.petType ?? champEntry?.petType ?? (foeType as PetType | undefined)}
             anim={foeA}
             color={foeMeta.color}
