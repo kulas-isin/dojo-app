@@ -315,13 +315,19 @@ function tBurst(img: HTMLImageElement, top: string) {
   const py = Math.round(barH + bodyH - ph - bodyH * 0.02);
   const off = newCanvas(pw, ph);
   coverDraw(off.ctx, img, 0, 0, pw, ph);
+  // 橢圓羽化遮罩：與矩形四邊相切，確保到照片邊緣時透明度已歸零（不會留下方框硬邊）
   off.ctx.globalCompositeOperation = 'destination-in';
-  const rg = off.ctx.createRadialGradient(pw / 2, ph * 0.46, Math.min(pw, ph) * 0.14, pw / 2, ph * 0.5, Math.min(pw, ph) * 0.6);
+  off.ctx.save();
+  off.ctx.translate(pw / 2, ph / 2);
+  off.ctx.scale(1, ph / pw);
+  const rg = off.ctx.createRadialGradient(0, 0, pw * 0.26, 0, 0, pw * 0.5);
   rg.addColorStop(0, 'rgba(0,0,0,1)');
-  rg.addColorStop(0.72, 'rgba(0,0,0,1)');
+  rg.addColorStop(0.58, 'rgba(0,0,0,1)');
+  rg.addColorStop(0.86, 'rgba(0,0,0,0.32)');
   rg.addColorStop(1, 'rgba(0,0,0,0)');
   off.ctx.fillStyle = rg;
-  off.ctx.fillRect(0, 0, pw, ph);
+  off.ctx.fillRect(-pw / 2, -pw / 2, pw, pw);
+  off.ctx.restore();
   ctx.drawImage(off.canvas, px, py);
 
   // 頂部黑底字幕
