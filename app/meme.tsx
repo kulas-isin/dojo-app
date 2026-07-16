@@ -53,6 +53,8 @@ export default function MemeScreen() {
   );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [pvSize, setPvSize] = useState<{ w: number; h: number } | null>(null);
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
@@ -81,6 +83,21 @@ export default function MemeScreen() {
     texts: tpl.slots.map((s) => texts[s.key] ?? ''),
   });
   const ready = (imgs.slice(0, tpl.images).filter(Boolean) as string[]).length >= tpl.images;
+
+  // 預覽即時合成真實輸出（所見即所得），去抖動避免每次按鍵都重畫
+  const composeKey = JSON.stringify({ template, imgs: imgs.slice(0, tpl.images), texts: tpl.slots.map((s) => texts[s.key] ?? '') });
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !ready) { setPreview(null); return; }
+    let alive = true;
+    const id = setTimeout(async () => {
+      try {
+        const { dataUrl } = await composeMeme(buildInput());
+        if (alive) setPreview(dataUrl);
+      } catch { if (alive) setPreview(null); }
+    }, 320);
+    return () => { alive = false; clearTimeout(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composeKey, ready]);
 
   const download = async () => {
     if (!ready) { setMsg(twoImg ? '這個模板需要兩張圖' : '先選一張圖'); return; }
@@ -114,6 +131,7 @@ export default function MemeScreen() {
   const previewH = template === 'burst' ? Math.round(previewW * 1.12) : twoImg ? previewW : Math.round(previewW * 0.82);
   const of = Math.round(previewW * 0.072); // overlay 字級
   const burstBg = useMemo(() => (Platform.OS === 'web' ? burstBgDataUrl(480) : ''), []);
+  const showComposed = Platform.OS === 'web' && ready && !!preview;
 
   const renderSingle = (uri: string | null) => (
     <View style={{ flex: 1 }}>
@@ -158,8 +176,15 @@ export default function MemeScreen() {
       <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
 
       {/* 預覽 */}
-      <View style={[styles.preview, { width: previewW, height: previewH }]}>
-        {template === 'burst' ? (
+      <View style={[styles.preview, { width: previewW, height: showComposed && pvSize ? Math.round((previewW * pvSize.h) / pvSize.w) : previewH }]}>
+        {showComposed ? (
+          <Image
+            source={{ uri: preview! }}
+            style={styles.fill}
+            contentFit="contain"
+            onLoad={(e) => { const s = e.source as any; if (s?.width && s?.height) setPvSize({ w: s.width, h: s.height }); }}
+          />
+        ) : template === 'burst' ? (
           <>
             <View style={styles.captionBar}><Text style={styles.captionText} numberOfLines={2}>{texts.top || '頂部黑底字幕'}</Text></View>
             <View style={{ flex: 1 }}>
