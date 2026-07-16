@@ -5,6 +5,7 @@ import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET } from '@/avatar/sprite';
 import { Button } from '@/components/Button';
 import { Plus } from '@/components/icons';
+import { PixelSprite } from '@/components/PixelSprite';
 import { EmptyState } from '@/illustrations';
 import { bondInfo } from '@/space/bond';
 import { MOOD_META, moodFor } from '@/space/mood';
@@ -102,25 +103,33 @@ export default function SpaceScreen() {
       {/* 頂部：罐罐 */}
       <View style={styles.head}>
         <View>
-          <Text style={styles.title}>我的空間</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <PixelSprite name="paw" size={20} />
+            <Text style={styles.title}>我的空間</Text>
+          </View>
           <Text style={styles.sub}>掛機＋遛狗累積罐罐，養牠、佈置牠的家</Text>
           {careStreak > 0 ? <Text style={styles.streak}>🔥 連續照顧 {careStreak} 天</Text> : null}
         </View>
         <View style={styles.cans}>
-          <Text style={styles.canN}>🥫 {cans}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <PixelSprite name="coin" size={18} />
+            <Text style={styles.canN}>{cans}</Text>
+          </View>
           <Text style={styles.rate}>掛機 +{idleRate()}/時</Text>
         </View>
       </View>
 
       {welcome != null ? (
         <View style={styles.welcome}>
-          <Text style={styles.welcomeText}>歡迎回來！離線收益 +{welcome} 🥫</Text>
+          <Text style={styles.welcomeText}>歡迎回來！離線收益 +{welcome}</Text>
+          <PixelSprite name="coin" size={16} />
         </View>
       ) : null}
 
       {levelUpMsg ? (
         <View style={styles.levelUp}>
-          <Text style={styles.levelUpText}>💞 {levelUpMsg}</Text>
+          <PixelSprite name="heart" size={15} />
+          <Text style={styles.levelUpText}>{levelUpMsg}</Text>
         </View>
       ) : null}
 
@@ -278,9 +287,9 @@ const styles = StyleSheet.create({
   cans: { backgroundColor: colors.text, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'flex-end' },
   canN: { color: colors.onColor, fontSize: font.size.md, fontWeight: font.weight.heavy },
   rate: { color: colors.gold, fontSize: 10, fontWeight: font.weight.bold, marginTop: 1 },
-  welcome: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold },
+  welcome: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   welcomeText: { color: colors.gold, fontWeight: font.weight.bold, fontSize: font.size.sm, textAlign: 'center' },
-  levelUp: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primary },
+  levelUp: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   levelUpText: { color: colors.primary, fontWeight: font.weight.heavy, fontSize: font.size.sm, textAlign: 'center' },
   daily: { backgroundColor: colors.goldSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.gold },
   dailyText: { color: colors.gold, fontWeight: font.weight.heavy, fontSize: font.size.sm, textAlign: 'center' },
