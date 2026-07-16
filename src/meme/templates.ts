@@ -70,6 +70,14 @@ export const TEMPLATES: MemeTemplate[] = [
     ],
   },
   {
+    id: 'burst',
+    name: '光爆登場',
+    emoji: '🌈',
+    images: 1,
+    hint: '彩虹光爆＋碎紙，浮誇震撼登場',
+    slots: [{ key: 'top', label: '字幕', placeholder: '頂部黑底字幕，例：這是一個…的故事' }],
+  },
+  {
     id: 'vs',
     name: '期待 vs 現實',
     emoji: '⚖️',

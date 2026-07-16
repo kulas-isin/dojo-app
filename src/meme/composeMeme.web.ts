@@ -1,5 +1,6 @@
 // Web：用 canvas 把寵物照片 + 梗字依模板合成一張迷因圖。
 import type { MemeInput, MemeResult } from './composeMeme.d';
+import { drawBurst } from './backgrounds';
 
 const OUT_W = 1080;
 const FONT = 'Impact, "Arial Black", "Noto Sans TC", system-ui, sans-serif';
@@ -295,6 +296,46 @@ function tTwoPanel(
   return finalize(canvas);
 }
 
+function tBurst(img: HTMLImageElement, top: string) {
+  const bodyH = OUT_W;
+  const bf = Math.round(OUT_W * 0.055);
+  const blh = Math.round(bf * 1.28);
+  const measure = newCanvas(1, 1).ctx;
+  const barLines = wrapLines(setF(measure, bf), top || ' ', maxTextW);
+  const barH = Math.max(Math.round(OUT_W * 0.14), barLines.length * blh + pad * 1.4);
+  const { canvas, ctx } = newCanvas(OUT_W, barH + bodyH);
+
+  // 背景光爆
+  drawBurst(ctx, 0, barH, OUT_W, bodyH);
+
+  // 羽化融入的寵物（置中偏下，邊緣柔化進光爆）
+  const pw = Math.round(OUT_W * 0.74);
+  const ph = Math.round(bodyH * 0.84);
+  const px = Math.round((OUT_W - pw) / 2);
+  const py = Math.round(barH + bodyH - ph - bodyH * 0.02);
+  const off = newCanvas(pw, ph);
+  coverDraw(off.ctx, img, 0, 0, pw, ph);
+  off.ctx.globalCompositeOperation = 'destination-in';
+  const rg = off.ctx.createRadialGradient(pw / 2, ph * 0.46, Math.min(pw, ph) * 0.14, pw / 2, ph * 0.5, Math.min(pw, ph) * 0.6);
+  rg.addColorStop(0, 'rgba(0,0,0,1)');
+  rg.addColorStop(0.72, 'rgba(0,0,0,1)');
+  rg.addColorStop(1, 'rgba(0,0,0,0)');
+  off.ctx.fillStyle = rg;
+  off.ctx.fillRect(0, 0, pw, ph);
+  ctx.drawImage(off.canvas, px, py);
+
+  // 頂部黑底字幕
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, OUT_W, barH);
+  setF(ctx, bf);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#fff';
+  const startY = (barH - barLines.length * blh) / 2 + bf;
+  barLines.forEach((ln, i) => ctx.fillText(ln, OUT_W / 2, startY + i * blh));
+  return finalize(canvas);
+}
+
 function setF(ctx: CanvasRenderingContext2D, f: number) {
   ctx.font = `${f}px ${FONT}`;
   return ctx;
@@ -319,6 +360,8 @@ export async function composeMeme(input: MemeInput): Promise<MemeResult> {
     case 'drake':
       if (imgs.length < 2) throw new Error('這個模板需要兩張圖');
       return tTwoPanel(imgs[0], imgs[1], '我不要', '我要', t[0] ?? '', t[1] ?? '', 'drake');
+    case 'burst':
+      return tBurst(imgs[0], t[0] ?? '');
     case 'classic':
     default:
       return tClassic(imgs[0], t[0] ?? '', t[1] ?? '');

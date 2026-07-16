@@ -6,7 +6,8 @@ export type TemplateKind =
   | 'bubble' // 內心 OS 對話框
   | 'label' // 標籤梗（箭頭指標籤）
   | 'vs' // 期待 vs 現實（雙圖）
-  | 'drake'; // 我不要／我要（雙圖）
+  | 'drake' // 我不要／我要（雙圖）
+  | 'burst'; // 彩虹光爆背景＋頂部字幕（羽化融入）
 
 export interface MemeInput {
   template: TemplateKind;

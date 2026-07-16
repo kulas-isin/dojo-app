@@ -19,6 +19,7 @@ import { Camera, ImagePlus, PetIcon } from '@/components/icons';
 import { uploadMedia } from '@/lib/storage';
 import { composeMeme } from '@/meme/composeMeme';
 import type { TemplateKind } from '@/meme/composeMeme.d';
+import { burstBgDataUrl } from '@/meme/backgrounds';
 import { getTemplate, TEMPLATES } from '@/meme/templates';
 import { THEMES, randomLine } from '@/meme/captions';
 import { useStore } from '@/store/useStore';
@@ -110,7 +111,9 @@ export default function MemeScreen() {
   };
 
   const previewW = Math.min(width - spacing.lg * 2, 460);
+  const previewH = template === 'burst' ? Math.round(previewW * 1.12) : twoImg ? previewW : Math.round(previewW * 0.82);
   const of = Math.round(previewW * 0.072); // overlay 字級
+  const burstBg = useMemo(() => (Platform.OS === 'web' ? burstBgDataUrl(480) : ''), []);
 
   const renderSingle = (uri: string | null) => (
     <View style={{ flex: 1 }}>
@@ -155,8 +158,16 @@ export default function MemeScreen() {
       <Text style={styles.tplHint}>{tpl.emoji} {tpl.hint}</Text>
 
       {/* 預覽 */}
-      <View style={[styles.preview, { width: previewW, height: twoImg ? previewW : Math.round(previewW * 0.82) }]}>
-        {twoImg ? (
+      <View style={[styles.preview, { width: previewW, height: previewH }]}>
+        {template === 'burst' ? (
+          <>
+            <View style={styles.captionBar}><Text style={styles.captionText} numberOfLines={2}>{texts.top || '頂部黑底字幕'}</Text></View>
+            <View style={{ flex: 1 }}>
+              {burstBg ? <Image source={{ uri: burstBg }} style={styles.fill} contentFit="cover" /> : <View style={[styles.fill, { backgroundColor: '#08060f' }]} />}
+              {imgs[0] ? <Image source={{ uri: imgs[0]! }} style={styles.burstPet} contentFit="cover" /> : <View style={[styles.burstPet, styles.slotEmpty]}><Camera size={26} color={colors.textMuted} /></View>}
+            </View>
+          </>
+        ) : twoImg ? (
           <>
             <View style={styles.panel}>
               {renderPanel(imgs[0], template === 'drake' ? '我不要' : '期待', texts[tpl.slots[0].key], template === 'drake' ? colors.danger : colors.accent, of, styles)}
@@ -287,6 +298,9 @@ const styles = StyleSheet.create({
   divider: { height: 4, backgroundColor: '#fff' },
   topbar: { backgroundColor: '#fff', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center' },
   topbarText: { color: '#111', fontWeight: '900', textAlign: 'center', fontFamily: impact },
+  captionBar: { backgroundColor: '#000', paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  captionText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontSize: 16 },
+  burstPet: { position: 'absolute', width: '68%', aspectRatio: 1, borderRadius: 999, alignSelf: 'center', bottom: '3%' },
   reactBand: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, backgroundColor: 'rgba(0,0,0,0.55)' } as any,
   reactText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontFamily: impact },
   bubble: { position: 'absolute', top: 12, alignSelf: 'center', maxWidth: '82%', backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
