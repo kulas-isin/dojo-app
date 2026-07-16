@@ -2,8 +2,9 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Download, Shuffle, Sparkles } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import {
 import { useAuthStore } from '@/auth/authStore';
 import { Button } from '@/components/Button';
 import { Camera, ImagePlus, PetIcon } from '@/components/icons';
+import { PixelSprite } from '@/components/PixelSprite';
 import { Slider } from '@/components/Slider';
 import { uploadMedia } from '@/lib/storage';
 import { composeMeme } from '@/meme/composeMeme';
@@ -68,12 +70,15 @@ export default function MemeScreen() {
   const [preview, setPreview] = useState<string | null>(null);
   const [pvSize, setPvSize] = useState<{ w: number; h: number } | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const [starKey, setStarKey] = useState(0);
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
 
   useEffect(() => { if (!targetPetId && myPets[0]) setTargetPetId(myPets[0].id); }, [targetPetId, myPets]);
   useEffect(() => { if (!twoImg) setActiveSlot(0); }, [twoImg]);
+  // 換模板/換圖才重量預覽比例，避免打字時高度跳動
+  useEffect(() => { setPvSize(null); }, [template, imgs]);
 
   const setImage = (uri: string) => setImgs((p) => { const n = [...p]; n[activeSlot] = uri; return n; });
   const pick = async () => {
@@ -116,6 +121,7 @@ export default function MemeScreen() {
         return next;
       });
       setSpinning(false);
+      setStarKey((k) => k + 1); // 落定撒像素星星
     };
     tick();
   };
@@ -256,8 +262,36 @@ export default function MemeScreen() {
         </View>
       ) : null}
 
-      {/* 預覽 */}
-      <View style={[styles.preview, { width: previewW, height: showComposed && pvSize ? Math.round((previewW * pvSize.h) / pvSize.w) : previewH }]}>
+      {/* 選圖 */}
+      {twoImg ? (
+        <View style={styles.slotRow}>
+          {[0, 1].map((i) => (
+            <Pressable key={i} onPress={() => { setActiveSlot(i); if (!imgs[i]) pick(); }} style={[styles.slot, activeSlot === i && styles.slotOn]}>
+              {imgs[i] ? <Image source={{ uri: imgs[i]! }} style={styles.slotImg} contentFit="cover" /> : <Camera size={20} color={colors.textMuted} />}
+              <Text style={styles.slotLabel}>{template === 'drake' ? (i === 0 ? '我不要' : '我要') : i === 0 ? '期待' : '現實'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <View style={styles.srcRow}>
+        <Pressable style={styles.srcBtn} onPress={pick}><Camera size={16} color={colors.text} strokeWidth={2.2} /><Text style={styles.srcT}>相簿</Text></Pressable>
+        {SAMPLES.map((s) => (
+          <Pressable key={s} onPress={() => setImage(s)} style={styles.sample}><Image source={{ uri: s }} style={styles.fill} contentFit="cover" /></Pressable>
+        ))}
+      </View>
+      {myPets.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petRow}>
+          {myPets.map((p) => (
+            <Pressable key={p.id} onPress={() => setImage(p.avatarUri)} style={styles.petChip}>
+              <Image source={{ uri: p.thumbUri ?? p.avatarUri }} style={styles.petThumb} contentFit="cover" />
+              <Text style={styles.petChipT} numberOfLines={1}>{p.name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {/* 預覽（緊接文字欄位，打字時看得到） */}
+      <View style={[styles.preview, { width: previewW, height: pvSize ? Math.round((previewW * pvSize.h) / pvSize.w) : previewH }]}>
         {showComposed ? (
           <Image
             source={{ uri: preview! }}
@@ -289,36 +323,14 @@ export default function MemeScreen() {
             {renderSingle(imgs[0])}
           </>
         )}
+        {spinning ? (
+          <View style={styles.spinOverlay} pointerEvents="none">
+            <Text style={styles.spinEmoji}>🎰</Text>
+            <Text style={styles.spinT}>抽取中…</Text>
+          </View>
+        ) : null}
+        {starKey > 0 ? <StarBurst key={starKey} /> : null}
       </View>
-
-      {/* 選圖 */}
-      {twoImg ? (
-        <View style={styles.slotRow}>
-          {[0, 1].map((i) => (
-            <Pressable key={i} onPress={() => { setActiveSlot(i); if (!imgs[i]) pick(); }} style={[styles.slot, activeSlot === i && styles.slotOn]}>
-              {imgs[i] ? <Image source={{ uri: imgs[i]! }} style={styles.slotImg} contentFit="cover" /> : <Camera size={20} color={colors.textMuted} />}
-              <Text style={styles.slotLabel}>{template === 'drake' ? (i === 0 ? '我不要' : '我要') : i === 0 ? '期待' : '現實'}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.srcRow}>
-        <Pressable style={styles.srcBtn} onPress={pick}><Camera size={16} color={colors.text} strokeWidth={2.2} /><Text style={styles.srcT}>相簿</Text></Pressable>
-        {SAMPLES.map((s) => (
-          <Pressable key={s} onPress={() => setImage(s)} style={styles.sample}><Image source={{ uri: s }} style={styles.fill} contentFit="cover" /></Pressable>
-        ))}
-      </View>
-      {myPets.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petRow}>
-          {myPets.map((p) => (
-            <Pressable key={p.id} onPress={() => setImage(p.avatarUri)} style={styles.petChip}>
-              <Image source={{ uri: p.thumbUri ?? p.avatarUri }} style={styles.petThumb} contentFit="cover" />
-              <Text style={styles.petChipT} numberOfLines={1}>{p.name}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
 
       {/* 文字欄位 */}
       <View style={styles.labelRow}>
@@ -374,6 +386,44 @@ export default function MemeScreen() {
   );
 }
 
+/** 轉盤落定時從中心撒出的像素星星（掛 key 重掛即重播） */
+function StarBurst() {
+  const stars = useRef(
+    Array.from({ length: 10 }, (_, i) => ({ a: (i / 10) * Math.PI * 2, v: new Animated.Value(0) })),
+  ).current;
+  useEffect(() => {
+    Animated.parallel(
+      stars.map((s) => Animated.timing(s.v, { toValue: 1, duration: 680, useNativeDriver: true })),
+    ).start();
+  }, [stars]);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={styles.starOrigin}>
+        {stars.map((s, i) => {
+          const dist = 70 + (i % 3) * 22;
+          return (
+            <Animated.View
+              key={i}
+              style={{
+                position: 'absolute',
+                opacity: s.v.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
+                transform: [
+                  { translateX: s.v.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(s.a) * dist] }) },
+                  { translateY: s.v.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(s.a) * dist] }) },
+                  { scale: s.v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.3] }) },
+                  { rotate: s.v.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }) },
+                ],
+              }}
+            >
+              <PixelSprite name="star" size={22} />
+            </Animated.View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function renderPanel(uri: string | null, ribbon: string, cap: string | undefined, color: string, of: number, styles: any) {
   return (
     <>
@@ -418,6 +468,10 @@ const styles = StyleSheet.create({
   topbarText: { color: '#111', fontWeight: '900', textAlign: 'center', fontFamily: impact },
   captionBar: { backgroundColor: '#000', paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
   captionText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontSize: 16 },
+  spinOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,6,15,0.55)', gap: 6 },
+  spinEmoji: { fontSize: 44 },
+  spinT: { color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 2 },
+  starOrigin: { position: 'absolute', left: '50%', top: '50%' },
   burstPet: { position: 'absolute', width: '68%', aspectRatio: 1, borderRadius: 999, alignSelf: 'center', bottom: '3%' },
   reactBand: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, backgroundColor: 'rgba(0,0,0,0.55)' } as any,
   reactText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontFamily: impact },
