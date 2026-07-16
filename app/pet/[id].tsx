@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   Pressable,
@@ -146,6 +147,14 @@ export default function PetProfileScreen() {
           />
         ) : null}
       </View>
+
+      <Button
+        label="🎭 做迷因"
+        icon={Sparkles}
+        variant="ghost"
+        onPress={() => router.push({ pathname: '/meme', params: { petId } })}
+        style={{ marginTop: spacing.md }}
+      />
 
       {canEditProfile(me, pet) || isAdmin ? (
         <Button

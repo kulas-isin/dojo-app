@@ -79,6 +79,14 @@ export default function DiscoverScreen() {
               <Doodle name="paw" size={20} color={colors.primary} opacity={0.9} />
             </View>
             <Text style={styles.sub}>滑到大家的寵物與浪浪，發現可愛的毛孩。</Text>
+            <Pressable style={styles.memeBanner} onPress={() => router.push('/meme')}>
+              <Text style={styles.memeEmoji}>🎭</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.memeTitle}>迷因製造機</Text>
+                <Text style={styles.memeSub}>幫家裡毛孩配梗字，做成迷因分享</Text>
+              </View>
+              <Text style={styles.memeGo}>開玩 ›</Text>
+            </Pressable>
             <View style={styles.filters}>
               {FILTERS.map((f) => (
                 <Pressable
@@ -247,6 +255,16 @@ const styles = StyleSheet.create({
   strayArea: { color: colors.textDim, fontSize: font.size.sm, flex: 1 },
   strayMeta: { color: colors.textMuted, fontSize: font.size.xs, fontWeight: font.weight.semibold },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 96 },
+  memeBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.primarySoft, borderRadius: radius.md,
+    borderWidth: 2, borderColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    marginTop: spacing.md,
+  },
+  memeEmoji: { fontSize: 26 },
+  memeTitle: { color: colors.primary, fontWeight: '900', fontSize: font.size.md },
+  memeSub: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '600', marginTop: 1 },
+  memeGo: { color: colors.primary, fontWeight: '900', fontSize: font.size.sm },
   headerBox: { position: 'relative', marginBottom: spacing.xs },
   headerDeco: { position: 'absolute', top: -22, right: -16, width: 120, height: 120 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
