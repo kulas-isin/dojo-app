@@ -36,6 +36,7 @@ const FILTERS: { id: FilterKind; label: string; emoji: string }[] = [
   { id: 'cursed', label: '驚嚇', emoji: '😱' },
   { id: 'pixel', label: '像素', emoji: '👾' },
 ];
+const FX_FILTERS = FILTERS.filter((f) => f.id !== 'none'); // 轉盤只抽有效果的
 
 const SAMPLES = [
   'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=800',
@@ -48,9 +49,16 @@ export default function MemeScreen() {
   const params = useLocalSearchParams<{ petId?: string; imageUri?: string }>();
   const { width } = useWindowDimensions();
   const pets = useStore((s) => s.pets);
+  const posts = useStore((s) => s.posts);
   const me = useStore((s) => s.currentUserId);
   const addPost = useStore((s) => s.addPost);
   const session = useAuthStore((s) => s.session);
+
+  // 大家的迷因（靈感牆）
+  const memeWall = useMemo(
+    () => posts.filter((p) => p.isMeme && !p.hidden).slice(0, 12),
+    [posts],
+  );
 
   const myPets = useMemo(() => pets.filter((p) => p.kind === 'owned' && p.ownerId === me), [pets, me]);
   const initPet = params.petId ? pets.find((p) => p.id === String(params.petId)) : undefined;
@@ -71,6 +79,7 @@ export default function MemeScreen() {
   const [pvSize, setPvSize] = useState<{ w: number; h: number } | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [starKey, setStarKey] = useState(0);
+  const [published, setPublished] = useState<{ petId: string; dataUrl: string; blob: Blob } | null>(null);
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
@@ -102,7 +111,7 @@ export default function MemeScreen() {
     const tick = () => {
       n += 1;
       setTemplate(pool[Math.floor(Math.random() * pool.length)].id);
-      setFilter(FILTERS[Math.floor(Math.random() * FILTERS.length)].id);
+      setFilter(FX_FILTERS[Math.floor(Math.random() * FX_FILTERS.length)].id);
       if (n < total) {
         setTimeout(tick, 55 + n * 16); // 由快到慢
         return;
@@ -110,7 +119,7 @@ export default function MemeScreen() {
       // 定格：最終隨機組合
       const finalT = pool[Math.floor(Math.random() * pool.length)];
       setTemplate(finalT.id);
-      setFilter(FILTERS[Math.floor(Math.random() * FILTERS.length)].id);
+      setFilter(FX_FILTERS[Math.floor(Math.random() * FX_FILTERS.length)].id);
       setStrength(0.5 + Math.random() * 0.5);
       const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
       const line = randomLine(theme.id);
@@ -180,12 +189,28 @@ export default function MemeScreen() {
     if (!targetPetId) { setMsg('先建立一隻寵物檔案才能發文'); return; }
     setBusy(true); setMsg(null);
     try {
-      const { dataUrl } = await composeMeme(buildInput());
+      const { dataUrl, blob } = await composeMeme(buildInput());
       const caption = tpl.slots.map((s) => texts[s.key]).filter(Boolean).join(' · ') || '一張迷因';
       const up = await uploadMedia(dataUrl, session.user.id, 'photo');
       await addPost({ petId: targetPetId, mediaUri: up.url, thumbUri: up.thumbUrl, mediaType: 'photo', caption, isMeme: true });
-      router.replace(`/pet/${targetPetId}`);
-    } catch (e: any) { setMsg(`發佈失敗：${e?.message ?? '請稍後再試'}`); setBusy(false); }
+      setPublished({ petId: targetPetId, dataUrl, blob }); // 慶祝畫面，不直接跳走
+    } catch (e: any) { setMsg(`發佈失敗：${e?.message ?? '請稍後再試'}`); }
+    finally { setBusy(false); }
+  };
+
+  // 分享外流（Web Share，可帶圖）；不支援就退回下載
+  const shareOut = async () => {
+    if (!published || Platform.OS !== 'web') return;
+    try {
+      const file = new File([published.blob], `pawdojo-meme-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const nav: any = navigator;
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: 'PawDojo 迷因', text: '我用 PawDojo 幫毛孩做了張迷因！' });
+      } else {
+        const a = document.createElement('a');
+        a.href = published.dataUrl; a.download = file.name; a.click();
+      }
+    } catch { /* 使用者取消分享 */ }
   };
 
   const previewW = Math.min(width - spacing.lg * 2, 460);
@@ -222,6 +247,20 @@ export default function MemeScreen() {
       <View style={styles.titleRow}><Sparkles size={22} color={colors.primary} strokeWidth={2.4} /><Text style={styles.title}>迷因製造機</Text></View>
       <Text style={styles.sub}>挑個大家都認得的梗版型，換上自家毛孩就有共感</Text>
 
+      {/* 大家的迷因（靈感牆） */}
+      {memeWall.length ? (
+        <View style={{ marginBottom: spacing.sm }}>
+          <Text style={styles.wallLabel}>🔥 大家的迷因</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
+            {memeWall.map((p) => (
+              <Pressable key={p.id} onPress={() => router.push(`/pet/${p.petId}`)} style={styles.wallItem}>
+                <Image source={{ uri: p.thumbUri ?? p.mediaUri }} style={styles.fill} contentFit="cover" />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {/* 模板選擇 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tplRow}>
         {TEMPLATES.map((t) => {
@@ -239,7 +278,7 @@ export default function MemeScreen() {
       {/* 🎰 梗圖轉盤 */}
       <Pressable style={[styles.gacha, spinning && styles.gachaOn]} onPress={spin} disabled={spinning}>
         <Text style={styles.gachaEmoji}>🎰</Text>
-        <Text style={styles.gachaT}>{spinning ? '抽取中…' : '隨機一發'}</Text>
+        <Text style={styles.gachaT}>{spinning ? '抽取中…' : starKey > 0 ? '再抽一次' : '隨機一發'}</Text>
       </Pressable>
 
       {/* 迷因濾鏡 */}
@@ -379,9 +418,24 @@ export default function MemeScreen() {
       ) : null}
 
       {msg ? <Text style={styles.msg}>{msg}</Text> : null}
+      {!session ? <Text style={styles.loginHint}>發佈需先到「我的」分頁登入（下載不用登入）</Text> : null}
 
-      <Button label="發佈到動態" icon={ImagePlus} onPress={share} loading={busy} disabled={!ready} style={{ marginTop: spacing.xl }} />
+      <Button label={session ? '發佈到動態' : '登入後才能發佈'} icon={ImagePlus} onPress={share} loading={busy} disabled={!ready || !session} style={{ marginTop: session ? spacing.xl : spacing.sm }} />
       {Platform.OS === 'web' ? <Button label="下載迷因" variant="ghost" icon={Download} onPress={download} loading={busy} disabled={!ready} style={{ marginTop: spacing.sm }} /> : null}
+
+      {/* 發佈後慶祝 */}
+      {published ? (
+        <View style={styles.celebrate}>
+          <View style={styles.celebrateCard}>
+            <Text style={styles.celebrateEmoji}>🎉</Text>
+            <Text style={styles.celebrateTitle}>你的迷因上牆了！</Text>
+            <Image source={{ uri: published.dataUrl }} style={styles.celebrateImg} contentFit="contain" />
+            <Button label="看看動態" icon={ImagePlus} onPress={() => { const id = published.petId; setPublished(null); router.replace(`/pet/${id}`); }} style={{ marginTop: spacing.md }} />
+            {Platform.OS === 'web' ? <Button label="分享出去" variant="ghost" onPress={shareOut} style={{ marginTop: spacing.sm }} /> : null}
+            <Pressable onPress={() => setPublished(null)} style={styles.againBtn}><Text style={styles.againT}>再做一張</Text></Pressable>
+          </View>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -510,4 +564,15 @@ const styles = StyleSheet.create({
   tgtChipOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   tgtT: { color: colors.text, fontWeight: '800', fontSize: font.size.sm },
   msg: { color: colors.primary, fontWeight: '800', fontSize: font.size.sm, marginTop: spacing.md },
+  loginHint: { color: colors.textDim, fontSize: font.size.xs, fontWeight: '700', marginTop: spacing.md, textAlign: 'center' },
+  wallLabel: { color: colors.text, fontSize: font.size.sm, fontWeight: '900', marginBottom: spacing.xs },
+  wallRow: { gap: spacing.sm },
+  wallItem: { width: 72, height: 72, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.cardAlt },
+  celebrate: { ...StyleSheet.absoluteFillObject, position: 'fixed' as any, backgroundColor: 'rgba(20,30,20,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg, zIndex: 1000 },
+  celebrateCard: { width: '100%', maxWidth: 360, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', ...sticker },
+  celebrateEmoji: { fontSize: 40 },
+  celebrateTitle: { color: colors.text, fontSize: font.size.lg, fontWeight: '900', marginTop: 4, marginBottom: spacing.md },
+  celebrateImg: { width: '100%', height: 200, borderRadius: radius.md, backgroundColor: '#000' },
+  againBtn: { marginTop: spacing.md, paddingVertical: 6 },
+  againT: { color: colors.textDim, fontWeight: '800', fontSize: font.size.sm },
 });
