@@ -12,9 +12,10 @@ import { colors, font, radius, shadow, spacing, tints } from '@/theme';
 import { timeAgo } from '@/utils/time';
 import type { Pet, Post } from '@/types';
 
-type Filter = 'all' | 'stray' | 'following';
+type Filter = 'all' | 'meme' | 'stray' | 'following';
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: '全部' },
+  { value: 'meme', label: '迷因' },
   { value: 'stray', label: '浪浪' },
   { value: 'following', label: '追蹤中' },
 ];
@@ -45,6 +46,7 @@ export default function DiscoverScreen() {
         const pet = petsById[post.petId];
         if (!pet || post.hidden || pet.visibility !== 'public') return false;
         if (filter === 'following') return pet.following;
+        if (filter === 'meme') return !!post.isMeme;
         return true;
       })
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -105,8 +107,14 @@ export default function DiscoverScreen() {
         ListEmptyComponent={
           <EmptyState
             doodle="heart"
-            title={isStrayDir ? '還沒有浪浪檔案' : '這裡還沒有貼文'}
-            subtitle={isStrayDir ? '按下方「建立浪浪檔案」，幫街貓浪狗建個檔。' : '換個篩選，或去幫寵物/浪浪新增第一則紀錄。'}
+            title={isStrayDir ? '還沒有浪浪檔案' : filter === 'meme' ? '還沒有迷因' : '這裡還沒有貼文'}
+            subtitle={
+              isStrayDir
+                ? '按下方「建立浪浪檔案」，幫街貓浪狗建個檔。'
+                : filter === 'meme'
+                  ? '點上面的「迷因製造機」，幫毛孩做第一張迷因！'
+                  : '換個篩選，或去幫寵物/浪浪新增第一則紀錄。'
+            }
           />
         }
         renderItem={({ item }) =>

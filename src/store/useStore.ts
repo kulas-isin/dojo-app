@@ -92,6 +92,8 @@ export interface NewPostInput {
   thumbUri?: string;
   mediaType: MediaType;
   caption: string;
+  /** 迷因製造機發佈的迷因貼文 */
+  isMeme?: boolean;
 }
 
 interface StoreState {
@@ -325,6 +327,7 @@ export const useStore = create<StoreState>()(
           input.thumbUri ?? input.mediaUri,
           input.mediaType,
           input.caption,
+          input.isMeme ?? false,
         );
         await get().syncSocial();
       },

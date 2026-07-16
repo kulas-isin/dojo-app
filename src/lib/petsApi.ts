@@ -48,6 +48,7 @@ function mapPost(r: any): Post {
     liked: false,
     hidden: r.hidden ?? false,
     reportCount: r.report_count ?? 0,
+    isMeme: r.is_meme ?? false,
   };
 }
 
@@ -185,6 +186,7 @@ export async function addPostRemote(
   thumbUri: string,
   mediaType: MediaType,
   caption: string,
+  isMeme = false,
 ): Promise<void> {
   const { error } = await supabase.from('posts').insert({
     pet_id: petId,
@@ -194,6 +196,7 @@ export async function addPostRemote(
     thumb_url: thumbUri,
     media_type: mediaType,
     caption: caption.trim(),
+    is_meme: isMeme,
   });
   if (error) throw error;
 }

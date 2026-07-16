@@ -121,6 +121,7 @@ export default function MemeScreen() {
         thumbUri: uploaded.thumbUrl,
         mediaType: 'photo',
         caption,
+        isMeme: true,
       });
       router.replace(`/pet/${targetPetId}`);
     } catch (e: any) {
@@ -253,12 +254,10 @@ export default function MemeScreen() {
 
       {msg ? <Text style={styles.msg}>{msg}</Text> : null}
 
-      <View style={styles.actions}>
-        {Platform.OS === 'web' ? (
-          <Button label="下載迷因" variant="ghost" icon={Download} onPress={download} loading={busy} disabled={!imageUri} style={{ flex: 1 }} />
-        ) : null}
-        <Button label="發到動態" icon={ImagePlus} onPress={share} loading={busy} disabled={!imageUri} style={{ flex: 1 }} />
-      </View>
+      <Button label="發佈到動態" icon={ImagePlus} onPress={share} loading={busy} disabled={!imageUri} style={{ marginTop: spacing.xl }} />
+      {Platform.OS === 'web' ? (
+        <Button label="下載迷因" variant="ghost" icon={Download} onPress={download} loading={busy} disabled={!imageUri} style={{ marginTop: spacing.sm }} />
+      ) : null}
     </ScrollView>
   );
 }

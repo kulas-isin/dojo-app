@@ -118,6 +118,8 @@ export interface Post {
   liked: boolean;
   hidden?: boolean;
   reportCount?: number;
+  /** 是否為迷因製造機做出來的迷因貼文 */
+  isMeme?: boolean;
 }
 
 /** 地圖上的道館 */
