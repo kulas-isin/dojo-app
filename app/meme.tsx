@@ -80,6 +80,9 @@ export default function MemeScreen() {
   const [spinning, setSpinning] = useState(false);
   const [starKey, setStarKey] = useState(0);
   const [published, setPublished] = useState<{ petId: string; dataUrl: string; blob: Blob } | null>(null);
+  const [rollMsg, setRollMsg] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const pulse = useRef(new Animated.Value(0)).current;
 
   const tpl = getTemplate(template);
   const twoImg = tpl.images === 2;
@@ -118,9 +121,11 @@ export default function MemeScreen() {
       }
       // 定格：最終隨機組合
       const finalT = pool[Math.floor(Math.random() * pool.length)];
+      const ff = FX_FILTERS[Math.floor(Math.random() * FX_FILTERS.length)];
+      const str = 0.5 + Math.random() * 0.5;
       setTemplate(finalT.id);
-      setFilter(FX_FILTERS[Math.floor(Math.random() * FX_FILTERS.length)].id);
-      setStrength(0.5 + Math.random() * 0.5);
+      setFilter(ff.id);
+      setStrength(str);
       const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
       const line = randomLine(theme.id);
       setTexts((prev) => {
@@ -131,6 +136,8 @@ export default function MemeScreen() {
       });
       setSpinning(false);
       setStarKey((k) => k + 1); // 落定撒像素星星
+      setRollMsg(`🎁 抽到：${finalT.name}・${ff.label} ${Math.round(str * 100)}%`);
+      setTimeout(() => setRollMsg(null), 2600);
     };
     tick();
   };
@@ -157,17 +164,32 @@ export default function MemeScreen() {
   // 預覽即時合成真實輸出（所見即所得），去抖動避免每次按鍵都重畫
   const composeKey = JSON.stringify({ template, imgs: imgs.slice(0, tpl.images), texts: tpl.slots.map((s) => texts[s.key] ?? ''), filter, strength });
   useEffect(() => {
-    if (Platform.OS !== 'web' || !ready) { setPreview(null); return; }
+    if (Platform.OS !== 'web' || !ready) { setPreview(null); setComposing(false); return; }
     let alive = true;
+    setComposing(true);
     const id = setTimeout(async () => {
       try {
         const { dataUrl } = await composeMeme(buildInput());
         if (alive) setPreview(dataUrl);
       } catch { if (alive) setPreview(null); }
+      finally { if (alive) setComposing(false); }
     }, 320);
     return () => { alive = false; clearTimeout(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composeKey, ready]);
+
+  // 合成中預覽輕微呼吸
+  useEffect(() => {
+    if (!composing) { pulse.stopAnimation(); pulse.setValue(0); return; }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 480, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 480, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [composing, pulse]);
 
   const download = async () => {
     if (!ready) { setMsg(twoImg ? '這個模板需要兩張圖' : '先選一張圖'); return; }
@@ -221,7 +243,12 @@ export default function MemeScreen() {
 
   const renderSingle = (uri: string | null) => (
     <View style={{ flex: 1 }}>
-      {uri ? <Image source={{ uri }} style={styles.fill} contentFit="cover" transition={120} /> : <View style={[styles.fill, styles.slotEmpty]}><Camera size={30} color={colors.textMuted} /></View>}
+      {uri ? <Image source={{ uri }} style={styles.fill} contentFit="cover" transition={120} /> : (
+        <Pressable style={[styles.fill, styles.slotEmpty]} onPress={pick}>
+          <Camera size={30} color={colors.textMuted} />
+          <Text style={styles.emptyHint}>點我選張毛孩照片</Text>
+        </Pressable>
+      )}
       {template === 'reaction' ? (
         <View style={styles.reactBand}>
           <Text style={[styles.reactText, { fontSize: Math.round(previewW * 0.055) }]} numberOfLines={2}>{texts.top || '當…的時候'}</Text>
@@ -261,7 +288,7 @@ export default function MemeScreen() {
             <View style={styles.captionBar}><Text style={styles.captionText} numberOfLines={2}>{texts.top || '頂部黑底字幕'}</Text></View>
             <View style={{ flex: 1 }}>
               {burstBg ? <Image source={{ uri: burstBg }} style={styles.fill} contentFit="cover" /> : <View style={[styles.fill, { backgroundColor: '#08060f' }]} />}
-              {imgs[0] ? <Image source={{ uri: imgs[0]! }} style={styles.burstPet} contentFit="cover" /> : <View style={[styles.burstPet, styles.slotEmpty]}><Camera size={26} color={colors.textMuted} /></View>}
+              {imgs[0] ? <Image source={{ uri: imgs[0]! }} style={styles.burstPet} contentFit="cover" /> : <Pressable style={[styles.burstPet, styles.slotEmpty]} onPress={pick}><Camera size={26} color={colors.textMuted} /></Pressable>}
             </View>
           </>
         ) : twoImg ? (
@@ -280,6 +307,11 @@ export default function MemeScreen() {
             {renderSingle(imgs[0])}
           </>
         )}
+        {composing && !spinning ? (
+          <Animated.View pointerEvents="none" style={[styles.composing, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) }]}>
+            <Text style={styles.composingT}>合成中…</Text>
+          </Animated.View>
+        ) : null}
         {spinning ? (
           <View style={styles.spinOverlay} pointerEvents="none">
             <Text style={styles.spinEmoji}>🎰</Text>
@@ -294,6 +326,7 @@ export default function MemeScreen() {
         <Text style={styles.gachaEmoji}>🎰</Text>
         <Text style={styles.gachaT}>{spinning ? '抽取中…' : starKey > 0 ? '再抽一次' : '隨機一發'}</Text>
       </Pressable>
+      {rollMsg ? <Text style={styles.rollMsg}>{rollMsg}</Text> : null}
 
       {/* 梗字（緊接預覽，打字時預覽在上方） */}
       <View style={styles.hr} />
@@ -302,15 +335,21 @@ export default function MemeScreen() {
         <Pressable style={styles.rollBtn} onPress={() => roll()}><Shuffle size={14} color={colors.primary} strokeWidth={2.4} /><Text style={styles.rollT}>隨機</Text></Pressable>
       </View>
       {tpl.slots.map((s, i) => (
-        <TextInput
-          key={s.key}
-          style={[styles.input, i > 0 && { marginTop: spacing.sm }]}
-          placeholder={`${s.label}：${s.placeholder}`}
-          placeholderTextColor={colors.textMuted}
-          value={texts[s.key] ?? ''}
-          onChangeText={(v) => setTexts((prev) => ({ ...prev, [s.key]: v }))}
-          maxLength={40}
-        />
+        <View key={s.key} style={[styles.inputWrap, i > 0 && { marginTop: spacing.sm }]}>
+          <TextInput
+            style={[styles.input, { paddingRight: 40 }]}
+            placeholder={s.placeholder}
+            placeholderTextColor={colors.textMuted}
+            value={texts[s.key] ?? ''}
+            onChangeText={(v) => setTexts((prev) => ({ ...prev, [s.key]: v }))}
+            maxLength={40}
+          />
+          {texts[s.key] ? (
+            <Pressable style={styles.clearBtn} onPress={() => setTexts((prev) => ({ ...prev, [s.key]: '' }))}>
+              <Text style={styles.clearT}>×</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ))}
       <View style={styles.themeRow}>
         {THEMES.map((t) => (
@@ -424,6 +463,7 @@ export default function MemeScreen() {
       {/* 發佈後慶祝 */}
       {published ? (
         <View style={styles.celebrate}>
+          <StarBurst />
           <View style={styles.celebrateCard}>
             <Text style={styles.celebrateEmoji}>🎉</Text>
             <Text style={styles.celebrateTitle}>你的迷因上牆了！</Text>
@@ -522,6 +562,13 @@ const styles = StyleSheet.create({
   topbarText: { color: '#111', fontWeight: '900', textAlign: 'center', fontFamily: impact },
   captionBar: { backgroundColor: '#000', paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
   captionText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontSize: 16 },
+  composing: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(8,6,15,0.62)', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  composingT: { color: '#fff', fontWeight: '800', fontSize: 11 },
+  rollMsg: { color: colors.gold, fontWeight: '900', fontSize: font.size.sm, textAlign: 'center', marginTop: spacing.sm },
+  emptyHint: { color: colors.textMuted, fontSize: font.size.sm, fontWeight: '700', marginTop: 6 },
+  inputWrap: { position: 'relative', justifyContent: 'center' },
+  clearBtn: { position: 'absolute', right: 6, top: 0, bottom: 0, width: 34, alignItems: 'center', justifyContent: 'center' },
+  clearT: { color: colors.textMuted, fontSize: 22, fontWeight: '800', marginTop: -2 },
   spinOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,6,15,0.55)', gap: 6 },
   spinEmoji: { fontSize: 44 },
   spinT: { color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 2 },
