@@ -1,0 +1,305 @@
+<title>PawDojo 設計系統</title>
+<style>
+  :root {
+    /* 頁面外觀 tokens（會隨主題切換） */
+    --page-bg: #FAF9F5;
+    --page-surface: #FFFFFF;
+    --page-ink: #1F1E1C;
+    --page-dim: #77726A;
+    --page-muted: #A8A296;
+    --page-line: #E7E2D6;
+    --coral: #D97757;
+    --sage: #2F6F5B;
+    --gold: #B8842B;
+
+    --maxw: 1080px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #171614;
+      --page-surface: #201E1B;
+      --page-ink: #F4F1EA;
+      --page-dim: #A8A296;
+      --page-muted: #746F66;
+      --page-line: #322F2A;
+      --coral: #E58C6E;
+      --sage: #5FA98F;
+      --gold: #D3A45B;
+    }
+  }
+  :root[data-theme="light"] {
+    --page-bg: #FAF9F5; --page-surface: #FFFFFF; --page-ink: #1F1E1C;
+    --page-dim: #77726A; --page-muted: #A8A296; --page-line: #E7E2D6;
+    --coral: #D97757; --sage: #2F6F5B; --gold: #B8842B;
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #171614; --page-surface: #201E1B; --page-ink: #F4F1EA;
+    --page-dim: #A8A296; --page-muted: #746F66; --page-line: #322F2A;
+    --coral: #E58C6E; --sage: #5FA98F; --gold: #D3A45B;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: var(--sans);
+    font-weight: 500;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(24px, 5vw, 64px); }
+
+  /* 標頭 */
+  .masthead { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid var(--page-line); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .mark { width: 52px; height: 52px; border-radius: 16px; background: var(--coral); display: grid; place-items: center; flex: none; }
+  .brand h1 { margin: 0; font-size: clamp(28px, 4vw, 38px); font-weight: 900; letter-spacing: -0.02em; }
+  .brand p { margin: 2px 0 0; color: var(--page-dim); font-size: 15px; }
+  .ver { text-align: right; color: var(--page-dim); font-size: 13px; font-family: var(--mono); }
+  .ver b { display: block; color: var(--page-ink); font-size: 15px; }
+
+  section { margin-top: 56px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; font-weight: 800; color: var(--coral); margin: 0 0 4px; }
+  h2 { margin: 0 0 20px; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .lead { color: var(--page-dim); max-width: 60ch; margin: -12px 0 22px; font-size: 15px; }
+
+  /* 色票 */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .swatch { border: 1px solid var(--page-line); border-radius: 14px; overflow: hidden; background: var(--page-surface); }
+  .swatch .chip { height: 76px; }
+  .swatch .meta { padding: 12px 14px; }
+  .swatch .name { font-weight: 700; font-size: 14px; }
+  .swatch .hex { font-family: var(--mono); font-size: 12.5px; color: var(--page-dim); text-transform: uppercase; margin-top: 2px; }
+  .swatch .use { font-size: 12px; color: var(--page-muted); margin-top: 6px; }
+
+  /* 字級 */
+  .typerow { display: flex; align-items: baseline; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--page-line); }
+  .typerow .spec { flex: none; width: 128px; font-family: var(--mono); font-size: 12.5px; color: var(--page-dim); }
+  .typerow .spec b { color: var(--page-ink); }
+  .typerow .sample { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* 間距 / 圓角 */
+  .scale { display: grid; gap: 12px; }
+  .scale .brow { display: flex; align-items: center; gap: 16px; }
+  .scale .lab { width: 72px; font-family: var(--mono); font-size: 12.5px; color: var(--page-dim); }
+  .scale .lab b { color: var(--page-ink); }
+  .bar { height: 20px; background: var(--coral); border-radius: 4px; }
+  .radii { display: flex; gap: 20px; flex-wrap: wrap; }
+  .radii .r { text-align: center; }
+  .radii .box { width: 84px; height: 84px; background: var(--page-surface); border: 2px solid var(--coral); }
+  .radii .cap { margin-top: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--page-dim); }
+
+  /* 元件 */
+  .panel { background: var(--page-surface); border: 1px solid var(--page-line); border-radius: 18px; padding: 22px; }
+  .panel + .panel { margin-top: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .row + .row { margin-top: 16px; }
+  .ptitle { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--page-muted); font-weight: 800; margin: 0 0 14px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--sans); font-weight: 800; font-size: 15px; padding: 12px 20px; border-radius: 999px; border: 0; cursor: pointer; }
+  .btn.primary { background: var(--coral); color: #fff; }
+  .btn.accent { background: var(--sage); color: #fff; }
+  .btn.ghost { background: transparent; color: var(--page-ink); border: 1px solid var(--page-line); }
+  .btn svg { width: 18px; height: 18px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; }
+
+  /* 卡片示例：排行榜列 */
+  .lbrow { display: flex; align-items: center; gap: 14px; background: var(--page-surface); border: 1px solid var(--page-line); border-radius: 16px; padding: 10px 12px; box-shadow: 0 4px 12px rgba(31,30,28,0.06); }
+  .lbrow .rank { width: 30px; text-align: center; font-weight: 900; color: var(--gold); }
+  .lbrow .thumb { width: 52px; height: 52px; border-radius: 10px; background: linear-gradient(135deg, #E9C9B8, #CDA);  flex: none; background-size: cover; }
+  .lbrow .who { flex: 1; }
+  .lbrow .who .n { font-weight: 800; display: flex; align-items: center; gap: 6px; }
+  .lbrow .who .s { font-size: 12px; color: var(--page-dim); }
+  .lbrow .votes { text-align: center; }
+  .lbrow .votes b { color: var(--coral); font-size: 18px; font-weight: 900; display: block; }
+  .lbrow .votes span { font-size: 10px; color: var(--page-muted); }
+
+  /* 圖示 */
+  .iconstrip { display: flex; flex-wrap: wrap; gap: 14px; }
+  .iconstrip .ic { width: 56px; height: 56px; border-radius: 14px; border: 1px solid var(--page-line); background: var(--page-surface); display: grid; place-items: center; color: var(--coral); }
+  .iconstrip .ic svg { width: 26px; height: 26px; }
+  table.map { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; }
+  table.map th, table.map td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--page-line); }
+  table.map th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--page-muted); font-weight: 800; }
+  table.map td.icon { font-family: var(--mono); color: var(--sage); font-weight: 700; }
+  .note { margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--sage) 12%, transparent); border: 1px solid color-mix(in srgb, var(--sage) 30%, transparent); font-size: 13.5px; color: var(--page-ink); }
+
+  footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--page-line); color: var(--page-muted); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/>
+          <path d="M9 10a5 5 0 0 1 5 5v3a2.5 2.5 0 0 1-4.6 1.3 2.5 2.5 0 0 0-3.3-.7l-.4.2A2.5 2.5 0 0 1 3 17.5V16a5 5 0 0 1 6-6Z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>PawDojo 設計系統</h1>
+        <p>寵物道館對戰 App · Claude 溫暖亮色系</p>
+      </div>
+    </div>
+    <div class="ver">
+      <b>v0.2 · Phase 1</b>
+      Design tokens + Lucide
+    </div>
+  </header>
+
+  <section id="palette">
+    <p class="eyebrow">Foundations</p>
+    <h2>色彩 Palette</h2>
+    <p class="lead">暖象牙為底、珊瑚為主、深沙綠為輔、琥珀金點綴頭銜與冠軍。所有畫面都從這組語意色衍生，不寫死色碼。</p>
+
+    <h3 style="font-size:14px;color:var(--page-dim);text-transform:uppercase;letter-spacing:.1em;margin:8px 0 12px">表面 Surfaces</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#FAF9F5;border-bottom:1px solid var(--page-line)"></div><div class="meta"><div class="name">bg</div><div class="hex">#FAF9F5</div><div class="use">頁面底色 · 暖象牙</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F2EFE6"></div><div class="meta"><div class="name">bgElevated</div><div class="hex">#F2EFE6</div><div class="use">次層背景 · 分頁列</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--page-line)"></div><div class="meta"><div class="name">card</div><div class="hex">#FFFFFF</div><div class="use">卡片表面</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F5F2EA"></div><div class="meta"><div class="name">cardAlt</div><div class="hex">#F5F2EA</div><div class="use">卡內淡色區塊 · 進度軌</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#E7E2D6"></div><div class="meta"><div class="name">border</div><div class="hex">#E7E2D6</div><div class="use">邊框 · 分隔線</div></div></div>
+    </div>
+
+    <h3 style="font-size:14px;color:var(--page-dim);text-transform:uppercase;letter-spacing:.1em;margin:26px 0 12px">文字 Text</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#1F1E1C"></div><div class="meta"><div class="name">text</div><div class="hex">#1F1E1C</div><div class="use">主要文字 · 近墨黑</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#77726A"></div><div class="meta"><div class="name">textDim</div><div class="hex">#77726A</div><div class="use">次要文字</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#A8A296"></div><div class="meta"><div class="name">textMuted</div><div class="hex">#A8A296</div><div class="use">說明 · 佔位</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--page-line)"></div><div class="meta"><div class="name">onColor</div><div class="hex">#FFFFFF</div><div class="use">疊在彩色上的文字</div></div></div>
+    </div>
+
+    <h3 style="font-size:14px;color:var(--page-dim);text-transform:uppercase;letter-spacing:.1em;margin:26px 0 12px">品牌 / 語意 Brand &amp; Semantic</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#D97757"></div><div class="meta"><div class="name">primary</div><div class="hex">#D97757</div><div class="use">珊瑚 · 挑戰 / 主按鈕</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F6E1D7"></div><div class="meta"><div class="name">primarySoft</div><div class="hex">#F6E1D7</div><div class="use">珊瑚淡底 · 選中態</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#2F6F5B"></div><div class="meta"><div class="name">accent</div><div class="hex">#2F6F5B</div><div class="use">深沙綠 · 衛冕 / 成功</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#DCEAE3"></div><div class="meta"><div class="name">accentSoft</div><div class="hex">#DCEAE3</div><div class="use">沙綠淡底</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#B8842B"></div><div class="meta"><div class="name">gold</div><div class="hex">#B8842B</div><div class="use">琥珀金 · 冠軍 / 頭銜</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F1E6CC"></div><div class="meta"><div class="name">goldSoft</div><div class="hex">#F1E6CC</div><div class="use">金色淡底</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#C0453B"></div><div class="meta"><div class="name">danger</div><div class="hex">#C0453B</div><div class="use">刪除 / 警示</div></div></div>
+    </div>
+  </section>
+
+  <section id="type">
+    <p class="eyebrow">Foundations</p>
+    <h2>字級 Typography</h2>
+    <p class="lead">系統字體（system-ui / PingFang TC），靠字級與字重建立層次。數字用 tabular-nums 對齊。</p>
+    <div>
+      <div class="typerow"><div class="spec"><b>display</b> · 34 / 900</div><div class="sample" style="font-size:34px;font-weight:900;letter-spacing:-.02em">PawDojo 道館</div></div>
+      <div class="typerow"><div class="spec"><b>xxl</b> · 28 / 900</div><div class="sample" style="font-size:28px;font-weight:900">全域排行榜</div></div>
+      <div class="typerow"><div class="spec"><b>xl</b> · 22 / 900</div><div class="sample" style="font-size:22px;font-weight:900">大安森林公園道館</div></div>
+      <div class="typerow"><div class="spec"><b>lg</b> · 18 / 800</div><div class="sample" style="font-size:18px;font-weight:800">現任衛冕者</div></div>
+      <div class="typerow"><div class="spec"><b>md</b> · 15 / 700</div><div class="sample" style="font-size:15px;font-weight:700">上傳毛孩，挑戰衛冕者</div></div>
+      <div class="typerow"><div class="spec"><b>sm</b> · 13 / 500</div><div class="sample" style="font-size:13px">綠意盎然的遛狗聖地，毛孩們的第一戰場。</div></div>
+      <div class="typerow"><div class="spec"><b>xs</b> · 12 / 500</div><div class="sample" style="font-size:12px;color:var(--page-dim)">128 人已投票 · 剩 22 小時</div></div>
+    </div>
+  </section>
+
+  <section id="spacing">
+    <p class="eyebrow">Foundations</p>
+    <h2>間距與圓角 Spacing &amp; Radius</h2>
+    <div class="scale" style="margin-bottom:32px">
+      <div class="brow"><div class="lab"><b>xs</b> 4</div><div class="bar" style="width:4px"></div></div>
+      <div class="brow"><div class="lab"><b>sm</b> 8</div><div class="bar" style="width:8px"></div></div>
+      <div class="brow"><div class="lab"><b>md</b> 12</div><div class="bar" style="width:12px"></div></div>
+      <div class="brow"><div class="lab"><b>lg</b> 16</div><div class="bar" style="width:16px"></div></div>
+      <div class="brow"><div class="lab"><b>xl</b> 24</div><div class="bar" style="width:24px"></div></div>
+      <div class="brow"><div class="lab"><b>xxl</b> 32</div><div class="bar" style="width:32px"></div></div>
+    </div>
+    <div class="radii">
+      <div class="r"><div class="box" style="border-radius:10px"></div><div class="cap">sm · 10</div></div>
+      <div class="r"><div class="box" style="border-radius:16px"></div><div class="cap">md · 16</div></div>
+      <div class="r"><div class="box" style="border-radius:24px"></div><div class="cap">lg · 24</div></div>
+      <div class="r"><div class="box" style="border-radius:999px"></div><div class="cap">pill · 999</div></div>
+    </div>
+  </section>
+
+  <section id="components">
+    <p class="eyebrow">Components</p>
+    <h2>元件 Components</h2>
+
+    <div class="panel">
+      <p class="ptitle">按鈕 Buttons</p>
+      <div class="row">
+        <button class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/></svg>送出挑戰</button>
+        <button class="btn accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7z"/></svg>結算對戰</button>
+        <button class="btn ghost">重置示範資料</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="ptitle">標籤 Badges</p>
+      <div class="row">
+        <span class="badge" style="background:#F1E6CC;color:#8a6418">128 票</span>
+        <span class="badge" style="background:#DCEAE3;color:#2F6F5B">剩 22 小時</span>
+        <span class="badge" style="background:#F6E1D7;color:#b0492a">可結算</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="ptitle">排行榜列 Leaderboard Row</p>
+      <div class="lbrow">
+        <div class="rank">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#B8842B" stroke="#B8842B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </div>
+        <div class="thumb"></div>
+        <div class="who">
+          <div class="n">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#77726A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/></svg>
+            麻糬
+          </div>
+          <div class="s">Aki · 大安森林公園道館</div>
+        </div>
+        <div class="votes"><b>128</b><span>票</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="icons">
+    <p class="eyebrow">Iconography</p>
+    <h2>圖示 Icons — Lucide</h2>
+    <p class="lead">全 App 使用 <b>Lucide</b>（MIT 授權）線條圖示，取代 emoji。線寬 2–2.4、圓角端點。設計稿在 Figma 用官方 Lucide 外掛依名稱取用。</p>
+    <div class="iconstrip">
+      <div class="ic" title="paw-print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3a2.5 2.5 0 0 1-4.6 1.3 2.5 2.5 0 0 0-3.3-.7l-.4.2A2.5 2.5 0 0 1 3 17.5V16a5 5 0 0 1 6-6Z"/></svg></div>
+      <div class="ic" title="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg></div>
+      <div class="ic" title="trophy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+      <div class="ic" title="crown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></div>
+      <div class="ic" title="swords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></div>
+      <div class="ic" title="heart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
+      <div class="ic" title="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+      <div class="ic" title="map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></div>
+      <div class="ic" title="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+    </div>
+
+    <table class="map">
+      <thead><tr><th>用途</th><th>Lucide 圖示</th></tr></thead>
+      <tbody>
+        <tr><td>地圖分頁</td><td class="icon">map</td></tr>
+        <tr><td>排行榜分頁 / 冠軍名次</td><td class="icon">trophy</td></tr>
+        <tr><td>我的 / 寵物 / 排行</td><td class="icon">paw-print</td></tr>
+        <tr><td>衛冕者 / 頭銜 / 結算</td><td class="icon">crown</td></tr>
+        <tr><td>發起挑戰 / 對戰</td><td class="icon">swords</td></tr>
+        <tr><td>投票</td><td class="icon">heart</td></tr>
+        <tr><td>上傳照片影片</td><td class="icon">camera</td></tr>
+        <tr><td>建立道館</td><td class="icon">plus / castle</td></tr>
+        <tr><td>道館位置</td><td class="icon">map-pin</td></tr>
+        <tr><td>貓 / 狗 / 其他</td><td class="icon">cat / dog / paw-print</td></tr>
+        <tr><td>道館圖示（可選）</td><td class="icon">trees · building-2 · bike · waves · umbrella · mountain · ferris-wheel · bone · castle</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <b>匯入 Figma 的流程：</b>用 <b>html.to.design</b> 外掛貼上這頁的網址即可把版面、色票、字級匯入成可編輯圖層；圖示則在 Figma 安裝官方 <b>Lucide</b> 外掛，依上表名稱取用向量原檔（勿用截圖）。
+    </div>
+  </section>
+
+  <footer>
+    <span>PawDojo · 設計系統風格指南</span>
+    <span>色彩與尺標對應 <code style="font-family:var(--mono)">src/theme.ts</code></span>
+  </footer>
+</div>
