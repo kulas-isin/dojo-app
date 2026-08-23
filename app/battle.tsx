@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import * as sfx from '@/battle/audio';
 import {
@@ -970,6 +970,7 @@ export default function BattleScreen() {
         {combo >= 2 ? <Text style={styles.comboText}>{combo} COMBO！</Text> : null}
       </Animated.View>
 
+      <View style={styles.arena}>
       {/* 對手（上） */}
       <View style={styles.rowTop}>
         <HpCard fighter={foe} hpAnim={hpFoeA} mpAnim={mpFoeA} mp={foeMp} meta={foeMeta} rage={foeRage} status={stRef.foe} />
@@ -996,6 +997,7 @@ export default function BattleScreen() {
           />
         </View>
         <HpCard fighter={mine} hpAnim={hpMyA} mpAnim={mpMyA} mp={myMp} meta={myMeta} rage={myRage} status={stRef.me} />
+      </View>
       </View>
 
       {/* 特效層（打在量測到的寵物中心） */}
@@ -1033,6 +1035,12 @@ export default function BattleScreen() {
 
       {/* 面板 */}
       <View style={styles.panel}>
+        <ScrollView
+          style={styles.panelScroll}
+          contentContainerStyle={styles.panelScrollInner}
+          showsVerticalScrollIndicator
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.log}>
           {logLines.map((l, i) => (
             <Text key={i} style={[styles.logText, i < logLines.length - 1 && styles.logDim]}>{l}</Text>
@@ -1079,6 +1087,7 @@ export default function BattleScreen() {
             </Text>
           </Pressable>
         ) : null}
+        </ScrollView>
       </View>
 
       {/* 開始遮罩 */}
@@ -1404,6 +1413,7 @@ const styles = StyleSheet.create({
   ultBannerBig: { fontSize: 84, fontWeight: '900', color: '#FFE45C', letterSpacing: 4, textShadowColor: '#1c1a17', textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 0 },
   ultBannerName: { marginTop: 6, fontSize: font.size.lg, fontWeight: '900', color: '#fff', textShadowColor: '#1c1a17', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 },
   mute: { position: 'absolute', top: 14, right: 14, zIndex: 40, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' },
+  arena: { flex: 1, minHeight: 0 },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: 38, paddingBottom: spacing.sm },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },
@@ -1427,7 +1437,9 @@ const styles = StyleSheet.create({
   redTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#E23B3B', zIndex: 14 },
   comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
   comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
-  panel: { marginTop: 'auto', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: spacing.lg },
+  panel: { maxHeight: '56%', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  panelScroll: { flexGrow: 0 },
+  panelScrollInner: { paddingBottom: spacing.xl },
   log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, height: 84, overflow: 'hidden', justifyContent: 'flex-end', borderWidth: 1, borderColor: colors.border },
   logText: { color: colors.text, fontSize: font.size.sm, lineHeight: font.size.sm * 1.3 },
   logDim: { opacity: 0.38 },
