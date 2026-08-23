@@ -14,6 +14,7 @@ import {
   setLikeRemote,
   updatePetAvatarRemote,
   updatePetMovesetRemote,
+  levelUpPetRemote,
 } from '../lib/petsApi';
 import {
   createGymRemote,
@@ -123,6 +124,8 @@ interface StoreState {
   winGymBattle: (gymId: string, petId: string) => Promise<void>;
   /** 本地 demo：對戰勝利後暫時把寵物升一級（不寫雲端） */
   bumpPetLevelLocal: (petId: string) => void;
+  /** 打野/一般勝利升級：等級 +1 寫回雲端，回傳新等級（失敗仍升本地） */
+  levelUpPet: (petId: string) => Promise<number | null>;
   /** 更新訓練家像素造型（本機持久化，隨帳號頭銜一起保存）*/
   setTrainerAvatar: (avatar: TrainerAvatar) => void;
   syncSocial: () => Promise<void>;
@@ -269,6 +272,21 @@ export const useStore = create<StoreState>()(
             p.id === petId ? { ...p, level: (p.level ?? 1) + 1 } : p,
           ),
         }));
+      },
+
+      levelUpPet: async (petId) => {
+        const pet = get().pets.find((p) => p.id === petId);
+        if (!pet) return null;
+        const newLevel = (pet.level ?? 1) + 1;
+        try {
+          await levelUpPetRemote(petId, newLevel);
+        } catch {
+          /* 雲端失敗仍先升本地，避免玩家白打 */
+        }
+        set((s) => ({
+          pets: s.pets.map((p) => (p.id === petId ? { ...p, level: newLevel } : p)),
+        }));
+        return newLevel;
       },
 
       setTrainerAvatar: (avatar) => {

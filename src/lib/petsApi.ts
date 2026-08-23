@@ -178,6 +178,12 @@ export async function updatePetAvatarRemote(petId: string, avatar: PetAvatar): P
   }
 }
 
+/** 寵物升級：把新等級寫回雲端（擁有者才有權限，靠 pets 的 RLS 保護） */
+export async function levelUpPetRemote(petId: string, newLevel: number): Promise<void> {
+  const { error } = await supabase.from('pets').update({ level: newLevel }).eq('id', petId);
+  if (error) throw error;
+}
+
 export async function addPostRemote(
   petId: string,
   userId: string,

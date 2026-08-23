@@ -76,6 +76,7 @@ export default function BattleScreen() {
   const gyms = useStore((s) => s.gyms);
   const entries = useStore((s) => s.entries);
   const winGymBattle = useStore((s) => s.winGymBattle);
+  const levelUpPet = useStore((s) => s.levelUpPet);
 
   const gym = gyms.find((g) => g.id === gymId);
   const myPet = pets.find((p) => p.id === myPetId);
@@ -106,6 +107,7 @@ export default function BattleScreen() {
   const [busy, setBusy] = useState(true);
   const [started, setStarted] = useState(false);
   const [result, setResult] = useState<null | 'win' | 'lose'>(null);
+  const [wildLevel, setWildLevel] = useState<number | null>(null);
   // 戰鬥旁白：logLines 為可讀的歷史（保留最近幾條，避免一閃即逝）；prompt 為當前提示
   const [logLines, setLogLines] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('準備對戰！');
@@ -899,7 +901,9 @@ export default function BattleScreen() {
         setPrompt('結算中…插旗佔領');
         try { await captureTerritoryRemote(String(terrH3), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
       } else if (eventH3) {
+        setPrompt('結算中…獲得經驗升級');
         try { useSpaceStore.getState().claimEvent(String(eventH3), Number(rewardCans) || 0); } catch { /* ignore */ }
+        try { const nl = await levelUpPet(String(myPetId)); if (nl) setWildLevel(nl); } catch { /* 失敗仍顯示結果 */ }
       } else if (gymId) {
         setPrompt('結算中…登頂並升級');
         try { await winGymBattle(String(gymId), String(myPetId)); } catch { /* 失敗仍顯示結果 */ }
@@ -1115,7 +1119,7 @@ export default function BattleScreen() {
                 ? terrH3
                   ? '這塊地盤插上你的旗子了，開始幫你生罐罐！'
                   : eventH3
-                    ? `野生浪浪認輸了，賞金 +${rewardCans ?? 0} 🥫 入袋！`
+                    ? `野生浪浪認輸了，賞金 +${rewardCans ?? 0} 🥫 入袋！${wildLevel ? `\n${mine.name} 升到 Lv.${wildLevel}！🎉` : ''}`
                     : `${mine.name} 成為新道館主，升到 Lv.${myPet?.level ?? 1}！`
                 : '再訓練一下，下次再來挑戰！'}
             </Text>
