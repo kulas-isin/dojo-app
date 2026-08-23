@@ -6,6 +6,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AvatarView } from '@/avatar/AvatarView';
 import { DEFAULT_PET, randomPet } from '@/avatar/sprite';
+import { BATTLE_TYPES } from '@/battle/stats';
 import { CanIcon } from '@/components/CanIcon';
 import { Flag, Shield, Swords } from '@/components/icons';
 import { PixelSprite } from '@/components/PixelSprite';
@@ -154,11 +155,17 @@ export default function MapScreen() {
     if (selEvent.kind === 'stray') {
       if (!myPets.length) { setMsg('先建立一隻寵物才能挑戰'); return; }
       const p = challenger ?? myPets[0];
+      // 野生怪屬性隨機：個性、種類、等級（在玩家等級附近浮動）皆隨機
+      const wildType = BATTLE_TYPES[Math.floor(Math.random() * BATTLE_TYPES.length)];
+      const wildLevel = Math.max(1, (p.level ?? 1) + (Math.floor(Math.random() * 4) - 1));
       router.push({
         pathname: '/battle',
         params: {
           myPetId: p.id, eventH3: sel.h3, rewardCans: String(selEvent.amount),
-          foeName: '野生浪浪', foeType: Math.random() < 0.5 ? 'cat' : 'dog', foeLevel: String(p.level ?? 1),
+          foeName: `野生${wildType.label}浪浪`,
+          foeType: Math.random() < 0.5 ? 'cat' : 'dog',
+          foeBattle: wildType.key,
+          foeLevel: String(wildLevel),
           foeAvatar: JSON.stringify(randomPet()),
         },
       });

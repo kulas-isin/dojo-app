@@ -3,7 +3,8 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import * as sfx from '@/battle/audio';
 import {
@@ -77,6 +78,10 @@ export default function BattleScreen() {
   const entries = useStore((s) => s.entries);
   const winGymBattle = useStore((s) => s.winGymBattle);
   const levelUpPet = useStore((s) => s.levelUpPet);
+  const { height: winH } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // 面板最多佔半螢幕，且保底讓戰場至少 ~320px，避免面板蓋住打鬥畫面
+  const panelMax = Math.max(200, Math.min(winH * 0.5, winH - 320 - insets.top));
 
   const gym = gyms.find((g) => g.id === gymId);
   const myPet = pets.find((p) => p.id === myPetId);
@@ -1038,7 +1043,7 @@ export default function BattleScreen() {
       ) : null}
 
       {/* 面板 */}
-      <View style={styles.panel}>
+      <View style={[styles.panel, { maxHeight: panelMax, paddingBottom: insets.bottom + spacing.sm }]}>
         <ScrollView
           style={styles.panelScroll}
           contentContainerStyle={styles.panelScrollInner}
@@ -1417,7 +1422,7 @@ const styles = StyleSheet.create({
   ultBannerBig: { fontSize: 84, fontWeight: '900', color: '#FFE45C', letterSpacing: 4, textShadowColor: '#1c1a17', textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 0 },
   ultBannerName: { marginTop: 6, fontSize: font.size.lg, fontWeight: '900', color: '#fff', textShadowColor: '#1c1a17', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 },
   mute: { position: 'absolute', top: 14, right: 14, zIndex: 40, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' },
-  arena: { flex: 1, minHeight: 0 },
+  arena: { flex: 1, minHeight: 0, overflow: 'hidden' },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: 38, paddingBottom: spacing.sm },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   avatar: { width: 104, height: 104, borderRadius: 28, backgroundColor: '#fff', borderWidth: 3, borderColor: '#fff', overflow: 'hidden', ...shadow.card },
@@ -1441,7 +1446,7 @@ const styles = StyleSheet.create({
   redTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#E23B3B', zIndex: 14 },
   comboWrap: { position: 'absolute', top: 54, left: 0, right: 0, alignItems: 'center', zIndex: 32 },
   comboText: { color: '#fff', backgroundColor: colors.primary, fontWeight: '900', fontSize: font.size.xl, paddingHorizontal: spacing.lg, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
-  panel: { maxHeight: '56%', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  panel: { backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   panelScroll: { flexGrow: 0 },
   panelScrollInner: { paddingBottom: spacing.xl },
   log: { backgroundColor: colors.bgElevated, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, height: 84, overflow: 'hidden', justifyContent: 'flex-end', borderWidth: 1, borderColor: colors.border },
